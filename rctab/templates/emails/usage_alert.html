@@ -1,0 +1,14 @@
+{% extends "subscription_email_base.html" %}
+{% block headline %}
+{{ percentage_used }}% of allocated budget used by your Azure subscription: <b>{{ summary.name }}</b>
+{% endblock %}
+{% block content %}
+<p>
+  Your subscription has used {{ percentage_used }}% of its allocated budget.
+  At 100%, the subscription will be turned off.
+<p>If you want to increase your budget you should submit a request with the ticketing system
+<p>
+  Notifications are automatically sent out once your subscription has exceeded 50%, 75%, 90% and 100% of its
+  <u>allocated budget</u>.
+</p>
+{% endblock %}

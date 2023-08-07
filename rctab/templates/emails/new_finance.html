@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block body %}
+<div dir="ltr" class="card">
+    <div class="heading-1">
+        {% block headline %}
+        New finance entry for the Azure subscription id: <b>{{subscription_id }}</b>
+        {% endblock %}
+    </div>
+    <div class="normal-text">
+        <p>The subscription has a new finance entry (finance code: {{finance_code}}) for the amout of <b>£{{
+                "%.2f"|format(amount) }}</b> from
+            {{ date_from }} until {{ date_to }}.
+        </p>
+    </div>
+</div>
+{% endblock %}

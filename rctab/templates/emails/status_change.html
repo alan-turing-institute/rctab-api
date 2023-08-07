@@ -1,0 +1,41 @@
+{% extends "subscription_email_base.html" %}
+{% block headline %}
+There has been a status change for your Azure subscription: <b>{{ summary.name }}</b>
+{% endblock %}
+{% block content %}
+<p>
+  You are receiving this email because there has been an update to your Azure subscription and you are listed as one of
+  its users.
+</p>
+{%if new_status["state"] != old_status["state"] %}
+<p>
+  Your subscription state has changed from <span class="strikethrough"> {{ old_status["state"].value }}</span> to
+  <b>{{ new_status["state"].value }}</b>.
+  {% if new_status["state"].value == 'Deleted' %}
+  This means that all underlying resources and data have also been deleted.
+  {% endif %}
+  {% if new_status["state"].value == 'Disabled' %}
+  This means it can no longer be used to create or manage Azure resources.
+  If your subscription expired and you wish to continue to use your subscription, or if your subscription is over budget
+  and you want to add more budget, you should submit a request with the ticketing system.
+  {% elif new_status["state"].value == 'Enabled' %}
+  This means the subscription is active and you can use it to deploy new resources and manage existing ones.
+  {% elif new_status["state"].value == 'Expired' %}
+  If you wish to continue to use your subscription you should submit a request with the ticketing system.
+  {% elif new_status["state"].value == 'PastDue' %}
+  That means that your subscription has an outstanding payment pending. Your subscription is still active but failure to
+  pay may result in the subscription being disabled.
+  {% elif new_status["state"].value == 'Warned' %}
+  This means your subscription will be disabled shortly if the warning reason isn't addressed. A subscription may be in
+  warned state if its past due, canceled by user, or if the subscription has expired.
+  {% endif %}
+</p>
+{% endif %}
+{% if new_status["display_name"] != old_status["display_name"] %}
+<p>
+  Your display name has changed from <span class="strikethrough">{{ old_status["display_name"] }}</span> to
+  <b>{{ new_status["display_name"] }}</b>.
+</p>
+{% endif %}
+
+{% endblock %}

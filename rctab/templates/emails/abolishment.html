@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block body %}
+<div dir="ltr" class="card">
+    <div class="heading-1">
+        {% block headline %}
+        Abolishments summary
+        {% endblock %}
+    </div>
+    <div class="horizontal-line"></div>
+    <div class="heading-2">
+        Abolishments ({{abolishments|length}})
+    </div>
+    <div class="normal-text">
+        {% for sub in abolishments %}
+        <li> <b> <span class=summary-item>{{ sub.name }} ({{ sub.subscription_id }})</span> </b>
+            <p>
+                <span class=summary-item>Subscription name: {{ sub.name }}</span>
+                <span class=summary-item>Subscription ID: {{ sub.subscription_id }}</span>
+            </p>
+            <p>
+                <span class=summary-item>Approval adjustment: £{{ "%.2f"|format(sub.approval) }}</span>
+                <span class=summary-item>Allocation adjustment: £{{ "%.2f"|format(sub.allocation) }}</span>
+            </p>
+        </li>
+        {% endfor %}
+    </div>
+    <div class="horizontal-line"></div>
+</div>
+{% endblock %}

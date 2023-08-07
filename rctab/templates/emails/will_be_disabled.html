@@ -1,0 +1,16 @@
+{% extends "subscription_email_base.html" %}
+{% block headline %}
+We will turn off your Azure subscription: <b>{{ summary.name }}</b>
+{% endblock %}
+{% block content %}
+<p>
+  It will shortly be turned off because it is {{ reason }}.
+  To request more budget or an extension submit a ticket with the ticketing system.
+</p>
+<p>
+  Once a subscription is disabled/cancelled (i.e. expires) Microsoft will
+  <b><a
+      href="https://docs.microsoft.com/en-us/azure/cost-management-billing/manage/cancel-azure-subscription">permanently
+      delete all data within 30-90 days</a></b>.
+</p>
+{% endblock %}

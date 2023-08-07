@@ -1,0 +1,73 @@
+{% extends "signed_in_base.html" %}
+
+{% block noaccess %}
+
+<h1 id="welcome">Welcome <span id="nameSelector">{{ name }}</span></h1>
+<p>
+    Your actual usage may be higher than the values you see here.
+    You should always verify your Azure usage on the Azure portal, which you
+    can do by clicking on the value in the <b>Total Cost</b> column and
+    then choosing <b>Amortized cost</b> metric on the Azure portal.
+</p>
+
+<h2 class="bigBreak">Azure subscriptions</h2>
+<p>View budgets and usage for all your Azure subscriptions</p>
+<label for="show_abolished_checkbox">
+    <input type="checkbox" id="show_abolished_checkbox" onclick="hideAbolishedRows(this)" />
+    Show abolished subscriptions
+</label>
+
+<table id="subscription_table_all" class="display">
+    <thead>
+        <tr>
+            <th></th>
+            <th class="tooltip">Subscription ID<span class="tooltiptext">Click id for subscription details</span></th>
+            <th>Subscription Name</th>
+            <th class="tooltip">Expiry Date<span class="tooltiptext">Your subscription will expire on this date</span>
+            </th>
+            <th>Status</th>
+            <th class="tooltip">Approved<span class="tooltiptext">Approved credits are ring fenced for your use but
+                    cannot be spent until they are allocated</span></th>
+            <th class="tooltip">Allocated<span class="tooltiptext">Allocated credits are available to spend. When usage
+                    is greater than allocated your account will be disabled</span></th>
+            <th class="tooltip">Total Costs<span class="tooltiptext">Totals Costs are the total usage and purchase
+                    costs, including amortised costs of reservations</span></th>
+            <th class="tooltip">Remaining<span class="tooltiptext">If this goes below £0.0 your subscription will be
+                    disabled</span></th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in azure_sub_data %}
+        <tr>
+            <td id="abolished_hide" style="text-align:center">
+                {% if item.abolished is false %}
+                <a class="subDetails tooltip"
+                    href="https://portal.azure.com/#@/resource/subscriptions/{{ item.subscription_id }}/overview"
+                    target="_blank"><img id="logo"
+                        src="{{ url_for('static', path ='images/microsoft_azure_logo.png') }}" width="16"
+                        height="16"><span class="tooltiptext">Click to navigate to Azure Portal</span></a>
+                {% else %}
+                <a class="subDetails tooltip"
+                    href="https://portal.azure.com/#@/resource/subscriptions/{{ item.subscription_id }}/overview"
+                    target="_blank">&#x2620;&#xFE0F<span class="tooltiptext">This subscription is abolished and has
+                        likely been deleted from azure. Click to navigate to Azure Portal</span></a>
+                {% endif %}
+            </td>
+            <td><a class="id" href="{{ url_for('subscription_details', subscription_id=item.subscription_id) }}"
+                    target="_blank">{{ item.subscription_id }}</a></td>
+            <td>{{ item.name }}</td>
+            <td>{{ item.approved_to }}</td>
+            <td>{{ item.status.value }}</td>
+            <td>£{{ '%0.2f' % item.approved }}</td>
+            <td>£{{ '%0.2f' % item.allocated }}</td>
+            <td><a class="totalCost"
+                    href="https://portal.azure.com/#@/resource/subscriptions/{{ item.subscription_id }}/costByResource"
+                    target="_blank">£{{ '%0.2f' % item.total_cost }}</a></td>
+            <td {% if item.remaining | round(2) < 0 %}class="overBudget" {% endif %}>£{{ '%0.2f' % item.remaining }}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% endblock %}

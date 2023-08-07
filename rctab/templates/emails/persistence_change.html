@@ -1,0 +1,12 @@
+{% extends "subscription_email_base.html" %}
+{% block headline %}
+Persistence change for your Azure subscription: <b>{{ summary.name }}</b>
+{% endblock %}
+{% block content %}
+<div class="heading-2">
+  Details
+</div>
+<span class="summary-item">
+  Always On: <span class="strikethrough">{{ old_persistence }}</span> → {{ new_persistence }}
+</span>
+{% endblock %}

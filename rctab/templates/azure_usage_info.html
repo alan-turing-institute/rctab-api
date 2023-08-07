@@ -1,0 +1,45 @@
+{% if cost_breakdown is none %}
+    No data to display. Are the requested dates valid?
+{% else %}
+<div>
+    <h3>Subscription usage since {{ time_frame_start }}</h3>
+    <button id="download_btn" class="download" onclick="download_table_as_csv('subscription_usage', '{{ time_frame_start }}');">Download full usage data as CSV</button>
+</div>
+    <div class="col usageFigure">
+        {{ usage_fig | safe }}
+    </div>
+    <div class="col usageTable" id="fullusagetable" style="display: none;">
+        <table id="subscription_usage">
+            <tr>
+                <th>Account name</th>
+                <th>Account owner</th>
+                <th>Date</th>
+                <th>Product</th>
+                <th>Quantity</th>
+                <th>Effective price</th>
+                <th>Cost</th>
+                <th>Amortised cost</th>
+                <th>Total cost</th>
+                <th>Resource location</th>
+                <th>Consumed service</th>
+                <th>Recourse name</th>
+            </tr>
+            {% for item in all_usage %}
+            <tr>
+                <td>{{ item.account_name }} </td>
+                <td>{{ item.account_owner_id }} </td>
+                <td>{{ item.date }} </td>
+                <td>{{ item.product }} </td>
+                <td>{{ item.quantity }} </td>
+                <td>{{ item.effective_price }} </td>
+                <td>{{ item.cost }} </td>
+                <td>{{ item.amortised_cost }} </td>
+                <td>{{ item.total_cost }} </td>
+                <td>{{ item.resource_location }} </td>
+                <td>{{ item.consumed_service }} </td>
+                <td>{{ item.resource_name }} </td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+{% endif %}

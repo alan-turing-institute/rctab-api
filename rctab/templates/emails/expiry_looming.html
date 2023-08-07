@@ -1,0 +1,13 @@
+{% extends "subscription_email_base.html" %}
+{% block headline %}
+{{days}} days until the expiry of your Azure subscription: <b>{{summary.name}}</b>
+{% endblock %}
+{% block content %}
+<p>
+  Your subscription will be turned off early on the morning of {{ summary.approved_to }}.
+  If you wish to continue to use your subscription you should submit a request with your ticketing system.
+</p>
+<p>
+  Notifications are automatically sent out 30, 7 and 1 days before expiry.
+</p>
+{% endblock %}

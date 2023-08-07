@@ -1,0 +1,18 @@
+{% extends "subscription_email_base.html" %}
+{% block headline %}
+The user roles have changed for your Azure subscription: <b>{{ summary.name }}</b>
+{% endblock %}
+{% block content %}
+{% if added_to_rbac %}
+<h2>Role Assignments Added</h2>
+{% for item in added_to_rbac %}
+<p>{{ item.role_name }} &ndash; {{ item.display_name }} ({{ item.mail }})</p>
+{% endfor %}
+{% endif %}
+{% if removed_from_rbac %}
+<h2>Role Assignments Removed</h2>
+{% for item in removed_from_rbac %}
+<p class="strikethrough">{{ item.role_name }} &ndash; {{ item.display_name }} ({{ item.mail }})</p>
+{% endfor %}
+{% endif %}
+{% endblock %}
