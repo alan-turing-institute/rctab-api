@@ -1,0 +1,59 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+repos:
+  - repo: 'https://github.com/pre-commit/pre-commit-hooks'
+    rev: v4.4.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+  - repo: 'https://github.com/gitleaks/gitleaks'
+    rev: v8.16.1
+    hooks:
+      - id: gitleaks
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.7.2.1
+    hooks:
+      - id: shellcheck
+  - repo: local
+    hooks:
+      - id: black
+        name: Black
+        entry: poetry run black
+        language: system
+        types: ['python']
+      - id: isort
+        name: isort
+        entry: poetry run isort
+        language: system
+        types: ['python']
+      - id: safety
+        name: Safety
+        # Ignore sql-alchemy and wheel vulnerabilities
+        entry: poetry run safety check --full-report -i 42194 -i 51668
+        pass_filenames: false
+        language: system
+      - id: mypy
+        name: MyPy
+        entry: poetry run mypy --install-types --non-interactive
+        language: system
+        types: ['python']
+        exclude: ^alembic/
+      - id: pylint
+        name: Pylint
+        entry: poetry run pylint --rcfile=.python-lint
+        language: system
+        types: ['python']
+        exclude: ^alembic/
+      - id: flake8
+        name: Flake8
+        entry: poetry run flake8
+        language: system
+        types: ['python']
+      - id: pymarkdown
+        name: PyMarkdown
+        entry: poetry run pymarkdown --strict-config --config .pymarkdown.json scan
+        language: system
+        types: ['markdown']
+        exclude: .github/
