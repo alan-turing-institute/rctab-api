@@ -1,0 +1,10 @@
+{% extends "subscription_email_base.html" %}
+{% block headline %}
+We will turn on your Azure subscription: <b>{{ summary.name }}</b>
+{% endblock %}
+{% block content %}
+<p>
+  Your subscription is currently off but will be turned on shortly. This could be because of a recent budget approval or
+  extension of the subscription expiry date.
+</p>
+{% endblock %}

@@ -1,0 +1,238 @@
+<script charset="utf-8" src="https://cdn.plot.ly/plotly-2.20.0.min.js"></script>
+<script type = "text/javascript">
+    async function fetchusagedata(event) {
+        const usageSubmitBtn = document.getElementById("usagesubmitbtn")
+        usageSubmitBtn.disabled=true;
+        const usageInfoForm = document.getElementById("usageinfoform")
+        const outDiv = document.getElementById("azureusageinfo")
+        const datestring = document.getElementById("timeperiodstr").value
+        const subscription_id = document.getElementById("subscription_id").innerText
+        outDiv.innerHTML = '<div class="search-overlay"><div class="loader"></div><div class="loader-text"><br><br>Loading data<br><br>This may take a few seconds or a few minutes depending on the length of time requested.</div></div>'
+        event.preventDefault();
+        await fetch("/process_usage/" + subscription_id + "?timeperiodstr=" + datestring, {
+            method: "GET",
+        })
+        .then(response => {
+            return response.text();
+        })
+        .then(html => {
+            $("#azureusageinfo").html(html)
+        })
+    usageSubmitBtn.disabled=false;
+    }
+</script>
+
+
+{% extends "signed_in_base.html" %}
+
+{% block noaccess %}
+
+<h1><span id="subscription_name" class="subID">{{ subscription_details.name }}</span></h2>
+<h2><span id="subscription_id" class="subID">{{ subscription_id }}</span></h2>
+
+
+<table id="subscription_table_toprow" class="display">
+    <thead>
+        <tr>
+            <th class="tooltip">Expiry Date<span class="tooltiptext">Your subscription will expire on this date</span></th>
+            <th>Status</th>
+            <th class="tooltip">Approved<span class="tooltiptext">Approved credits are ring fenced for your use but cannot be spent until they are allocated</span></th>
+            <th class="tooltip">Allocated<span class="tooltiptext">Allocated credits are available to spend. When usage is greater than allocated your account will be disabled</span></th>
+            <th class="tooltip">Total Costs<span class="tooltiptext">Totals Costs are the total usage and purchase costs, including amortised costs of reservations</span></th>
+            <th class="tooltip">Remaining<span class="tooltiptext">If this goes below £0.0 your subscription will be disabled</span></th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>{{ subscription_details.approved_to }}</td>
+            <td>{{ subscription_details.status }}</td>
+            <td>£{{ '%0.2f' % subscription_details.approved }}</td>
+            <td>£{{ '%0.2f' % subscription_details.allocated }}</td>
+            <td><a class="totalCost" href="https://portal.azure.com/#@/resource/subscriptions/{{ subscription_details.subscription_id }}/costByResource" target="_blank">£{{ '%0.2f' % subscription_details.total_cost }}</a></td>
+            <td {% if subscription_details.remaining | round(2) < 0 %}class="overBudget"{% endif %}>£{{ '%0.2f' % subscription_details.remaining }}</td>
+        </tr>
+    </tbody>
+</table>
+
+
+<h3>Useful cost analysis views</h3>
+<p>
+    The following links will take you to useful cost analysis views for this subscription.
+</p>
+<p>
+    Past spending views will explain accumulated costs, including cost by resource.
+    Current spending views show costs for a present period and give an estimation of future costs.
+</p>
+
+<div class="flex-grid">
+    <div class="col">
+        <h4>Past spending</h4>
+        <ul>
+            <li><a href="https://portal.azure.com/#@/blade/Microsoft_Azure_CostManagement/Menu/open/CostAnalysis/scope/%2Fsubscriptions%2F{{ subscription_id }}/view/{{ views.by_resource_past_6m }}" target="_blank">Monthly cost by resource for the past six months</a></li>
+            <li><a href="https://portal.azure.com/#@/blade/Microsoft_Azure_CostManagement/Menu/open/CostAnalysis/scope/%2Fsubscriptions%2F{{ subscription_id }}/view/{{ views.by_resource_past_30d }}" target="_blank">Daily cost by resource for the past thirty days</a></li>
+        </ul>
+    </div>
+    <div class="col">
+        <h4>Current and projected spending</h4>
+        <ul>
+            <li><a href="https://portal.azure.com/#@/blade/Microsoft_Azure_CostManagement/Menu/open/CostAnalysis/scope/%2Fsubscriptions%2F{{ subscription_id }}/view/{{ views.by_resource_this_month }}" target="_blank">Cost by resource this month</a></li>
+            <li><a href="https://portal.azure.com/#@/blade/Microsoft_Azure_CostManagement/Menu/open/CostAnalysis/scope/%2Fsubscriptions%2F{{ subscription_id }}/view/{{ views.by_resource_this_year }}" target="_blank">Cost by resource this year</a></li>
+        </ul>
+    </div>
+</div>
+
+<div>
+<h4>The following tabs provide additional information.</h4>
+</div>
+
+<div class="tab">
+    <button id="SubscriptionAA_btn" class="tablinks" onclick="openTab(event, 'SubscriptionAA')" name="defaultOpen">Approvals and Allocations</button>
+    <button id="SubscriptionFCA_btn" class="tablinks" onclick="openTab(event, 'SubscriptionFCA')">Finance and Cost Recovery</button>
+    <button id="SubscriptionUA_btn" class="tablinks" onclick="openTab(event, 'SubscriptionUA')">Users with access</button>
+    <button id="SubscriptionU_btn" class="tablinks" onclick="openTab(event, 'SubscriptionU')">Usage</button>
+</div>
+
+
+<div id="SubscriptionAA" class="tabcontent" style="display: none">
+    <h3>Details of subscription approvals and allocations</h3>
+    <div class="flex-grid">
+        <div class="col">
+            <h4>Approvals</h4>
+            <table id="approvalsTable">
+                <tr>
+                    <th>Ticket</th>
+                    <th>Starts</th>
+                    <th>Ends</th>
+                    <th>Amount</th>
+                    <th>Created On</th>
+                </tr>
+                {% for item in all_approvals %}
+                <tr>
+                    <td>{{ item.ticket }}</td>
+                    <td>{{ item.date_from }}</td>
+                    <td>{{ item.date_to }}</td>
+                    <td>£{{ item.amount | round(2) }}</td>
+                    <td>{{ item.time_created.strftime('%Y-%m-%d') }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+        <div class="col leftMargin">
+            <h4>Allocations</h4>
+            <table>
+                <tr>
+                    <th>Ticket</th>
+                    <th>Amount</th>
+                    <th>Created On</th>
+                </tr>
+                {% for item in all_allocations %}
+                <tr>
+                    <td>{{ item.ticket }}</td>
+                    <td>£{{ item.amount | round(2) }}</td>
+                    <td>{{ item.time_created.strftime('%Y-%m-%d') }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="SubscriptionFCA" class="tabcontent" style="display: none">
+    <h3>Details of subscription finances and cost recovery</h3>
+    <div class="flex-grid">
+        <div class="col">
+
+            <h4>Finance</h4>
+            <table id="financeTable">
+                <tr>
+                    <th>Ticket</th>
+                    <th>Finance code</th>
+                    <th>Starts</th>
+                    <th>Ends</th>
+                    <th>Priority</th>
+                    <th>Amount</th>
+                    <th>Created on</th>
+                </tr>
+                {% for item in all_finance %}
+                <tr>
+                    <td>{{ item.ticket }}</td>
+                    <td>{{ item.finance_code }}</td>
+                    <td>{{ item.date_from.strftime('%Y-%m-%d') }}</td>
+                    <td>{{ item.date_to.strftime('%Y-%m-%d') }}</td>
+                    <td>{{ item.priority }}</td>
+                    <td>£{{ item.amount | round(2) }}</td>
+                    <td>{{ item.time_created.strftime('%Y-%m-%d') }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+        <div class="col leftMargin">
+            <h4>Cost recovery</h4>
+            <table id="costrecoveryTable">
+                <tr>
+                    <th>Month</th>
+                    <th>Finance code</th>
+                    <th>Amount</th>
+                    <th>Date recovered</th>
+                </tr>
+                {% for item in all_costrecovery %}
+                <tr>
+                    <td>{{ item.month }}</td>
+                    <td>{{ item.finance_code }}</td>
+                    <td>£{{ item.amount | round(2) }}</td>
+                    {% if item.date_recovered == None %}
+                        <td></td>
+                    {% else %}
+                        <td>{{ item.date_recovered.strftime('%Y-%m-%d') }}</td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="SubscriptionUA" class="tabcontent" style="display: none">
+    <h3>Subscription users with access</h3>
+    <div class="flex-grid">
+        <div class="col usersTable">
+
+            <table id="subscription_users">
+                <tr>
+                    <th>Username</th>
+                    <th>Role</th>
+                    <th>Email</th>
+                </tr>
+                {% for item in all_rbac_assignments %}
+                <tr>
+                    <td>{{ item.display_name }}</td>
+                    <td>{{ item.role_name }}</td>
+                    {% if item.mail is not none %}
+                        <td><a href="mailto:{{ item.mail }}">{{ item.mail }}</a></td>
+                    {% else %}
+                        <td>{{ item.mail }}</td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="SubscriptionU" class="tabcontent" style="display: none">
+    <h3>Usage breakdown</h3>
+    <div>
+        <form method="get" class="tooltip" id="usageinfoform">
+        <label for="timeperiodstr">Start date</label>
+        <input type="date" id="timeperiodstr" min="2015-03-01">
+        <input type="button" id="usagesubmitbtn" value="fetch data" onclick="fetchusagedata(event);">
+        </input>
+        <span class="tooltiptext">Load usage data since start date. This may take some time depending on the length of time requested.</span>
+        </form>
+    </div>
+    <br>
+    <div id="azureusageinfo">
+    </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,17 @@
+{% extends "base_site.html" %}
+{% block title %}Index{% endblock %}
+{% block head %}
+    {{ super() }}
+    <style type="text/css">
+        .important { color: #336699; }
+    </style>
+{% endblock %}
+{% block content %}
+    <h1>Research Compute</h1>
+
+    <p class="important">Welcome to Research Computing at {{ organisation }}</p>
+      <p class="important break">
+        Members of {{ organisation }} can check Azure usage and budgets by logging in below.
+    </p>
+    <button type="button" class="basicButton" onclick="location.href='/login'">Login</button>
+{% endblock %}

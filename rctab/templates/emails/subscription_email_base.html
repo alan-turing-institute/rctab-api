@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block body %}
+<div dir="ltr" class="card">
+  <div class="heading-1">
+    {% block headline %}{% endblock %}
+  </div>
+  <div class="horizontal-line"></div>
+  <div class="normal-text">
+    {% block content %}{% endblock %}
+  </div>
+  <div class="heading-2">
+    Subscription Summary
+  </div>
+  <div class="normal-text">
+    <p>
+      You can access your subscription
+      on the <a href="https://portal.azure.com/#@/resource/subscriptions/{{ summary.subscription_id }}/overview">Azure
+        portal</a>
+      or you can view the usage and budget on
+      {% if rctab_url %}
+      <a href="{{ rctab_url }}">RCTab</a>.
+      {% else %}
+      RCTab.
+      {% endif %}
+    </p>
+    <p>
+      <span class=summary-item>Subscription name: {{ summary.name }}</span>
+      <span class=summary-item>Subscription ID: {{ summary.subscription_id }}</span>
+      <span class=summary-item>Subscription Status: {{ summary.status }}</span>
+      <span class=summary-item>Always on: {{ summary.always_on }}</span>
+    </p>
+    <p>
+      <span class=summary-item>Approved from: {{ summary.approved_from }}</span>
+      <span class=summary-item>Approved to: {{ summary.approved_to }}</span>
+      <span class=summary-item>Amount approved: £{{ "%.2f"|format(summary.approved) }}</span>
+      <span class=summary-item>Allocated: £{{ "%.2f"|format(summary.allocated) }}</span>
+    </p>
+    <p>
+      <span class=summary-item>Total cost: <b>£{{ "%.2f"|format(summary.total_cost) }}</b></span>
+      <span class=summary-item>Cost: £{{ "%.2f"|format(summary.cost) }}</span>
+      <span class=summary-item>Amortised cost: £{{ "%.2f"|format(summary.amortised_cost) }}</span>
+      <span class=summary-item>First usage: {{ summary.first_usage }}</span>
+      <span class=summary-item>Latest usage: {{ summary.latest_usage }}</span>
+    </p>
+    <span class=summary-item>Desired status: {{ summary.desired_status }}</span>
+    <span class=summary-item>Desired status info: {{ summary.desired_status_info }}</span>
+  </div>
+  <div class="horizontal-line"></div>
+  <div>
+    This is an automated email notification -
+    please do not reply to it.
+  </div>
+</div>
+{% endblock %}

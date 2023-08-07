@@ -1,0 +1,19 @@
+[flake8]
+max-line-length = 160
+per-file-ignores =
+    __init__.py:F401
+    rctab/routers/accounting/routes.py:E711,E712
+    rctab/routers/accounting/desired_states.py:E711,E712
+    rctab/routers/accounting/send_emails.py:E712,E203
+    tests/test_crud/test_auth.py:F401,F811
+    tests/test_routes/test_send_emails.py:F401,F811
+    tests/test_routes/test_approvals.py:F401,F811
+    tests/test_routes/test_finances.py:F401,F811
+    tests/test_routes/test_desired_states.py:F401,E711,F811
+    tests/test_routes/test_email_templates.py:F401,F811
+    tests/test_routes/test_frontend.py:F401,F811
+    tests/test_routes/test_cost_recovery.py:F401,F811
+    tests/test_routes/test_abolishment.py:F401,F811
+    tests/test_routes/test_transactions.py:F401,F811
+    tests/test_routes/test_status.py:F401,F811
+    tests/test_routes/test_usage.py:F401,F811

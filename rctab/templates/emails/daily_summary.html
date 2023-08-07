@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block body %}
+<div dir="ltr" class="card">
+    <div class="heading-1">
+        {% block headline %}
+        Daily summary
+        {% endblock %}
+    </div>
+    <div class="horizontal-line"></div>
+    <div class="heading-3">
+
+        From {{time_last_summary}} UTC to {{time_now}} UTC
+
+    </div>
+    <div class="horizontal-line"></div>
+    <div class="heading-2">
+        New Subscriptions ({{new_subscriptions|length}})
+    </div>
+    <div class="normal-text">
+        {% for sub in new_subscriptions %}
+        <li> <b> <span class=summary-item>{{ sub.name }} ({{ sub.subscription_id }})</span> </b>
+            <p>
+                <span class=summary-item>Subscription name: {{ sub.name }}</span>
+                <span class=summary-item>Subscription ID: {{ sub.subscription_id }}</span>
+                <span class=summary-item>Status: {{ sub.status }}</span>
+            </p>
+            <p>
+                <span class=summary-item>Approved from: {{ sub.approved_from }}</span>
+                <span class=summary-item>Approved to: {{ sub.approved_to }}</span>
+                <span class=summary-item>Amount approved: £{{ "%.2f"|format(sub.approved) }}</span>
+                <span class=summary-item>Allocated: £{{ "%.2f"|format(sub.allocated) }}</span>
+            </p>
+        </li>
+        {% endfor %}
+    </div>
+    <div class="horizontal-line"></div>
+    <div class="heading-2">
+        Status changes ({{status_changes|length}})
+    </div>
+    <div class="normal-text">
+        {% for sub in status_changes %}
+        <li>
+            <b> <span class=summary-item>{{ sub["new_status"]["display_name"]}} ({{ sub["new_status"]["subscription_id"]
+                    }})</span>
+            </b>
+            <p>
+                {% if sub["new_status"]["display_name"] != sub["old_status"]["display_name"] %}
+                <span class=summary-item> Subscription name: <span class="strikethrough">
+                        {{ sub["old_status"]["display_name"] }}</span> →
+                    {{sub["new_status"]["display_name"] }} </span>
+                {% else %}
+                <span class=summary-item>Subscription name: {{ sub["new_status"]["display_name"]}}</span>
+                {% endif %}
+                {% if sub["new_status"]["state"] != sub["old_status"]["state"] %}
+                <span class=summary-item>Status: <span class="strikethrough">{{ sub["old_status"]["state"] }}</span>
+                    →
+                    {{sub["new_status"]["state"] }} </span>
+                {% else %}
+                <span class=summary-item>Status: {{ sub["new_status"]["state"]}}</span>
+                {% endif %}
+            </p>
+        </li>
+        {% endfor %}
+    </div>
+    <div class="horizontal-line"></div>
+    <div class="heading-2">
+        New approvals/allocations ({{new_approvals_and_allocations|length}})
+    </div>
+    <div class="normal-text">
+        {% for n in new_approvals_and_allocations %}
+        <li>
+            <b> <span class=summary-item>{{ n["details"]["name"] }} ({{ n["details"]["subscription_id"]
+                    }})</span>
+            </b>
+            <span class=summary-item>New approval: £{{ "%.2f"|format(n["approvals"] | sum) }}</span>
+            <span class=summary-item>New allocation: £{{ "%.2f"|format(n["allocations"] | sum) }}</span>
+            <span class=summary-item>Status: {{ n["details"]["state"] }}</span>
+        </li>
+        {% endfor %}
+    </div>
+    <div class="horizontal-line"></div>
+    <div class="heading-2">
+        Notifications sent ({{num_notifications}})
+    </div>
+    <div class="normal-text">
+        {% for n in notifications_sent %}
+        <li>
+            <b> <span class=summary-item>{{ n["name"]}} ({{ n["subscription_id"] }})</span></b>
+            {% for e in n["emails_sent"] %}
+            <span class=summary-item>Notification type: {{ e["type"] }}.
+                {% if e["type"] == "overbudget" or e["type"] == "usage-alert"%}
+                {{e["extra_info"]}} % of budget used.
+                {%elif e["type"] == "time-based"%}
+                {{e["extra_info"]}} days until expiry.
+                {% endif %}
+            </span>
+            {% endfor %}
+        </li>
+        {% endfor %}
+    </div>
+    <div class="heading-2">
+        Finance entries ({{num_finance}})
+    </div>
+
+    {% for f in finance %}
+    <li>
+        <b> <span class=summary-item>{{ f["name"]}} ({{ f["subscription_id"] }})</span></b>
+        {% for e in f["finance_entry"] %}
+        <div class="normal-text">Amount: {{ e["amount"] }}
+        </div>
+        {% endfor %}
+    </li>
+    {% endfor %}
+
+</div>
+{% endblock %}

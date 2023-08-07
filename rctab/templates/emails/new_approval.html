@@ -1,0 +1,9 @@
+{% extends "subscription_email_base.html" %}
+{% block headline %}
+New approval for your Azure subscription: <b>{{ summary.name }}</b>
+{% endblock %}
+{% block content %}
+<p>Your subscription has a new approval for the amout of <b>£{{ "%.2f"|format(amount) }}</b> from
+  {{ date_from }} until <b>{{ date_to }}</b>.
+</p>
+{% endblock %}

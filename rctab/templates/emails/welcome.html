@@ -1,0 +1,29 @@
+{% extends "subscription_email_base.html" %}
+{% block headline %}
+You have a new subscription on the Azure platform: <b>{{ summary.name }}</b>
+{% endblock %}
+{% block content %}
+<p>
+  A new subscription has been created on Azure or an existing subscription has
+  been added to
+  {% if rctab_url %}
+  <a href="{{ rctab_url }}">RCTab</a>.
+  {% else %}
+  RCTab.
+  {% endif %}
+</p>
+<p>
+  The management system will <b>notify you by email</b>
+</p>
+<ul>
+  <li>30, 7 and 1 days before your subscription expires</li>
+  <li>when you have exceeded 50, 75, 90 and 100% of your allocated budget</li>
+  <li>if your subscription is due to be disabled for either of the above reasons</li>
+  <li>if your subscription is turned on/off or is renamed</li>
+  <li>if users are added-to/removed-from the subscription</li>
+  <li>if new allocations or approvals are made in the management system</li>
+</ul>
+<p>
+  To increase your budget or extend the length of the subscription, please submit a ticket with the ticketing system.
+</p>
+{% endblock %}

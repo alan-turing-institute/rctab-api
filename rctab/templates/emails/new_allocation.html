@@ -1,0 +1,9 @@
+{% extends "subscription_email_base.html" %}
+{% block headline %}
+New allocation for your Azure subscription: <b>{{ summary.name }}</b>
+{% endblock %}
+{% block content %}
+<p>Your subscription has been given a new allocation of <b>£{{ "%.2f"|format(amount) }}</b> out of a total approved
+    budget of <b>£{{"%.2f"|format(summary.approved)}}</b>.</p>
+<p>For more information please see the allocation request ticket {{ ticket }}.</p>
+{% endblock %}

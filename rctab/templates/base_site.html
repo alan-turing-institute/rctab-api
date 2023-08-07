@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    {% block head %}
+
+    <link rel="stylesheet" href="{{ url_for('static', path ='css/styles.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&display=swap" rel="stylesheet">
+
+    <!-- DataTables -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.11.3/css/jquery.dataTables.css">
+    <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.11.3/js/jquery.dataTables.js"></script>
+    <script type="text/javascript" charset="utf8" src="{{ url_for('static', path ='scripts/tables.js') }}"></script>
+
+    <title>RCTab - {% block title %}{% endblock %}</title>
+    {% endblock %}
+</head>
+<body>
+    <div class="topnav">
+        <a href="/">RCTab</a>
+        {% block logout %}{% endblock %}
+    </div>
+
+    <div class="content {% block content_class_name %}inner{% endblock %}" id="content">{% block content %}{% endblock %}</div>
+    <div class="footer">
+        {% block footer %}
+        <div class="copyright">
+            &copy; 2020-<script>document.write( new Date().getFullYear() );</script> <a href="https://www.turing.ac.uk/">The Alan Turing Institute</a>
+        </div>
+        {% block isadmin %}{% endblock %}
+        <div class="version">
+            v.{{ version }}
+        </div>
+        {% endblock %}
+    </div>
+    <script type="text/javascript" charset="utf8" src="{{ url_for('static', path ='scripts/tab_functions.js') }}"></script>
+    <script type="text/javascript" charset="utf8" src="{{ url_for('static', path ='scripts/download_table.js') }}"></script>
+
+</body>
+</html>

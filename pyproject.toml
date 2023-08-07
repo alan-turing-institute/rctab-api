@@ -1,0 +1,61 @@
+[tool.poetry]
+name = "RCTab"
+version = "0.9.0"
+description = "The RCTab API. Manage Azure budgets and usage"
+authors = []
+
+[tool.poetry.dependencies]
+# We only upper-bound the python version because SciPy 1.8 does, and we need
+# that to install on ARM Macs.
+python = ">=3.10 <3.12"
+alembic = "^1.7.1"
+asyncpg = "^0.27.0"
+azure-identity = "^1.5.0"
+databases = { version = "^0.6.2", extras = ["postgresql"] }
+fastapi = "^0.95.0"
+fastapimsal = { git = "https://github.com/alan-turing-institute/fastapimsal", tag = "0.4.7" }
+Jinja2 = "^3.1.1"
+opencensus-ext-azure = "^1.1.7"
+pandas = "^1.1.3"
+plotly = "^5.14.1"
+psycopg2-binary = "^2.9.3"
+pydantic = { extras = ["email"], version = "^1.9.0" }
+PyJWT = { extras = ["crypto"], version = "^2.4.0" }
+python-dotenv = "^0.15.0"
+requests = "^2.25.1"
+sendgrid = "^6.9.1"
+sqlalchemy = "~1.4.32"
+uvicorn = { version = "^0.17.4", extras = ["standard"] }
+
+[tool.poetry.group.dev.dependencies]
+black = "^22.12.0"
+devtools = { extras = ["pygments"], version = "^0.8.0" }
+flake8 = "^3.8.4"
+genbadge = "^1.1.0"
+httpie = "^3.1.0"
+httpie-jwt-auth = "^0.4.0"
+hypothesis = "^5.41.3"
+ipykernel = "^6.19.4"
+isort = "^5.6.4"
+mypy = "^0.991"
+pre-commit = "^2.14.1"
+pylint = "^2.10.2"
+pylint-absolute-imports = "^1.0.1"
+pymarkdownlnt = "^0.9.6"
+pytest = "^7.1.2"
+pytest-asyncio = "^0.14.0"
+pytest-cov = "^2.10.1"
+pytest-mock = "^3.6.1"
+requests = "^2.25.1"
+safety = "^2.3.1"
+sqlalchemy-stubs = "^0.3"
+
+[tool.isort]
+profile = "black"
+
+[tool.black]
+line-length = 88
+
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"
