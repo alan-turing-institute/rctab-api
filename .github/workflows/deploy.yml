@@ -10,6 +10,16 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Check that tag and package versions match
+        run: |
+          PYPROJECT_VERSION=$(sed -n '3p' pyproject.toml | sed "s/version = //")
+          GITHUB_VERSION=${{ github.event.release.tag_name }}
+          if [[ "$PYPROJECT_VERSION" != "\"$GITHUB_VERSION\"" ]]
+          then
+              echo "pyproject.toml version $PYPROJECT_VERSION doesn't match GitHub version \"$GITHUB_VERSION\""
+              exit 1
+          fi
+
       - name: Get release tag
         id: current_release
         run: |
