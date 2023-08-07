@@ -10,6 +10,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
       - name: Check that tag and package versions match
         run: |
           PYPROJECT_VERSION=$(sed -n '3p' pyproject.toml | sed "s/version = //")
@@ -31,8 +34,15 @@ jobs:
           echo "The current release is $CURRENT_RELEASE"
           echo "The current major version number is $MAJOR_VERSION_NUMBER"
 
-      - name: Checkout repository
-        uses: actions/checkout@v2
+      - name: Set pre-release suffix
+        if: ${{ github.event.release.prerelease }}
+        run: |
+          echo "TAG_SUFFIX='prelease'" >> $GITHUB_ENV
+
+      - name: Set release suffix
+        if: ${{ !github.event.release.prerelease }}
+        run: |
+          echo "TAG_SUFFIX='latest'" >> $GITHUB_ENV
 
       - name: Login to Docker Hub
         id: docker_login
@@ -48,5 +58,5 @@ jobs:
           file: Dockerfile
           tags: |
             turingrc/rctab-api:${{ env.CURRENT_RELEASE }}
-            turingrc/rctab-api:${{ env.MAJOR_VERSION_NUMBER }}.latest
+            turingrc/rctab-api:${{ env.MAJOR_VERSION_NUMBER }}.${{ env.TAG_SUFFIX }}
           push: true
