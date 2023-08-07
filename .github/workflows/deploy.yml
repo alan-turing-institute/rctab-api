@@ -3,7 +3,8 @@ name: Deploy API image to Docker Hub
 on:
   release:
     types:
-      - published
+      - released
+      - prereleased
 
 jobs:
   deploy_to_docker_hub:
