@@ -1,0 +1,25 @@
+---
+
+version: '3'
+
+services:
+  database:
+    image: docker.io/postgres:11
+    container_name: rctab_db
+    environment:
+      POSTGRES_PASSWORD: password
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
+  app:
+    image: rctab:latest
+    container_name: rctab_app
+    environment:
+      DB_HOST: rctab_db
+      DB_PASSWORD: password
+      DB_USER: postgres
+      MAX_WORKERS: 1
+    env_file:
+      - ../.env
+      - ../.auth.env
+    ports:
+      - "8000:80"

@@ -1,0 +1,43 @@
+# Docs for the Azure Web Apps Deploy action: https://github.com/azure/functions-action
+# More GitHub Actions for Azure: https://github.com/Azure/actions
+# More info on Python, GitHub Actions, and Azure Functions: https://aka.ms/python-webapps-actions
+
+
+name: Build and push API image to ACR
+
+on:
+  release:
+    types:
+      - published
+  workflow_dispatch:
+
+jobs:
+  deploy_to_acr:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Get release tag
+        id: current_release
+        run: |
+          CURRENT_RELEASE=${{ github.event.release.tag_name }}
+          echo "CURRENT_RELEASE=${CURRENT_RELEASE}" >> $GITHUB_ENV
+          IFS='.' read -ra VERSION_PARTS <<< "$CURRENT_RELEASE"
+          MAJOR_VERSION_NUMBER="${VERSION_PARTS[0]}"
+          echo "MAJOR_VERSION_NUMBER=${MAJOR_VERSION_NUMBER}" >> $GITHUB_ENV
+          echo "The current release is $CURRENT_RELEASE"
+          echo "The current major version number is $MAJOR_VERSION_NUMBER"
+
+      - name: Login to docker
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ secrets.RCTAB_ACR_LOGIN_SERVER }}
+          username: ${{ secrets.RCTAB_ACR_USERNAME }}
+          password: ${{ secrets.RCTAB_ACR_PASSWORD }}
+
+      - name: Build and Push current release and latest tag to ACR
+        run: |
+          docker build . -t ${{ secrets.RCTAB_ACR_LOGIN_SERVER }}/rctab-api:${{ env.CURRENT_RELEASE }} -t ${{ secrets.RCTAB_ACR_LOGIN_SERVER }}/rctab-api:${{ env.MAJOR_VERSION_NUMBER }}.latest
+          docker push --all-tags ${{ secrets.RCTAB_ACR_LOGIN_SERVER }}/rctab-api
