@@ -1,4 +1,4 @@
-# RCTab API
+# RCTab API <img src="media/RCTab.png" width="260" align="right">
 
 ![dev-deploy](https://github.com/alan-turing-institute/rctab-api/actions/workflows/dev-test-deploy.yml/badge.svg)
 ![docker-deploy](https://github.com/alan-turing-institute/rctab-api/actions/workflows/deploy.yml/badge.svg)
