@@ -38,7 +38,7 @@ jobs:
       - name: Set pre-release suffix
         if: ${{ github.event.release.prerelease }}
         run: |
-          echo "TAG_SUFFIX=prelease" >> $GITHUB_ENV
+          echo "TAG_SUFFIX=prerelease" >> $GITHUB_ENV
 
       - name: Set release suffix
         if: ${{ !github.event.release.prerelease }}
