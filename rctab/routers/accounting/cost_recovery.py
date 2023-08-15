@@ -31,7 +31,6 @@ def validate_month(
     last_recovered_month: Optional[CostRecoveryMonth],
 ) -> None:
     """Raise if month shouldn't be recovered."""
-
     if last_recovered_month:
         # If we have previously recovered a month,
         # we know exactly which month we should be recovering
@@ -58,13 +57,11 @@ def validate_month(
 async def calc_cost_recovery(
     recovery_month: CostRecoveryMonth, commit_transaction: bool, admin: UUID
 ) -> List[CostRecovery]:
-    """
-    Calculates the cost recovery for a given period.
+    """Calculates the cost recovery for a given period.
 
     Cost recovery must have been calculated for all previous months
     but not for this month.
     """
-
     last_recovered_day = await database.fetch_one(
         select([cost_recovery_log]).order_by(desc(cost_recovery_log.c.month))
     )
@@ -203,7 +200,6 @@ async def calc_cost_recovery_app(
     _: Dict[str, str] = Depends(authenticate_usage_app),
 ) -> Any:
     """Route for the usage app to trigger cost recovery calculation."""
-
     await calc_cost_recovery(
         recovery_period, commit_transaction=True, admin=UUID(ADMIN_OID)
     )
@@ -216,7 +212,6 @@ async def post_calc_cost_recovery_cli(
     recovery_month: CostRecoveryMonth, user: UserRBAC = Depends(token_admin_verified)
 ) -> Any:
     """Route for the CLI to trigger cost recovery calculation."""
-
     resp = await calc_cost_recovery(
         recovery_month, commit_transaction=True, admin=user.oid
     )
@@ -229,7 +224,6 @@ async def get_calc_cost_recovery_cli(
     recovery_month: CostRecoveryMonth, user: UserRBAC = Depends(token_admin_verified)
 ) -> Any:
     """Route for the CLI to do a dry-run of the cost recovery calculation."""
-
     result = await calc_cost_recovery(
         recovery_month, commit_transaction=False, admin=user.oid
     )

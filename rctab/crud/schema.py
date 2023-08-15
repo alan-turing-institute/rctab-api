@@ -175,6 +175,8 @@ class AllocationListItem(BaseModel):
 
 
 class Approval(BaseModel):
+    """An amount that a subscription can spend in a given time period."""
+
     sub_id: UUID
     ticket: str
     amount: float
@@ -186,6 +188,8 @@ class Approval(BaseModel):
 
 
 class ApprovalListItem(BaseModel):
+    """An Approval with a time_created field."""
+
     ticket: str
     amount: float
     currency: str = DEFAULT_CURRENCY
@@ -195,6 +199,8 @@ class ApprovalListItem(BaseModel):
 
 
 class Finance(BaseModel):
+    """An amount that can be billed to finance_code in a given time period."""
+
     subscription_id: UUID
     ticket: str
     amount: float
@@ -205,6 +211,8 @@ class Finance(BaseModel):
 
 
 class FinanceListItem(BaseModel):
+    """A Finance with a time_created field."""
+
     ticket: str
     amount: float
     priority: int
@@ -215,12 +223,14 @@ class FinanceListItem(BaseModel):
 
 
 class FinanceWithID(Finance):
-    """A Finance with a Finance ID"""
+    """A Finance with a Finance ID."""
 
     id: int
 
 
 class CostRecovery(BaseModel):
+    """Costs that should, be recovered from finance_code."""
+
     finance_id: int
     subscription_id: UUID
     month: datetime.date
@@ -230,5 +240,7 @@ class CostRecovery(BaseModel):
 
 
 class Currency(str, Enum):
+    """Recognised currencies."""
+
     USD = "USD"
     GBP = "GBP"

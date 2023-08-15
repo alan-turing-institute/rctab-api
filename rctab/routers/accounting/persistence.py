@@ -22,11 +22,7 @@ class NewPersistenceStatus(BaseModel):
 async def post_persistency_status(
     persistence: NewPersistenceStatus, user: UserRBAC = Depends(token_admin_verified)
 ) -> Any:
-    """
-    Returns the latest value of always_on setting.
-
-    """
-
+    """Return the latest value of always_on setting."""
     await database.execute(
         insert(accounting_models.persistence),
         {

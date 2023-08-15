@@ -43,12 +43,14 @@ async def remove_cache(oid: str) -> None:
 async def check_user_access(
     oid: str, username: Optional[str] = None, raise_http_exception: bool = True
 ) -> UserRBAC:
-    """Check if a user has access rights. If not try to make an entry for them
+    """Check if a user has access rights.
 
-    oid: Users oid
-    raise_http_exception: Raise an HTTP exception if user not in database
+    If not try to make an entry for them.
+
+    Args:
+        oid: User's oid.
+        raise_http_exception: Raise an exception if the user isn't found.
     """
-
     statement = select(
         [
             user_rbac.c.oid,
@@ -81,8 +83,10 @@ async def check_user_access(
 
 
 async def add_user(oid: str, username: str) -> None:
-    """Add an admin user. Does not give them admin permissions which requires admin confirmation"""
+    """Add an admin user.
 
+    Does not give them admin permissions which requires admin confirmation.
+    """
     query = user_rbac.insert()
 
     try:

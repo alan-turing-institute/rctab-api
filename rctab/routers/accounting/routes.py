@@ -46,15 +46,13 @@ class SubscriptionSummary(BaseModel):
 
 @db_select
 def get_subscriptions() -> Select:
-    """Returns all subscriptions"""
-
+    """Returns all subscriptions."""
     return select([subscription.c.subscription_id, subscription.c.abolished])
 
 
 @db_select
 def get_subscription_details(sub_id: Optional[UUID] = None) -> Select:
-    """Returns latest information from subscription details"""
-
+    """Returns latest information from subscription details."""
     # pylint: disable=unexpected-keyword-arg
     all_subs_sq = get_subscriptions(execute=False).alias()
 
@@ -84,10 +82,10 @@ def get_subscription_details(sub_id: Optional[UUID] = None) -> Select:
 
 @db_select
 def get_sub_allocations_summary(sub_id: Optional[UUID] = None) -> Select:
-    """
-    Returns an allocations summary for subscriptions. Can filter by sub_id
-    """
+    """Returns an allocations summary for subscriptions.
 
+    Can filter by sub_id.
+    """
     # pylint: disable=unexpected-keyword-arg
     all_subs_sq = get_subscriptions(execute=False).alias()
 
@@ -112,22 +110,23 @@ def get_sub_allocations_summary(sub_id: Optional[UUID] = None) -> Select:
 
 @db_select
 def get_sub_approvals_summary(sub_id: Optional[UUID] = None) -> Select:
-    """Get total approved amount for all subscriptions. If no approvals budget amount will be 0.0
+    """Get total approved amount for each subscription.
+
+    If there are no approvals budget amount will be shown as 0.
 
     Args:
         sub_id: Filter by a single subscription. Defaults to None.
 
     Returns:
-        Select: [description]
+        A SELECT query to get the approved amount and time
+        period for each subscription.
     """
-
     # pylint: disable=unexpected-keyword-arg
     all_subs_sq = get_subscriptions(execute=False).alias()
 
     query = select(
         [
             all_subs_sq.c.subscription_id,
-            # approvals.c.subscription_id,
             func.min(approvals.c.date_from).label("approved_from"),
             func.max(approvals.c.date_to).label("approved_to"),
             func.coalesce(func.sum(approvals.c.amount), 0.0).label("approved"),
@@ -147,14 +146,12 @@ def get_sub_approvals_summary(sub_id: Optional[UUID] = None) -> Select:
         all_subs_sq.c.subscription_id,
     )
 
-    #   return BudgetSummary(**result[0])
-
 
 @db_select
 def get_sub_usage_summary(
     sub_id: Optional[UUID] = None,
 ) -> Select:
-    """Summarise usage for subscriptions
+    """Summarise usage for subscriptions.
 
     Args:
         sub_id: Filter by sub_id. Defaults to None.
@@ -187,10 +184,7 @@ def get_sub_usage_summary(
 
 @db_select
 def sub_persistency_status(sub_id: Optional[UUID] = None) -> Select:
-    """
-    Returns the latest value of the always_on record for a subscription.
-    """
-
+    """Returns the latest value of the always_on record for a subscription."""
     # pylint: disable=unexpected-keyword-arg
     all_subs_sq = get_subscriptions(execute=False).alias()
 
@@ -214,10 +208,7 @@ def sub_persistency_status(sub_id: Optional[UUID] = None) -> Select:
 
 @db_select
 def get_desired_status(sub_id: Optional[Union[UUID, List[UUID]]] = None) -> Select:
-    """
-    Returns the latest value of the desired status record for a subscription.
-    """
-
+    """Returns the latest value of the desired status record for a subscription."""
     # pylint: disable=unexpected-keyword-arg
     all_subs_sq = get_subscriptions(execute=False).alias()
 
@@ -370,7 +361,6 @@ def get_total_usage(
     Returns:
         Select: [description]
     """
-
     query = select(
         [
             func.min(usage_view.c.first_usage).label("first_usage"),
@@ -508,19 +498,14 @@ def get_usage(sub_id: UUID, target_date: datetime.datetime) -> Select:
 
 @db_select
 def get_subscription_name(sub_id: Optional[UUID] = None) -> Select:
-    """Returns the name of a subscription given its id.
+    """Make a query to find the display name(s) of a subscription.
 
-    Parameters
-    ----------
-    sub_id : Optional[UUID], optional
-       subscription id, by default None
+    Args:
+        sub_id: A subscription id.
 
-    Returns
-    -------
-    Select
-        name of the subscription
+    Returns:
+        A SELECT query for all current and former names of the subscription.
     """
-
     return select([subscription_details.c.display_name.label("name")]).where(
         subscription_details.c.subscription_id == sub_id
     )

@@ -1,3 +1,4 @@
+"""Calculate and disseminate the desired states of subscriptions."""
 import datetime
 import logging
 from typing import Dict, List, Optional
@@ -36,6 +37,7 @@ class TmpReturnStatus(BaseModel):
 
 
 async def authenticate_app(token: str = Depends(oauth2_scheme)) -> Dict[str, str]:
+    """Authenticate the controller app."""
     headers = {"WWW-Authenticate": "Bearer"}
 
     credentials_exception = HTTPException(

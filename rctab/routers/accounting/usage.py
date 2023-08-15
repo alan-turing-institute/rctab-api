@@ -72,9 +72,8 @@ async def insert_usage(all_usage: AllUsage) -> None:
     """Inserts usage into the database.
 
     Args:
-        all_ea_usage (AllUsage): Usage data to insert.
+        all_usage: Usage data to insert.
     """
-
     usage_query = insert(accounting_models.usage)
     update_dict = {c.name: c for c in usage_query.excluded if not c.primary_key}
     on_duplicate_key_stmt = usage_query.on_conflict_do_update(
@@ -103,11 +102,7 @@ async def insert_usage(all_usage: AllUsage) -> None:
 async def post_monthly_usage(
     all_usage: AllUsage, _: Dict[str, str] = Depends(authenticate_usage_app)
 ) -> TmpReturnStatus:
-    """
-    Inserts monthly usage data into the database.
-
-    """
-
+    """Inserts monthly usage data into the database."""
     logger.info("Post monthly usage called")
 
     post_start = datetime.datetime.now()

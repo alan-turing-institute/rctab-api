@@ -1,4 +1,4 @@
-"""Global App Configuration"""
+"""Global app configuration."""
 from functools import lru_cache
 from typing import Any, List, Optional
 from uuid import UUID
@@ -7,6 +7,8 @@ from pydantic import BaseSettings, PostgresDsn, validator
 
 
 class Settings(BaseSettings):
+    """Global app settings."""
+
     # Connection parameters for a PostgreSQL database to store
     # subscription data, user account info, sent emails, etc. See also
     # https://www.postgresql.org/docs/11/libpq-connect.html#LIBPQ-PARAMKEYWORDS
@@ -54,7 +56,6 @@ class Settings(BaseSettings):
     @validator("postgres_dsn", pre=True)
     def validate_postgres_dsn(cls, _: Optional[PostgresDsn], values: Any) -> str:
         """Build a DSN string from the host, db name, port, username and password."""
-
         # We want to build the Data Source Name ourselves so none should be provided
         if _:
             raise ValueError("postgres_dsn should not be provided")
@@ -74,6 +75,7 @@ class Settings(BaseSettings):
 
     @validator("log_level")
     def validate_log_level(cls, log_level: str) -> str:
+        """Check that the log level has a valid value."""
         # See https://docs.python.org/3/library/logging.html#logging-levels
         allowed_levels = (
             "CRITICAL",
@@ -90,6 +92,8 @@ class Settings(BaseSettings):
         return log_level
 
     class Config:
+        """Meta-settings for the Settings class."""
+
         env_file = ".env"
         env_file_encoding = "utf-8"
 
