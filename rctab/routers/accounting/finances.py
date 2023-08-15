@@ -17,6 +17,7 @@ from rctab.routers.accounting.routes import SubscriptionItem, router
 async def check_create_finance(
     new_finance: Finance,  # pylint: disable=redefined-outer-name
 ) -> None:
+    """Check whether the new finance row is valid."""
     new_finance.date_from = get_start_month(new_finance.date_from)
     new_finance.date_to = get_end_month(new_finance.date_to)
 
@@ -31,10 +32,6 @@ async def check_create_finance(
             status_code=400,
             detail=f"Amount should not be negative but was {new_finance.amount}",
         )
-
-    query = select([cost_recovery.c.date_recovered]).where(
-        cost_recovery.c.subscription_id == new_finance.subscription_id
-    )
 
     query = (
         select([cost_recovery])
@@ -60,9 +57,7 @@ async def check_create_finance(
 async def get_subscription_finances(
     subscription: SubscriptionItem, _: UserRBAC = Depends(token_admin_verified)
 ) -> List[FinanceWithID]:
-    """
-    Returns a list of Finance objects for a subscription
-    """
+    """Return a list of Finance objects for a subscription."""
     return [
         FinanceWithID(**dict(x))
         for x in await database.fetch_all(
@@ -75,9 +70,7 @@ async def get_subscription_finances(
 async def post_finance(
     new_finance: Finance, user: UserRBAC = Depends(token_admin_verified)
 ) -> FinanceWithID:
-    """
-    Creates a new finance record.
-    """
+    """Create a new finance record."""
     await check_create_finance(new_finance)
 
     async with database.transaction():
@@ -95,7 +88,6 @@ async def post_finance(
 
 async def check_update_finance(new_finance: FinanceWithID) -> None:
     """Check that updating a finance row is allowed."""
-
     if new_finance.date_to <= new_finance.date_from:
         raise HTTPException(status_code=400, detail="date_to <= date_from")
 
@@ -147,6 +139,7 @@ async def update_finance(
     new_finance: FinanceWithID,
     user: UserRBAC = Depends(token_admin_verified),
 ) -> Any:
+    """Update an existing Finance record."""
     assert finance_id == new_finance.id
 
     await check_update_finance(new_finance)
@@ -166,10 +159,7 @@ async def update_finance(
 async def get_finance(
     finance_id: int, _: UserRBAC = Depends(token_admin_verified)
 ) -> FinanceWithID:
-    """
-    Returns a Finance if given a finance table ID.
-    """
-
+    """Returns a Finance if given a finance table ID."""
     row = await database.fetch_one(select([finance]).where(finance.c.id == finance_id))
     if not row:
         raise HTTPException(status_code=404, detail="Finance not found")
@@ -182,10 +172,7 @@ async def delete_finance(
     subscription: SubscriptionItem,
     _: UserRBAC = Depends(token_admin_verified),
 ) -> FinanceWithID:
-    """
-    Deletes a Finance record.
-    """
-
+    """Deletes a Finance record."""
     finance_row = await database.fetch_one(
         select([finance]).where(finance.c.id == finance_id)
     )
@@ -208,16 +195,12 @@ async def delete_finance(
 
 
 def get_start_month(date: datetime.date) -> datetime.date:
-    """
-    Returns the start of the month of the provided date.
-    """
+    """Return the start of the month of the provided date."""
     start_date = date.replace(day=1)
     return start_date
 
 
 def get_end_month(date: datetime.date) -> datetime.date:
-    """
-    Returns the end of the month of the provided date.
-    """
+    """Return the end of the month of the provided date."""
     month_range = calendar.monthrange(date.year, date.month)
     return datetime.date(date.year, date.month, month_range[1])

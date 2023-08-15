@@ -30,6 +30,8 @@ logger = logging.getLogger(__name__)
 
 
 class TmpReturnStatus(BaseModel):
+    """A wrapper for a status message."""
+
     status: str
 
 
@@ -70,6 +72,7 @@ async def authenticate_app(token: str = Depends(oauth2_scheme)) -> Dict[str, str
 async def get_desired_states(
     _: Dict[str, str] = Depends(authenticate_app)
 ) -> List[DesiredState]:
+    """Get the desired states of subscriptions that need to be enabled/disabled."""
     # pylint: disable=singleton-comparison,unexpected-keyword-arg
 
     # Refresh the desired states before we return them

@@ -19,10 +19,7 @@ from rctab.routers.accounting.routes import (
 
 
 async def check_allocation(allocation: Allocation) -> None:
-    """
-    Checks whether allocation is valid
-    """
-
+    """Check whether allocation is valid."""
     # Get complete summary of subscription
     subscription_summary = await get_subscriptions_summary(sub_id=allocation.sub_id)
 
@@ -72,10 +69,7 @@ async def check_allocation(allocation: Allocation) -> None:
 async def post_subscription_allocation(
     allocation: Allocation, user: UserRBAC = Depends(token_admin_verified)
 ) -> Any:
-    """
-    Creates a new allocation.
-    """
-
+    """Create a new allocation."""
     await check_allocation(allocation)
 
     async with database.transaction():
@@ -111,8 +105,5 @@ async def post_subscription_allocation(
 async def get_subscription_allocations(
     subscription: SubscriptionItem, _: UserRBAC = Depends(token_admin_verified)
 ) -> Any:
-    """
-    Returns a list of allocations for a subscription
-    """
-
+    """Return a list of allocations for a subscription."""
     return await get_allocations(subscription.sub_id)

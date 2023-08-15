@@ -62,3 +62,8 @@ repos:
         entry: poetry run pydocstyle --convention=google
         language: system
         types: ['python']
+        exclude: (?x)(
+            alembic|
+            tests|
+            scripts
+          )

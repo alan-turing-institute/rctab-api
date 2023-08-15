@@ -1,3 +1,4 @@
+"""The entrypoint of the FastAPI application."""
 import asyncio
 import logging
 from pathlib import Path
@@ -53,6 +54,7 @@ fastapimsal.init_auth(
 
 @app.on_event("startup")
 async def startup() -> None:
+    """Start the server up."""
     await database.connect()
     settings = get_settings()
     logging.basicConfig(level=settings.log_level)
@@ -70,6 +72,7 @@ async def startup() -> None:
 
 @app.on_event("shutdown")
 async def shutdown() -> None:
+    """Shut the server down."""
     logger = logging.getLogger(__name__)
     logger.warning("Shutting down server...")
 
@@ -98,16 +101,16 @@ async def shutdown() -> None:
 async def unicorn_exception_handler(
     _: Request, exc: UniqueViolationError
 ) -> JSONResponse:
+    """Handle unique constraint violations."""
     return JSONResponse(
         status_code=409,
-        content={
-            "message": f"One of the records already exists. Details: {exc.detail}"
-        },
+        content={"message": f"One of the records already exists. Details: {exc}"},
     )
 
 
 @app.exception_handler(404)
 async def custom_404_handler(request: Request, __: HTTPException) -> _TemplateResponse:
+    """Provide a more useful 404 page."""
     return templates.TemplateResponse(
         "404.html",
         {
@@ -135,17 +138,14 @@ app.include_router(routes.router, prefix=routes.PREFIX, tags=["Accounting"])
 
 @app.post("/admin/request-access", response_class=JSONResponse)
 async def request_admin_access(token: Dict = Depends(token_verified)) -> Dict[str, str]:
-    """Request to become an administrator"""
-
+    """Request administrator access."""
     await add_user(token["oid"], token["preferred_username"])
     return {"detail": "Admin request made"}
 
 
 @app.get("/version", include_in_schema=False)
 async def show_version(_: Dict = Depends(token_admin_verified)) -> dict:
-    """
-    Gets the app version
-    """
+    """Get the app version."""
     return {"detail": __version__}
 
 
