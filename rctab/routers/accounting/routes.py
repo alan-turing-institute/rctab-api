@@ -352,7 +352,7 @@ def get_subscriptions_with_disable(
 def get_total_usage(
     start_date: Optional[datetime.date] = None, end_date: Optional[datetime.date] = None
 ) -> Select:
-    """Get the total usage on the system between start_date and end_date
+    """Get the total usage on the system between start_date and end_date.
 
     Args:
         start_date (datetime.date): First date to request usage for

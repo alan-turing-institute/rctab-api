@@ -59,15 +59,13 @@ def datetime_utcnow() -> datetime:
 
 
 def calc_how_long_to_sleep_for(desired_runtime: str) -> float:
-    """
-    Parameters
-    ----------
-    desired_runtime :  str
-        Desired time of the day at which to perform a task e.g. 13:00:00
-    Returns
-    -------
-    seconds_to_sleep : float
-        Seconds until daily task has to be performed
+    """Work out how long to sleep for to wake at the desired time.
+
+    Args:
+        desired_runtime: Desired wake time, such as "13:00:00".
+
+    Returns:
+        Seconds until daily task has to be performed.
     """
     # make sure all timestamps are UTC
     right_now = datetime_utcnow()

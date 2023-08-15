@@ -76,7 +76,7 @@ async def get_sub_email_recipients(
 
 
 class MissingEmailParamsError(Exception):
-    """Exception raised for missing email parameters"""
+    """Exception for when email settings are missing."""
 
     def __init__(
         self,
@@ -85,7 +85,7 @@ class MissingEmailParamsError(Exception):
         from_email: str,
         message: Optional[str] = None,
     ):
-        """variables for storing missing email parameters"""
+        """Capture the details of an email that couldn't be sent."""
         self.subject = subject
         self.recipients = recipients
         self.from_email = from_email
@@ -121,7 +121,6 @@ def send_with_sendgrid(
         raises an error if the api key or the "from" email address
         is missing
     """
-
     # pylint: disable=invalid-name
     try:
         rendered_template = render_template(template_name, template_data)
@@ -178,7 +177,6 @@ async def send_generic_email(
         template_data: will be union-ed with the subscription summary data
                        and passed to the template
     """
-
     settings = get_settings()
     if not settings.ignore_whitelist:
         whitelist = settings.whitelist
@@ -335,7 +333,6 @@ def sub_time_based_emails() -> Select:
     Select
         SELECT statement for database query
     """
-
     most_recent = (
         select([func.max_(emails.c.id).label("max_id")])
         .where(emails.c.type == EMAIL_TYPE_TIMEBASED)
@@ -349,8 +346,10 @@ def sub_time_based_emails() -> Select:
 
 
 def sub_usage_emails() -> Select:
-    """Builds a query to get the most recent emails which include usage data for each subscription."""
+    """Builds a query to get the most recent warning emails each subscription.
 
+    Warning emails include over-budget, usage alert and expiry-looming emails.
+    """
     most_recent = (
         select([func.max_(emails.c.id).label("max_id")])
         .where(
@@ -374,29 +373,22 @@ def should_send_expiry_email(
 ) -> bool:
     """Work out whether we should send an email for this subscription.
 
-
-
     ~~~~|---------------------|-----|x==
        30                     7     1
+
     We will send an email on any of the | or - days, if there isn't already
     one in that period. This is to allow for emails not being sent (e.g. if
     the email service goes down). We don't send emails before this
     period (shown as ~) or on the day of expiry (denoted by x). We send daily
     emails to active subscriptions after expiry (marked with =).
 
-    Parameters
-    ----------
-    date_of_expiry : date
-        expiry date of a subscription
-    date_of_last_email : Optional[date]
-        date of last expiry-looming email
-    status : SubscriptionState
-        current status of the subscription
+    Args:
+        date_of_expiry: Expiry date of a subscription.
+        date_of_last_email: Date of last expiry-looming email.
+        status: Current status of the subscription.
 
-    Returns
-    -------
-    bool
-        wheter or not to send an email
+    Returns:
+        Whether to send an email.
     """
     # pylint: disable=simplifiable-if-statement,no-else-return
     if status not in (SubscriptionState.ENABLED, SubscriptionState.PASTDUE):
@@ -425,12 +417,9 @@ def should_send_expiry_email(
 async def check_for_subs_nearing_expiry(database: Database) -> None:
     """Check for subscriptions that should trigger an email as they near expiry.
 
-    Parameters
-    ----------
-    database : Database
-        holds a record of the subscription, including its expiry date
+    Args:
+        database: Holds a record of the subscription, including its expiry date.
     """
-
     summary = get_subscriptions_summary(execute=False).alias()
 
     # We don't _have_ to filter on approved_to, but it might make things slightly quicker
@@ -456,7 +445,6 @@ async def check_for_overbudget_subs(database: Database) -> None:
     database : Database
         holds a record of the subscription, including budget information
     """
-
     overbudget_subs = []
 
     summary = get_subscriptions_summary(execute=False).alias()
@@ -579,7 +567,6 @@ def prepare_welcome_email(database: Database, new_status: SubscriptionStatus) ->
     as `send_generic_email(**prepare_welcome_email(...))` to send a welcome email for
     the new status.
     """
-
     template_data = {}  # type: Dict
     return {
         "database": database,
@@ -702,22 +689,17 @@ async def get_new_subscriptions_since(
 async def get_subscription_details_since(
     database: Database, subscription_id: UUID, since_this_datetime: datetime
 ) -> Optional[Tuple[dict, dict]]:
-    """Returns the oldest and newest rows of the subscription details table
-    for a subscription that happened since the provided datetime.
+    """Get the oldest and newest rows of the subscription details table.
 
-    Parameters
-    ----------
-    database : Database
-        holds a record of the subscription
-    subscription_id : UUID
-        a subscription id
-    since_this_datetime : datetime
-        get information from this datetime until now
+    Filter by subscription id and time created.
 
-    Returns
-    -------
-    Optional[Tuple[Dict, Dict]]
-        oldest and newest row of the subscription details table
+    Args:
+        database: A database.
+        subscription_id: A subscription id.
+        since_this_datetime: Get information from this datetime until now.
+
+    Returns:
+        The oldest and newest row of the subscription details table.
     """
     logger.info("Looking for subscription details since %s", since_this_datetime)
     status_query = (
@@ -735,9 +717,9 @@ async def get_subscription_details_since(
 async def get_emails_sent_since(
     database: Database, since_this_datetime: datetime
 ) -> List[Dict]:
-    """Return a list of dictionaries for with information about the subscription
-    for which one or more emails have been sent along with information about
-    the emails.
+    """Get information about emails sent since a given time.
+
+    Ignores summary emails.
 
     Args:
         database: a Database, with a record of sent emails
@@ -782,21 +764,15 @@ async def get_emails_sent_since(
 async def get_finance_entries_since(
     database: Database, since_this_datetime: datetime
 ) -> List[dict]:
-    """Return a list of dictionaries for with information about the subscription
-    for which one or more finance entries are found.
+    """Get finance info grouped by subscription id.
 
-    Parameters
-    ----------
-    database : Database
-        holds a record of the finance entries
-    since_this_datetime : datetime
-        datetime, get information from this datetime until now
+    Args:
+        database: The database to query.
+        since_this_datetime: Only finance records created after this datetime.
 
-    Returns
-    -------
-    List[dict]
-        Each element of the list represents a subscription for which at least one finance entry
-        was created sent since the specified datetime.
+    Returns:
+        Each element of the list is a subscription with one or more finance
+        items.
     """
     finance_query = select([finance]).where(
         finance.c.time_created > since_this_datetime
@@ -806,7 +782,6 @@ async def get_finance_entries_since(
     all_new_entries = sorted(all_new_entries, key=extract_sub_id)
     entries_by_subscription = []
     for key, value in groupby(all_new_entries, extract_sub_id):
-        # name_query = get_subscription_name(sub_id=key)
         name_query = select([subscription_details.c.display_name.label("name")]).where(
             subscription_details.c.subscription_id == key
         )
@@ -828,17 +803,7 @@ async def get_finance_entries_since(
 
 
 def extract_sub_id(my_dict: Mapping) -> UUID:
-    """Returns the dictonary value for the key "subscription_id"
-
-    Parameters
-    ----------
-    my_dict : dict
-
-    Returns
-    -------
-    UUID
-        subscription id
-    """
+    """Returns the value for the key "subscription_id"."""
     return my_dict["subscription_id"]
 
 

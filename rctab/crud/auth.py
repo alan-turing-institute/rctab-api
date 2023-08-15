@@ -49,6 +49,7 @@ async def check_user_access(
 
     Args:
         oid: User's oid.
+        username: User's username.
         raise_http_exception: Raise an exception if the user isn't found.
     """
     statement = select(
@@ -111,6 +112,7 @@ token_verified = fastapimsal.backend.TokenVerifier(auto_error=True)
 
 async def token_user_verified(token: Dict = Depends(token_verified)) -> UserRBAC:
     """Get user RBAC information from database.
+
     Raise a 401 if the user is not authorised.
     """
     oid = token["oid"]

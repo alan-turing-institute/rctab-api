@@ -28,6 +28,7 @@ class TmpReturnStatus(BaseModel):
 async def authenticate_status_app(
     token: str = Depends(oauth2_scheme),
 ) -> Dict[str, str]:
+    """Authenticate the status function app."""
     headers = {"WWW-Authenticate": "Bearer"}
 
     credentials_exception = HTTPException(

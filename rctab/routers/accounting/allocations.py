@@ -1,3 +1,4 @@
+"""Allocate some approved budget to a subscription."""
 from typing import Any, List
 
 from fastapi import Depends, HTTPException

@@ -7,7 +7,7 @@ from rctab.settings import get_settings
 
 
 class CustomDimensionsFilter(logging.Filter):
-    """Add application-wide properties to AzureLogHandler records"""
+    """Add application-wide properties to AzureLogHandler records."""
 
     def __init__(self, custom_dimensions: Optional[dict] = None) -> None:
         super().__init__()

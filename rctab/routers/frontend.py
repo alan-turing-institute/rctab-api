@@ -76,14 +76,14 @@ class Email(BaseModel):
 
 
 def access_to_span(status: bool) -> str:
-    """Return an html span indicating whether a user has a specific level of access
+    """Return an HTML span indicating whether a user has a specific level of access.
 
     Args:
-       status (bool): Whether a user has a specific access type.
-    Returns:
-        str: An html span
-    """
+        status: Whether a user has a specific access type.
 
+    Returns:
+        An html span.
+    """
     if status:
         return "<span class='hasAccess'>ADMIN: &#10003;</span>"
     return "<span class='noAccess'>ADMIN: &#10060;</span>"
