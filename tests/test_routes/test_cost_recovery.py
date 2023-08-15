@@ -214,7 +214,7 @@ async def test_cost_recovery_two_finances(
 async def test_cost_recovery_second_month(
     test_db: Database,  # pylint: disable=redefined-outer-name
 ) -> None:
-    """todo"""
+    """Check that two months can be recovered correctly."""
     subscription_id = await create_subscription(test_db)
 
     # Jan
