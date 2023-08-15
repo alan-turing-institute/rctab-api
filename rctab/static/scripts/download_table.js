@@ -1,3 +1,4 @@
+/*ToDo*/
 function download_table_as_csv(table_id, start_date, separator = ',') {
     // see https://stackoverflow.com/questions/15547198/export-html-table-to-csv-using-vanilla-javascript
     // Select rows from table_id

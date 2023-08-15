@@ -1,3 +1,4 @@
+/*ToDo*/
 $(document).ready( function () {
     // Only run on the main page
     if ($('#subscription_table_all').length > 0) {
