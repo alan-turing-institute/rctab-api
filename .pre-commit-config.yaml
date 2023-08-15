@@ -57,3 +57,8 @@ repos:
         language: system
         types: ['markdown']
         exclude: .github/
+      - id: pydocstyle
+        name: pydocstyle
+        entry: poetry run pydocstyle --convention=google
+        language: system
+        types: ['python']

@@ -1,3 +1,4 @@
+"""Utility functions for the RCTab API."""
 import functools
 import logging
 from contextlib import contextmanager
@@ -24,7 +25,7 @@ def db_select(func: Callable) -> Callable:
     def _db_select(
         *args: Any, execute: bool = True, raise_404: bool = True, **kwargs: Any
     ) -> Coroutine:
-        "Select and raise a 404 if no data is returned"
+        """Select and raise a 404 if no data is returned."""
         statement = func(*args, **kwargs)
 
         if execute:

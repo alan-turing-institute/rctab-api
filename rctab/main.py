@@ -168,6 +168,5 @@ async def get_documentation(_: Dict = Depends(user_authenticated)) -> HTMLRespon
 
 @app.get("/redoc", include_in_schema=False)
 async def get_redocumentation(_: Dict = Depends(user_authenticated)) -> HTMLResponse:
-    """Serves redoc API docs."""
-
+    """Serves Redoc API docs."""
     return get_redoc_html(openapi_url="/openapi.json", title="docs")
