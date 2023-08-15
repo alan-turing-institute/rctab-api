@@ -1,3 +1,4 @@
+"""Utilities for logging to a central log workspace."""
 import logging
 from typing import Optional
 
@@ -10,6 +11,7 @@ class CustomDimensionsFilter(logging.Filter):
     """Add application-wide properties to AzureLogHandler records."""
 
     def __init__(self, custom_dimensions: Optional[dict] = None) -> None:
+        """Initialize the filter with the given custom_dimensions."""
         super().__init__()
         self.custom_dimensions = custom_dimensions or {}
 

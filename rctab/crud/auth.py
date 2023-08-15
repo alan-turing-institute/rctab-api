@@ -1,3 +1,4 @@
+"""User authentication with Active Directory."""
 from typing import Dict, Optional
 
 import fastapimsal
@@ -13,7 +14,7 @@ from rctab.crud.schema import UserRBAC
 
 # Define cache functions
 async def load_cache(oid: str) -> msal.SerializableTokenCache:
-
+    """Load a user's token cache from the database."""
     cache = msal.SerializableTokenCache()
     value = await database.fetch_val(
         select([user_cache.c.cache]).where(user_cache.c.oid == oid)
@@ -24,7 +25,7 @@ async def load_cache(oid: str) -> msal.SerializableTokenCache:
 
 
 async def save_cache(oid: str, cache: msal.SerializableTokenCache) -> None:
-
+    """Save a user's token cache to the database."""
     if cache.has_state_changed:
         values = {"oid": oid, "cache": cache.serialize()}
 
@@ -36,6 +37,7 @@ async def save_cache(oid: str, cache: msal.SerializableTokenCache) -> None:
 
 
 async def remove_cache(oid: str) -> None:
+    """Delete a user's token cache from the database."""
     query = user_cache.delete().where(user_cache.c.oid == oid)
     await database.execute(query)
 
@@ -127,7 +129,7 @@ async def token_user_verified(token: Dict = Depends(token_verified)) -> UserRBAC
 async def token_admin_verified(
     rbac: UserRBAC = Depends(token_user_verified),
 ) -> UserRBAC:
-
+    """Authenticate a user and check whether they are an admin."""
     if rbac.is_admin is False:
         raise HTTPException(
             status_code=401, detail="User does not have admin privileges"

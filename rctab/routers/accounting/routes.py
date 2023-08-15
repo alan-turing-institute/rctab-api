@@ -1,3 +1,4 @@
+"""Miscellaneous queries for the accounting schema."""
 import datetime
 import uuid
 from typing import List, Optional, Union
@@ -28,10 +29,14 @@ PREFIX = "/accounting"
 
 
 class SubscriptionItem(BaseModel):
+    """A wrapper for a subscription id."""
+
     sub_id: UUID
 
 
 class SubscriptionSummary(BaseModel):
+    """A summary of a subscription."""
+
     subscription_id: UUID
     approved_from: Optional[datetime.date]
     approved_to: Optional[datetime.date]
@@ -249,6 +254,7 @@ def get_desired_status(sub_id: Optional[Union[UUID, List[UUID]]] = None) -> Sele
 def get_subscriptions_summary(
     sub_id: Optional[UUID] = None,
 ) -> Select:
+    """Returns a summary of one or all subscriptions."""
     # Get all subscriptions
     all_subs_sq = get_subscriptions(execute=False).alias()
 
@@ -332,6 +338,7 @@ def get_subscriptions_summary(
 def get_subscriptions_with_disable(
     sub_id: Optional[UUID] = None,
 ) -> Select:
+    """Get a query summarising the subscription and its remaining budget."""
     # pylint: disable unexpected-keyword-arg
     subscription_summary_sq = get_subscriptions_summary(
         sub_id=sub_id, execute=False
@@ -382,6 +389,7 @@ def get_total_usage(
 
 @db_select
 def get_allocations(sub_id: UUID) -> Select:
+    """Get all allocations for a subscription."""
     return select(
         [
             allocations.c.ticket,
@@ -394,6 +402,7 @@ def get_allocations(sub_id: UUID) -> Select:
 
 @db_select
 def get_approvals(sub_id: UUID) -> Select:
+    """Get all approvals for a subscription."""
     return select(
         [
             approvals.c.ticket,
@@ -408,6 +417,7 @@ def get_approvals(sub_id: UUID) -> Select:
 
 @db_select
 def get_finance(sub_id: UUID) -> Select:
+    """Get all finance items."""
     return select(
         [
             finance.c.ticket,
@@ -423,6 +433,7 @@ def get_finance(sub_id: UUID) -> Select:
 
 @db_select
 def get_costrecovery(sub_id: UUID) -> Select:
+    """Get all cost recovery items for a subscription."""
     return select(
         [
             cost_recovery.c.subscription_id,
@@ -437,6 +448,7 @@ def get_costrecovery(sub_id: UUID) -> Select:
 
 @db_select
 def get_usage(sub_id: UUID, target_date: datetime.datetime) -> Select:
+    """Get all of the usage items."""
     return (
         select(
             [

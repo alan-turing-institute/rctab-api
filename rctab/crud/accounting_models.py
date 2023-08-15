@@ -1,3 +1,4 @@
+"""SQLAlchemy models for the accounting schema."""
 from databases import Database
 from sqlalchemy import (
     Boolean,

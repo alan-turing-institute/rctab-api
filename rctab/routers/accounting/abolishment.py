@@ -1,3 +1,4 @@
+"""Mark subscriptions as "abolished" if they have been inactive for >90 days."""
 import logging
 from datetime import datetime, timedelta
 from typing import List, Optional

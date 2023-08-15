@@ -1,3 +1,4 @@
+"""Charge subscriptions' spending to a cost centre."""
 from datetime import date, timedelta
 from typing import Any, Dict, List, Optional
 from uuid import UUID
@@ -22,6 +23,8 @@ from rctab.routers.accounting.usage import authenticate_usage_app
 
 
 class CostRecoveryMonth(BaseModel):
+    """A month to do cost-recovery for."""
+
     # The first day of the month
     first_day: date
 

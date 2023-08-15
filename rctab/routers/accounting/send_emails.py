@@ -480,6 +480,7 @@ class UsageEmailContextManager(AbstractAsyncContextManager):
     """Compare usage at enter and exit, sending emails as necessary."""
 
     def __init__(self, database: Database):
+        """Initialise the context manager."""
         self.database = database
         self.thresholds = (0.50, 0.75, 0.9, 0.95)
 

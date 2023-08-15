@@ -13,6 +13,11 @@ logger = logging.getLogger(__name__)
 
 
 def db_select(func: Callable) -> Callable:
+    """Decorate a function that returns a SELECT statement.
+
+    Optionally, execute the function and raise a 404 if no data is returned.
+    """
+
     @contextmanager
     def wrapping_logic(statement: Any) -> Generator:
         logger.debug("Function: %s", func.__name__)

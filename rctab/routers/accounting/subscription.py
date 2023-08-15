@@ -1,3 +1,4 @@
+"""Create and fetch subscriptions."""
 from typing import Any, List, Optional
 from uuid import UUID
 
