@@ -1,3 +1,4 @@
+"""Calculate and disseminate the desired states of subscriptions."""
 import datetime
 import logging
 from typing import Dict, List, Optional
@@ -30,10 +31,13 @@ logger = logging.getLogger(__name__)
 
 
 class TmpReturnStatus(BaseModel):
+    """A wrapper for a status message."""
+
     status: str
 
 
 async def authenticate_app(token: str = Depends(oauth2_scheme)) -> Dict[str, str]:
+    """Authenticate the controller app."""
     headers = {"WWW-Authenticate": "Bearer"}
 
     credentials_exception = HTTPException(
@@ -70,6 +74,7 @@ async def authenticate_app(token: str = Depends(oauth2_scheme)) -> Dict[str, str
 async def get_desired_states(
     _: Dict[str, str] = Depends(authenticate_app)
 ) -> List[DesiredState]:
+    """Get the desired states of subscriptions that need to be enabled/disabled."""
     # pylint: disable=singleton-comparison,unexpected-keyword-arg
 
     # Refresh the desired states before we return them

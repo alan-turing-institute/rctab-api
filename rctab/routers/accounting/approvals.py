@@ -1,3 +1,4 @@
+"""Set and fetch approvals for subscriptions."""
 import datetime
 from datetime import timedelta
 from typing import Any, List, Optional
@@ -25,10 +26,7 @@ def check_positive_approval(
     approval: Approval,
     subscription_summary: SubscriptionSummary,
 ) -> None:
-    """
-    Checks whether a non-negative approval is valid
-    """
-
+    """Checks whether a non-negative approval is valid."""
     if not approval.force:
         # After a subscription is cancelled, Microsoft waits 30 - 90 days before
         # permanently deleting it. This check ensures that you are not approving
@@ -61,10 +59,7 @@ def check_negative_approval(
     approval: Approval,
     subscription_summary: SubscriptionSummary,
 ) -> None:
-    """
-    Checks whether a negative approval is valid
-    """
-
+    """Checks whether a negative approval is valid."""
     if not subscription_summary.approved_to:
         raise HTTPException(
             status_code=400,
@@ -108,9 +103,7 @@ def check_negative_approval(
 
 
 async def check_approval(approval: Approval) -> None:
-    """
-    Checks whether approval is valid.
-    """
+    """Checks whether approval is valid."""
     # Get complete summary of subscription
     subscription_summary = await get_subscriptions_summary(sub_id=approval.sub_id)
 
@@ -147,10 +140,7 @@ async def check_approval(approval: Approval) -> None:
 async def get_subscription_approvals(
     subscription: SubscriptionItem, _: UserRBAC = Depends(token_admin_verified)
 ) -> Optional[List[ApprovalListItem]]:
-    """
-    Returns a list approvals for a subscription
-    """
-
+    """Returns a list approvals for a subscription."""
     return await get_approvals(subscription.sub_id)
 
 
@@ -158,10 +148,10 @@ async def get_subscription_approvals(
 async def post_approval(
     approval: Approval, user: UserRBAC = Depends(token_admin_verified)
 ) -> Any:
-    """
-    Creates a new approval. If the allocate flag is on, a corresponding allocation entry is created as well.
-    """
+    """Creates a new approval.
 
+    If the allocate flag is on, a corresponding allocation entry is created as well.
+    """
     await check_approval(approval)
 
     async with database.transaction():

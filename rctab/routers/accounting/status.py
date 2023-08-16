@@ -1,3 +1,4 @@
+"""Receive data from the status function app."""
 from typing import Dict
 from uuid import UUID
 
@@ -22,12 +23,15 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
 class TmpReturnStatus(BaseModel):
+    """A wrapper for a status message."""
+
     status: str
 
 
 async def authenticate_status_app(
     token: str = Depends(oauth2_scheme),
 ) -> Dict[str, str]:
+    """Authenticate the status function app."""
     headers = {"WWW-Authenticate": "Bearer"}
 
     credentials_exception = HTTPException(
@@ -65,6 +69,7 @@ async def post_status(
     all_status: AllSubscriptionStatus,
     _: Dict[str, str] = Depends(authenticate_status_app),
 ) -> TmpReturnStatus:
+    """Inserts subscription status data into the database."""
     async with database.transaction():
         unique_subscriptions = [i.subscription_id for i in all_status.status_list]
 

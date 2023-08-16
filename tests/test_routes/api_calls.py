@@ -23,6 +23,7 @@ from rctab.routers.accounting.routes import PREFIX
 def assert_subscription_status(
     client: TestClient, expected_details: SubscriptionDetails
 ) -> None:
+    """Assert that the subscription details are as expected."""
     result = client.get(
         PREFIX + "/subscription",
         params={"sub_id": str(expected_details.subscription_id)},
@@ -43,6 +44,7 @@ def assert_subscription_status(
 
 
 def create_subscription(client: TestClient, subscription_id: UUID) -> Response:
+    """Create a subscription record."""
     return client.post(
         PREFIX + "/subscription",
         json={"sub_id": str(subscription_id)},
@@ -57,6 +59,7 @@ def create_subscription_detail(
     role_assignments: Optional[Tuple[RoleAssignment, ...]] = (),
     display_name: str = "sub display name",
 ) -> Response:
+    """Create a subscription detail record."""
     return client.post(
         "accounting" + "/all-status",
         content=AllSubscriptionStatus(
@@ -76,6 +79,7 @@ def create_subscription_detail(
 def set_persistence(
     client: TestClient, subscription_id: UUID, always_on: bool
 ) -> Response:
+    """Set the persistence of a subscription."""
     return client.post(
         PREFIX + "/persistent",
         json={"sub_id": str(subscription_id), "always_on": always_on},
@@ -93,6 +97,7 @@ def create_approval(
     currency: str = "GBP",
     force: bool = False,
 ) -> Response:
+    """Create an approval for a subscription."""
     return client.post(
         PREFIX + "/approve",
         json={
@@ -114,6 +119,7 @@ def create_allocation(
     ticket: str,
     amount: float,
 ) -> Response:
+    """Create an allocation for a subscription."""
     return client.post(
         PREFIX + "/topup",
         json={"sub_id": str(subscription_id), "ticket": ticket, "amount": amount},
@@ -128,6 +134,7 @@ def create_usage(
     amortised_cost: float = 0.0,
     date: datetime.date = datetime.date.today(),
 ) -> Response:
+    """Create a usage record for a subscription."""
     usage = Usage(
         id=str(uuid4()),
         name="test",

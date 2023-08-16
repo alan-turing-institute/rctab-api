@@ -1,3 +1,4 @@
+"""Set and get usage data."""
 import calendar
 import datetime
 import logging
@@ -30,11 +31,13 @@ logger = logging.getLogger(__name__)
 
 
 class TmpReturnStatus(BaseModel):
+    """A wrapper for a status message."""
+
     status: str
 
 
 async def authenticate_usage_app(token: str = Depends(oauth2_scheme)) -> Dict[str, str]:
-
+    """Authenticates the usage function app."""
     headers = {"WWW-Authenticate": "Bearer"}
 
     credentials_exception = HTTPException(
@@ -72,9 +75,8 @@ async def insert_usage(all_usage: AllUsage) -> None:
     """Inserts usage into the database.
 
     Args:
-        all_ea_usage (AllUsage): Usage data to insert.
+        all_usage: Usage data to insert.
     """
-
     usage_query = insert(accounting_models.usage)
     update_dict = {c.name: c for c in usage_query.excluded if not c.primary_key}
     on_duplicate_key_stmt = usage_query.on_conflict_do_update(
@@ -103,11 +105,7 @@ async def insert_usage(all_usage: AllUsage) -> None:
 async def post_monthly_usage(
     all_usage: AllUsage, _: Dict[str, str] = Depends(authenticate_usage_app)
 ) -> TmpReturnStatus:
-    """
-    Inserts monthly usage data into the database.
-
-    """
-
+    """Inserts monthly usage data into the database."""
     logger.info("Post monthly usage called")
 
     post_start = datetime.datetime.now()
@@ -216,6 +214,7 @@ async def post_monthly_usage(
 async def post_usage(
     all_usage: AllUsage, _: Dict[str, str] = Depends(authenticate_usage_app)
 ) -> TmpReturnStatus:
+    """Write some usage data to the database."""
     post_start = datetime.datetime.now()
 
     async with UsageEmailContextManager(database):
@@ -240,13 +239,10 @@ async def post_usage(
 
 @router.get("/all-usage", response_model=List[Usage])
 async def get_usage(_: UserRBAC = Depends(token_admin_verified)) -> Any:
-
+    """Get all usage data."""
     usage_query = select([accounting_models.usage])
 
     return await database.fetch_all(usage_query)
-
-
-# Usage from the cost management API.
 
 
 @router.post("/all-cm-usage", response_model=TmpReturnStatus)
@@ -254,6 +250,7 @@ async def post_cm_usage(
     all_cm_usage: AllCMUsage,
     _: Dict[str, str] = Depends(authenticate_usage_app),
 ) -> TmpReturnStatus:
+    """Write cost-management data to the database."""
     async with database.transaction():
         unique_subscriptions = list(
             {i.subscription_id for i in all_cm_usage.cm_usage_list}
@@ -281,5 +278,6 @@ async def post_cm_usage(
 
 @router.get("/all-cm-usage", response_model=List[CMUsage])
 async def get_cm_usage(_: UserRBAC = Depends(token_admin_verified)) -> Any:
+    """Get all cost-management data."""
     cm_query = select([accounting_models.costmanagement])
     return await database.fetch_all(cm_query)

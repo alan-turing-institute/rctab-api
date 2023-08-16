@@ -1,3 +1,4 @@
+"""User authentication with Active Directory."""
 from typing import Dict, Optional
 
 import fastapimsal
@@ -13,7 +14,7 @@ from rctab.crud.schema import UserRBAC
 
 # Define cache functions
 async def load_cache(oid: str) -> msal.SerializableTokenCache:
-
+    """Load a user's token cache from the database."""
     cache = msal.SerializableTokenCache()
     value = await database.fetch_val(
         select([user_cache.c.cache]).where(user_cache.c.oid == oid)
@@ -24,7 +25,7 @@ async def load_cache(oid: str) -> msal.SerializableTokenCache:
 
 
 async def save_cache(oid: str, cache: msal.SerializableTokenCache) -> None:
-
+    """Save a user's token cache to the database."""
     if cache.has_state_changed:
         values = {"oid": oid, "cache": cache.serialize()}
 
@@ -36,6 +37,7 @@ async def save_cache(oid: str, cache: msal.SerializableTokenCache) -> None:
 
 
 async def remove_cache(oid: str) -> None:
+    """Delete a user's token cache from the database."""
     query = user_cache.delete().where(user_cache.c.oid == oid)
     await database.execute(query)
 
@@ -43,12 +45,15 @@ async def remove_cache(oid: str) -> None:
 async def check_user_access(
     oid: str, username: Optional[str] = None, raise_http_exception: bool = True
 ) -> UserRBAC:
-    """Check if a user has access rights. If not try to make an entry for them
+    """Check if a user has access rights.
 
-    oid: Users oid
-    raise_http_exception: Raise an HTTP exception if user not in database
+    If not try to make an entry for them.
+
+    Args:
+        oid: User's oid.
+        username: User's username.
+        raise_http_exception: Raise an exception if the user isn't found.
     """
-
     statement = select(
         [
             user_rbac.c.oid,
@@ -81,8 +86,10 @@ async def check_user_access(
 
 
 async def add_user(oid: str, username: str) -> None:
-    """Add an admin user. Does not give them admin permissions which requires admin confirmation"""
+    """Add an admin user.
 
+    Does not give them admin permissions which requires admin confirmation.
+    """
     query = user_rbac.insert()
 
     try:
@@ -107,6 +114,7 @@ token_verified = fastapimsal.backend.TokenVerifier(auto_error=True)
 
 async def token_user_verified(token: Dict = Depends(token_verified)) -> UserRBAC:
     """Get user RBAC information from database.
+
     Raise a 401 if the user is not authorised.
     """
     oid = token["oid"]
@@ -121,7 +129,7 @@ async def token_user_verified(token: Dict = Depends(token_verified)) -> UserRBAC
 async def token_admin_verified(
     rbac: UserRBAC = Depends(token_user_verified),
 ) -> UserRBAC:
-
+    """Authenticate a user and check whether they are an admin."""
     if rbac.is_admin is False:
         raise HTTPException(
             status_code=401, detail="User does not have admin privileges"

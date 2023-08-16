@@ -1,3 +1,4 @@
+"""Pydantic models for the RCTab API."""
 import datetime
 from enum import Enum
 from typing import Dict, List, Optional, Tuple
@@ -14,10 +15,13 @@ class HashBaseModel(BaseModel):
     """
 
     def __hash__(self) -> int:
+        """Hash the object."""
         return hash((type(self),) + tuple(self.__dict__.values()))
 
 
 class UserRBAC(BaseModel):
+    """The access that a user has to RCTab."""
+
     oid: UUID
     username: Optional[str]
     has_access: bool
@@ -25,6 +29,8 @@ class UserRBAC(BaseModel):
 
 
 class Usage(HashBaseModel):
+    """A usage object from the Azure usage API."""
+
     # See https://docs.microsoft.com/en-us/rest/api/consumption/usage-details/list#legacyusagedetail
     id: str
     name: Optional[str]
@@ -76,10 +82,14 @@ class Usage(HashBaseModel):
 
 
 class AllUsage(BaseModel):
+    """A wrapper for a list of Usage objects."""
+
     usage_list: List[Usage]
 
 
 class CMUsage(HashBaseModel):
+    """A usage object from the Azure cost management API."""
+
     subscription_id: UUID
     name: Optional[str]
     start_datetime: datetime.date
@@ -89,10 +99,14 @@ class CMUsage(HashBaseModel):
 
 
 class AllCMUsage(BaseModel):
+    """A wrapper for a list of CMUsage objects."""
+
     cm_usage_list: List[CMUsage]
 
 
 class RoleAssignment(HashBaseModel):
+    """A role assignment on Azure."""
+
     role_definition_id: str
     role_name: str
     principal_id: str
@@ -102,6 +116,8 @@ class RoleAssignment(HashBaseModel):
 
 
 class SubscriptionState(str, Enum):
+    """The current state of a subscription."""
+
     # See https://docs.microsoft.com/en-us/azure/cost-management-billing/manage/subscription-states
     DELETED = "Deleted"
     DISABLED = "Disabled"
@@ -112,8 +128,9 @@ class SubscriptionState(str, Enum):
 
 
 class SubscriptionStatus(HashBaseModel):
-    # See https://docs.microsoft.com/en-us/rest/api/resources/subscriptions/list#subscription
+    """The current status of a subscription."""
 
+    # See https://docs.microsoft.com/en-us/rest/api/resources/subscriptions/list#subscription
     subscription_id: UUID
     display_name: str
     state: SubscriptionState
@@ -121,21 +138,29 @@ class SubscriptionStatus(HashBaseModel):
 
 
 class DesiredState(HashBaseModel):
+    """The desired state of a subscription."""
+
     subscription_id: UUID
     desired_state: SubscriptionState
 
 
 class AllSubscriptionStatus(HashBaseModel):
+    """A wrapper for a list of SubscriptionStatus."""
+
     status_list: List[SubscriptionStatus]
 
 
 class BillingStatus(str, Enum):
+    """The reason for a subscription being disabled."""
+
     OVER_BUDGET = "OVER_BUDGET"
     EXPIRED = "EXPIRED"
     OVER_BUDGET_AND_EXPIRED = "OVER_BUDGET_AND_EXPIRED"
 
 
 class SubscriptionDetails(HashBaseModel):
+    """A summary of a subscription."""
+
     subscription_id: UUID
     name: Optional[str] = None
     role_assignments: Optional[Tuple[RoleAssignment, ...]] = None
@@ -149,10 +174,8 @@ class SubscriptionDetails(HashBaseModel):
     amortised_cost: Optional[float] = None
     total_cost: Optional[float] = None
     remaining: Optional[float] = None
-    # billing_status: BillingStatus
     first_usage: Optional[datetime.date] = None
     latest_usage: Optional[datetime.date] = None
-    # desired_status: Optional[bool] = None
     desired_status_info: Optional[BillingStatus]
     abolished: bool
 
@@ -161,6 +184,8 @@ DEFAULT_CURRENCY = "GBP"
 
 
 class Allocation(BaseModel):
+    """An amount that a subscription can spend from an approved budget."""
+
     sub_id: UUID
     ticket: str
     amount: float
@@ -168,6 +193,8 @@ class Allocation(BaseModel):
 
 
 class AllocationListItem(BaseModel):
+    """A list of allocations with a time_created field."""
+
     ticket: str
     amount: float
     currency: str = DEFAULT_CURRENCY
@@ -175,6 +202,8 @@ class AllocationListItem(BaseModel):
 
 
 class Approval(BaseModel):
+    """An amount that a subscription can spend in a given time period."""
+
     sub_id: UUID
     ticket: str
     amount: float
@@ -186,6 +215,8 @@ class Approval(BaseModel):
 
 
 class ApprovalListItem(BaseModel):
+    """An Approval with a time_created field."""
+
     ticket: str
     amount: float
     currency: str = DEFAULT_CURRENCY
@@ -195,6 +226,8 @@ class ApprovalListItem(BaseModel):
 
 
 class Finance(BaseModel):
+    """An amount that can be billed to finance_code in a given time period."""
+
     subscription_id: UUID
     ticket: str
     amount: float
@@ -205,6 +238,8 @@ class Finance(BaseModel):
 
 
 class FinanceListItem(BaseModel):
+    """A Finance with a time_created field."""
+
     ticket: str
     amount: float
     priority: int
@@ -215,12 +250,14 @@ class FinanceListItem(BaseModel):
 
 
 class FinanceWithID(Finance):
-    """A Finance with a Finance ID"""
+    """A Finance with a Finance ID."""
 
     id: int
 
 
 class CostRecovery(BaseModel):
+    """Costs that should, be recovered from finance_code."""
+
     finance_id: int
     subscription_id: UUID
     month: datetime.date
@@ -230,5 +267,7 @@ class CostRecovery(BaseModel):
 
 
 class Currency(str, Enum):
+    """Recognised currencies."""
+
     USD = "USD"
     GBP = "GBP"

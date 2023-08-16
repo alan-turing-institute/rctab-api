@@ -1,3 +1,4 @@
+"""SQLAlchemy models for the default schema."""
 from typing import List, Mapping, Sequence, Tuple
 
 import asyncpg
@@ -43,7 +44,7 @@ def _compile(
 async def executemany(
     _database: databases.Database, query: ClauseElement, values: Sequence[Mapping]
 ) -> None:
-
+    """Execute a query multiple times with different values."""
     sql, args = _compile(_database, query, values)
     async with _database.connection() as connection:
         assert isinstance(connection.raw_connection, asyncpg.Connection)
@@ -59,7 +60,6 @@ user_cache = sqlalchemy.Table(
     sqlalchemy.Column("cache", sqlalchemy.Text, nullable=False),
 )
 
-# Hash of all usage data files
 user_rbac = sqlalchemy.Table(
     "user_rbac",
     metadata,

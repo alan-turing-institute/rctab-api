@@ -1,3 +1,4 @@
+"""Create and fetch subscriptions."""
 from typing import Any, List, Optional
 from uuid import UUID
 
@@ -16,10 +17,7 @@ from rctab.routers.accounting.routes import (
 
 
 async def create_subscription(subscription: SubscriptionItem, user: UserRBAC) -> None:
-    """
-    Creates a new subscription.
-    """
-
+    """Add an Azure subscription to the database."""
     async with database.transaction():
         await database.execute(
             insert(accounting_models.subscription),
@@ -36,10 +34,7 @@ async def get_subscription(
     sub_id: Optional[UUID] = None,
     _: UserRBAC = Depends(token_admin_verified),
 ) -> SubscriptionDetails:
-    """
-    Returns a flag whether a subscription with the specified uuid is registered.
-    """
-
+    """Whether a subscription with the specified uuid is registered."""
     retval = await get_subscriptions_with_disable(sub_id)
     return retval
 
@@ -48,10 +43,7 @@ async def get_subscription(
 async def post_subscription(
     subscription: SubscriptionItem, user: UserRBAC = Depends(token_admin_verified)
 ) -> Any:
-    """
-    Creates a new subscription.
-    """
-
+    """Create a new subscription."""
     await create_subscription(subscription, user)
 
     return {

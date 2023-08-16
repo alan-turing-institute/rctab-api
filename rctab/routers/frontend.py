@@ -1,3 +1,4 @@
+"""The user-facing web pages."""
 import datetime
 import logging
 from pathlib import Path
@@ -46,6 +47,7 @@ BETA_ACCESS = False
 
 
 async def get_cost_breakdown(usage_object_list: list) -> pd.DataFrame:
+    """Get a cost breakdown to build a plot from."""
     usage_dict = {}
     for usage_object in usage_object_list:
         for variable, value in usage_object:
@@ -72,24 +74,27 @@ async def get_cost_breakdown(usage_object_list: list) -> pd.DataFrame:
 
 
 class Email(BaseModel):
+    """A wrapper for an email address."""
+
     address: EmailStr
 
 
 def access_to_span(status: bool) -> str:
-    """Return an html span indicating whether a user has a specific level of access
+    """Return an HTML span indicating whether a user has a specific level of access.
 
     Args:
-       status (bool): Whether a user has a specific access type.
-    Returns:
-        str: An html span
-    """
+        status: Whether a user has a specific access type.
 
+    Returns:
+        An html span.
+    """
     if status:
         return "<span class='hasAccess'>ADMIN: &#10003;</span>"
     return "<span class='noAccess'>ADMIN: &#10060;</span>"
 
 
 async def check_user_on_subscription(subscription_id: UUID, username: str) -> bool:
+    """Check whether a user has a role assignment on the subscription."""
     rbac_assignments = [
         RoleAssignment(**i)
         for i in (await get_subscription_details(subscription_id))[0][
@@ -108,6 +113,7 @@ async def check_user_on_subscription(subscription_id: UUID, username: str) -> bo
 async def home(
     request: Request, user: UserIdentityToken = Depends(user_authenticated_no_error)
 ) -> _TemplateResponse:
+    """The home page."""
     settings = get_settings()
     if not user:
         return templates.TemplateResponse(
@@ -189,7 +195,7 @@ async def subscription_details(
     request: Request,
     user: UserIdentityToken = Depends(user_authenticated_no_error),
 ) -> _TemplateResponse:
-    # Check user
+    """The subscription details page."""
     if not user:
         return templates.TemplateResponse("index.html", {"request": request})
 
@@ -201,7 +207,8 @@ async def subscription_details(
         user.oid, raise_http_exception=False
     )  # pylint: disable=unexpected-keyword-arg
 
-    # Only users with 'has_access' can access for now (BETA testing). Remove this to let all users with institutional credentials have access
+    # Only users with 'has_access' can access for now (BETA testing).
+    # Remove this to let all users with institutional credentials have access
     if BETA_ACCESS and (not access_status.has_access):
         raise RequiresLoginException
 
@@ -319,7 +326,7 @@ async def subscription_details_1(
     timeperiodstr: str,
     user: UserIdentityToken = Depends(user_authenticated_no_error),
 ) -> _TemplateResponse:
-    # Check user
+    """Get html for the usage tab of the details page."""
     if not user:
         return templates.TemplateResponse("index.html", {"request": request})
 

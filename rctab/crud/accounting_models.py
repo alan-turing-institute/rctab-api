@@ -1,3 +1,4 @@
+"""SQLAlchemy models for the accounting schema."""
 from databases import Database
 from sqlalchemy import (
     Boolean,
@@ -227,9 +228,7 @@ usage = Table(
 async def refresh_materialised_view(
     database: Database, view: Table, concurrently: bool = False
 ) -> None:
-    """
-    Refresh a materialised view.
-    """
+    """Refresh a materialised view."""
     await database.execute(
         """
         REFRESH MATERIALIZED VIEW {concurrently} {schema}.{view};

@@ -1,3 +1,4 @@
+"""Routes that determine whether a subscription is permanently on."""
 from typing import Any
 from uuid import UUID
 
@@ -14,6 +15,8 @@ from rctab.routers.accounting.routes import router
 
 
 class NewPersistenceStatus(BaseModel):
+    """New persistence status for a subscription."""
+
     sub_id: UUID
     always_on: bool
 
@@ -22,11 +25,7 @@ class NewPersistenceStatus(BaseModel):
 async def post_persistency_status(
     persistence: NewPersistenceStatus, user: UserRBAC = Depends(token_admin_verified)
 ) -> Any:
-    """
-    Returns the latest value of always_on setting.
-
-    """
-
+    """Return the latest value of always_on setting."""
     await database.execute(
         insert(accounting_models.persistence),
         {

@@ -1,3 +1,4 @@
+"""Database utilities and helper functions."""
 from typing import List
 from uuid import UUID
 
@@ -9,6 +10,7 @@ from rctab.crud.models import database, executemany
 
 
 async def insert_subscriptions_if_not_exists(subscriptions: List[UUID]) -> None:
+    """Insert subscriptions if they don't already exist."""
     async with database.transaction():
         # Add RCTab-API to RBAC
         rbac_query = insert(models.user_rbac).on_conflict_do_nothing()

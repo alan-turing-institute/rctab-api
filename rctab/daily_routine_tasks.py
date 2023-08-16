@@ -1,3 +1,4 @@
+"""Background tasks that run daily."""
 import contextlib
 import logging
 from asyncio import sleep
@@ -26,13 +27,22 @@ DESIRED_RUNTIME: Final = "16:00:00"
 
 
 class FileLockContextManager(contextlib.AbstractContextManager):
-    """Create a file on enter and remove that file on exit."""
+    """Create a file on enter and remove that file on exit.
+
+    Will raise an error on enter if the file already exists.
+    """
 
     def __init__(self, filename: str) -> None:
+        """Initialise the context manager.
+
+        Args:
+            filename: Path of the file that will be created.
+        """
         self.filename = filename
         self.lock_file = Path(self.filename)
 
     def __enter__(self) -> None:
+        """Try to create the lock file and raise if it already exists."""
         self.lock_file.touch(exist_ok=False)  # raises error if file exists
 
     def __exit__(
@@ -41,6 +51,7 @@ class FileLockContextManager(contextlib.AbstractContextManager):
         exc_val: Optional[BaseException],
         exc_tb: Optional[TracebackType],
     ) -> None:
+        """Remove the lock file on exit."""
         logger.warning("Deleting lock file")
         self.lock_file.unlink()
 
@@ -59,15 +70,13 @@ def datetime_utcnow() -> datetime:
 
 
 def calc_how_long_to_sleep_for(desired_runtime: str) -> float:
-    """
-    Parameters
-    ----------
-    desired_runtime :  str
-        Desired time of the day at which to perform a task e.g. 13:00:00
-    Returns
-    -------
-    seconds_to_sleep : float
-        Seconds until daily task has to be performed
+    """Work out how long to sleep for to wake at the desired time.
+
+    Args:
+        desired_runtime: Desired wake time, such as "13:00:00".
+
+    Returns:
+        Seconds until daily task has to be performed.
     """
     # make sure all timestamps are UTC
     right_now = datetime_utcnow()
@@ -157,6 +166,7 @@ async def send_summary_email(
 
 
 async def routine_tasks() -> None:
+    """An infinite loop to run routine tasks such as sending summary emails."""
     # pylint: disable=broad-except
     logger.info("Starting routine background tasks %s", datetime_utcnow())
     try:

@@ -1,3 +1,4 @@
+"""Mark subscriptions as "abolished" if they have been inactive for >90 days."""
 import logging
 from datetime import datetime, timedelta
 from typing import List, Optional
@@ -24,11 +25,7 @@ logger = logging.getLogger(__name__)
 
 
 async def get_inactive_subs() -> Optional[List[UUID]]:
-    """
-    Returns a list of subscriptions which have been inactive for more than 90 days.
-
-    """
-
+    """Returns a list of subscriptions which have been inactive for more than 90 days."""
     ninety_days_ago = datetime.now() - timedelta(days=90)
 
     # The most recent time_created for each subscription's subscription_detail
@@ -71,11 +68,7 @@ async def get_inactive_subs() -> Optional[List[UUID]]:
 
 
 async def adjust_budgets_to_zero(admin_oid: UUID, sub_ids: List[UUID]) -> List[dict]:
-    """
-    Adjusts allocation and approval budgets to zero for the given subscriptions.
-
-    """
-
+    """Adjusts allocation and approval budgets to zero for the given subscriptions."""
     adjustments: List = []
 
     if not sub_ids:
@@ -133,11 +126,7 @@ async def adjust_budgets_to_zero(admin_oid: UUID, sub_ids: List[UUID]) -> List[d
 
 
 async def set_abolished_flag(sub_ids: List[UUID]) -> None:
-    """
-    Sets the abolished flag to true for the given subscriptions.
-
-    """
-
+    """Sets the abolished flag to true for the given subscriptions."""
     if sub_ids is None or len(sub_ids) < 1:
         return
 
@@ -159,8 +148,8 @@ async def send_abolishment_email(
 ) -> None:
     """Sends an email to the given recipients with the given adjustments.
 
-    Items in the jinja2 template are replaced with those in template_data."""
-
+    Items in the jinja2 template are replaced with those in template_data.
+    """
     template_name = "abolishment.html"
     template_data = {"abolishments": adjustments}
     subject = "Abolishment of subscriptions"
@@ -212,11 +201,7 @@ async def send_abolishment_email(
 
 
 async def abolish_subscriptions(admin_oid: UUID) -> None:
-    """
-    Abolishes subscriptions which have been inactive for more than 90 days.
-
-    """
-
+    """Abolishes subscriptions that have been inactive for more than 90 days."""
     # find subscriptions which have been inactive for more than 90 days
     inactive_subs = await get_inactive_subs()
 
