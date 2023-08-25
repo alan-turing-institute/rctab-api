@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Tuple
 from unittest.mock import AsyncMock
 from uuid import UUID
 
+import hypothesis
 import pytest
 import pytest_mock
 from databases import Database
@@ -29,7 +30,11 @@ from tests.test_routes import constants
 from tests.test_routes.test_routes import test_db  # pylint: disable=unused-import
 
 
-@settings(deadline=None, max_examples=10)
+@settings(
+    deadline=None,
+    max_examples=10,
+    suppress_health_check=[hypothesis.HealthCheck.function_scoped_fixture],
+)
 @given(st.lists(st.builds(SubscriptionStatus), min_size=2, max_size=20, unique=True))
 def test_post_status(
     app_with_signed_status_token: Tuple[FastAPI, str],
