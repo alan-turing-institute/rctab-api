@@ -181,6 +181,10 @@ async def send_generic_email(
     if not settings.ignore_whitelist:
         whitelist = settings.whitelist
         if subscription_id not in whitelist:
+            logger.info(
+                "Subscription %s is not in whitelist and will not be processed further.",
+                subscription_id,
+            )
             return
 
     sub_summary = await database.fetch_one(
