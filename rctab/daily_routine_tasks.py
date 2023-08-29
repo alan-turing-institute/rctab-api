@@ -59,10 +59,8 @@ class FileLockContextManager(contextlib.AbstractContextManager):
 def datetime_utcnow() -> datetime:
     """Returns the current date and time in the UTC timezone.
 
-    Returns
-    -------
-    datetime
-        current UTC date and time
+    Returns:
+        the current UTC date and time
     """
     # This can be patched for testing more easily than datetime
 
@@ -105,12 +103,9 @@ async def send_summary_email(
 
     Items in the jinja2 template are replaced with those in template_data.
 
-    Parameters
-    ----------
-    recipients : List[str]
-        list of email addresses of recipients
-    since_this_datetime : Optional[datetime], optional
-        include information since this date and time, by default None
+    Args:
+        recipients : list of email addresses of recipients.
+        since_this_datetime : include information since this date and time, by default None.
     """
     # pylint: disable=invalid-name
     template_name = "daily_summary.html"
@@ -229,10 +224,8 @@ async def routine_tasks() -> None:
 async def get_timestamp_last_summary_email() -> Optional[datetime]:
     """Returns timestamp of the last summary email that has been sent.
 
-    Returns
-    -------
-    datetime
-        timestamp of last summary email record in emails table
+    Returns:
+        The timestamp of last summary email record in emails table.
     """
     query = (
         select([emails])
