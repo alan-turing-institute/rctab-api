@@ -222,7 +222,7 @@ async def routine_tasks() -> None:
 
 
 async def get_timestamp_last_summary_email() -> Optional[datetime]:
-    """Retrieve the timestamp from the emails table of the most recent summary email sent. 
+    """Retrieve the timestamp from the emails table of the most recent summary email sent.
 
     Returns:
         The timestamp of the last summary email sent.
