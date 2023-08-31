@@ -47,19 +47,14 @@ logger = logging.getLogger(__name__)
 async def get_sub_email_recipients(
     database: Database, subscription_id: UUID
 ) -> List[str]:
-    """Returns the users we should email about this subscription.
+    """Get the email adresses of users that should be emailed about this subscription.
 
-    Parameters
-    ----------
-    database : Database
-        a database to keep a record of a subscription and its users
-    subscription_id : UUID
-        a subscription ID
+    Args:
+        database : The database recording the subscription and its users.
+        subscription_id : The ID of the subscription to get user emails for.
 
-    Returns
-    -------
-    List[str]
-        contains email addresses of the users that should receive the email
+    Returns:
+        The email addresses of the users that should receive the email.
     """
     query = get_subscription_details(subscription_id, execute=False)
     results = await database.fetch_one(query)
@@ -99,27 +94,17 @@ def send_with_sendgrid(
 
     Items in the jinja2 template are replaced with those in template_data.
 
-    Parameters
-    ----------
-    subject : str
-        subject of the email
-    template_name : str
-        name of jinja2 template used to render the email
-    template_data : Dict[str, Any]
-        data passed to the template
-    to_list : List[str]
-        contains the email addresses of the recipients
+    Args:
+        subject : The subject of the email.
+        template_name : The name of jinja2 template used to render the email.
+        template_data : The data passed to the template.
+        to_list : A string that contains the email addresses of the recipients.
 
-    Returns
-    -------
-    int
-        status code that indicates whether or not email was sent sucessfully
+    Returns:
+        The status code that indicates whether or not email was sent sucessfully.
 
-    Raises
-    ------
-    MissingEmailParamsError
-        raises an error if the api key or the "from" email address
-        is missing
+    Raises:
+        MissingEmailParamsError: raises an error if the api key or the "from" email address is missing.
     """
     # pylint: disable=invalid-name
     try:
@@ -256,14 +241,12 @@ async def send_expiry_looming_emails(
     database: Database,
     subscription_expiry_dates: List[Tuple[UUID, date, SubscriptionState]],
 ) -> None:
-    """If needed, sends emails to say that subscription is nearing its expiry date.
+    """Send an email to notify users that a subscription is nearing its expiry date.
 
-    Parameters
-    ----------
-    database : Database
-        a database to keep record of subscriptions and of sent emails
-    subscription_expiry_dates : List[Tuple[UUID, date, SubscriptionState]]
-        subscription ids and expiry dates of subscriptions nearing expiry
+    Args:
+        database: A database to keep record of subscriptions and of sent emails.
+        subscription_expiry_dates: A list of subscription ids and expiry dates for
+            subscriptions nearing expiry.
     """
     # pylint: disable=use-dict-literal
     email_query = sub_time_based_emails()
@@ -295,14 +278,12 @@ async def send_overbudget_emails(
     database: Database,
     overbudget_subs: List[Tuple[UUID, float]],
 ) -> None:
-    """If needed, sends emails to say that subscription is overbudget.
+    """Send an email to notify users that subscription is overbudget.
 
-    Parameters
-    ----------
-    database : Database
-        a database to keep record of subscriptions and of sent emails
-    overbudget_subs : List[Tuple[UUID, float]]
-        subscription ids and percentage of budget used for subscriptions that exceeded their budget
+    Args:
+        database: The database recording subscriptions and sent emails.
+        overbudget_subs: A list of subscription ids and the percentage of budget used for
+            subscriptions that exceeded their budget.
     """
     # pylint: disable=use-dict-literal
     email_query = sub_usage_emails()
@@ -332,10 +313,8 @@ async def send_overbudget_emails(
 def sub_time_based_emails() -> Select:
     """Builds a query to get the most recent time-based email for each subscription.
 
-    Returns
-    -------
-    Select
-        SELECT statement for database query
+    Returns:
+        SELECT statement for database query.
     """
     most_recent = (
         select([func.max_(emails.c.id).label("max_id")])
@@ -442,12 +421,10 @@ async def check_for_subs_nearing_expiry(database: Database) -> None:
 
 
 async def check_for_overbudget_subs(database: Database) -> None:
-    """Check for subscriptions that should trigger an email as they are overbudget.
+    """Check for subscriptions that are overbudget and should trigger an email.
 
-    Parameters
-    ----------
-    database : Database
-        holds a record of the subscription, including budget information
+    Args:
+        database: The database containing a record of the subscription, including budget information.
     """
     overbudget_subs = []
 
@@ -949,18 +926,13 @@ async def get_approvals_since(
 
 
 def render_template(template_name: str, template_data: Dict[str, Any]) -> str:
-    """Renders html based on provided template and data.
+    """Renders html based on the provided template and data.
 
-    Parameters
-    ----------
-    template_name : str
-        name of template
-    template_data : Dict[str, Any]
-        data used to render template
+    Args:
+        template_name : The name of template.
+        template_data : The data used to render the template.
 
-    Returns
-    -------
-    str
+    Returns:
         The rendered template as a string.
     """
     env = Environment(loader=PackageLoader("rctab", "templates/emails"))
