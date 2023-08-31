@@ -741,7 +741,6 @@ async def get_emails_sent_since(
     )
     rows = await database.fetch_all(emails_query)
     all_emails_sent: List[dict] = [{**row._mapping} for row in rows]
-    all_emails_sent = sorted(all_emails_sent, key=extract_sub_id)
 
     emails_by_subscription = []
     for key, value in groupby(all_emails_sent, extract_sub_id):
@@ -784,7 +783,6 @@ async def get_finance_entries_since(
     )
     rows = await database.fetch_all(finance_query)
     all_new_entries = [{**row._mapping} for row in rows]
-    all_new_entries = sorted(all_new_entries, key=extract_sub_id)
     entries_by_subscription = []
     for key, value in groupby(all_new_entries, extract_sub_id):
         name_query = select([subscription_details.c.display_name.label("name")]).where(
