@@ -50,11 +50,11 @@ async def get_sub_email_recipients(
     """Returns the users we should email about this subscription.
 
     Args:
-        database : a database to keep a record of a subscription and its users.
-        subscription_id : a subscription ID.
+        database : The database recording the subscription and its users.
+        subscription_id : The ID of the subscription to get user emails for.
 
     Returns:
-        A string that contains email addresses of the users that should receive the email.
+        The email addresses of the users that should receive the email.
     """
     query = get_subscription_details(subscription_id, execute=False)
     results = await database.fetch_one(query)
@@ -101,10 +101,10 @@ def send_with_sendgrid(
         to_list : A string that contains the email addresses of the recipients.
 
     Returns:
-        The status code that indicates whether or not email was sent sucessfully
+        The status code that indicates whether or not email was sent sucessfully.
 
     Raises:
-        MissingEmailParamsError: raises an error if the api key or the "from" email address is missing
+        MissingEmailParamsError: raises an error if the api key or the "from" email address is missing.
     """
     # pylint: disable=invalid-name
     try:
@@ -237,11 +237,11 @@ async def send_expiry_looming_emails(
     database: Database,
     subscription_expiry_dates: List[Tuple[UUID, date, SubscriptionState]],
 ) -> None:
-    """If needed, sends emails to say that subscription is nearing its expiry date.
+    """Send an email to notify users that a subscription is nearing its expiry date.
 
     Args:
-        database: a database to keep record of subscriptions and of sent emails.
-        subscription_expiry_dates: a list of subscription ids and expiry dates of
+        database: A database to keep record of subscriptions and of sent emails.
+        subscription_expiry_dates: A list of subscription ids and expiry dates for
             subscriptions nearing expiry.
     """
     # pylint: disable=use-dict-literal
@@ -274,11 +274,11 @@ async def send_overbudget_emails(
     database: Database,
     overbudget_subs: List[Tuple[UUID, float]],
 ) -> None:
-    """If needed, sends emails to say that subscription is overbudget.
+    """Send an email to notify users that subscription is overbudget.
 
     Args:
-        database: a database to keep record of subscriptions and of sent emails.
-        overbudget_subs: a list of subscription ids and percentage of budget used for
+        database: The database recording subscriptions and sent emails.
+        overbudget_subs: A list of subscription ids and the percentage of budget used for
             subscriptions that exceeded their budget.
     """
     # pylint: disable=use-dict-literal
@@ -417,10 +417,10 @@ async def check_for_subs_nearing_expiry(database: Database) -> None:
 
 
 async def check_for_overbudget_subs(database: Database) -> None:
-    """Check for subscriptions that should trigger an email as they are overbudget.
+    """Check for subscriptions that are overbudget and should trigger an email.
 
     Args:
-        database: a database that holds a record of the subscription, including budget information.
+        database: The database containing a record of the subscription, including budget information.
     """
     overbudget_subs = []
 
@@ -924,11 +924,11 @@ async def get_approvals_since(
 
 
 def render_template(template_name: str, template_data: Dict[str, Any]) -> str:
-    """Renders html based on provided template and data.
+    """Renders html based on the provided template and data.
 
     Args:
         template_name : The name of template.
-        template_data : The data used to render template
+        template_data : The data used to render the template.
 
     Returns
     -------
