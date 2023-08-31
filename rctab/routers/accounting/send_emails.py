@@ -47,7 +47,7 @@ logger = logging.getLogger(__name__)
 async def get_sub_email_recipients(
     database: Database, subscription_id: UUID
 ) -> List[str]:
-    """Returns the users we should email about this subscription.
+    """Get the email adresses of users that should be emailed about this subscription.
 
     Args:
         database : The database recording the subscription and its users.
