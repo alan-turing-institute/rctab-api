@@ -930,9 +930,7 @@ def render_template(template_name: str, template_data: Dict[str, Any]) -> str:
         template_name : The name of template.
         template_data : The data used to render the template.
 
-    Returns
-    -------
-    str
+    Returns:
         The rendered template as a string.
     """
     env = Environment(loader=PackageLoader("rctab", "templates/emails"))
