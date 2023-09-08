@@ -4,6 +4,7 @@ settings.json
 .postgresdata*
 postgres_data
 .auth.env
+.secrets
 
 # jinja2 templates, rendered by unit tests
 rctab/templates/emails/rendered_*.html
