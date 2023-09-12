@@ -27,7 +27,7 @@
 
 {% block noaccess %}
 
-<h1><span id="subscription_name" class="subID">{{ subscription_details.name }}</span></h2>
+<h1><span id="subscription_name" class="subID">{{ subscription_details.name }}</span></h1>
 <h2><span id="subscription_id" class="subID">{{ subscription_id }}</span></h2>
 
 
@@ -226,7 +226,6 @@
         <label for="timeperiodstr">Start date</label>
         <input type="date" id="timeperiodstr" min="2015-03-01">
         <input type="button" id="usagesubmitbtn" value="fetch data" onclick="fetchusagedata(event);">
-        </input>
         <span class="tooltiptext">Load usage data since start date. This may take some time depending on the length of time requested.</span>
         </form>
     </div>
