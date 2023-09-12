@@ -409,6 +409,32 @@ def test_render_finance_email(jinja2_environment: Environment) -> None:
         output_file.write(html)
 
 
+def test_abolishment_emails_render(jinja2_environment: Environment) -> None:
+    template_data = {
+        "abolishments": [
+            {
+                "subscription_id": UUID(int=100),
+                "name": "my subscription",
+                "allocation": 10,
+                "approval": 10,
+            },
+        ]
+    }
+
+    template_name = "abolishment.html"
+
+    template = jinja2_environment.get_template(template_name)
+
+    html = template.render(**template_data)
+
+    with open(
+        "rctab/templates/emails/" + "rendered_" + template_name,
+        mode="w",
+        encoding="utf-8",
+    ) as output_file:
+        output_file.write(html)
+
+
 @pytest.mark.asyncio
 async def test_send_summary_email_render(test_db: Database) -> None:
     since_this_datetime = datetime.now(timezone.utc) - timedelta(days=1)
