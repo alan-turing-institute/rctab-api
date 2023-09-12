@@ -11,18 +11,21 @@
         Abolishments ({{abolishments|length}})
     </div>
     <div class="normal-text">
-        {% for sub in abolishments %}
-        <li> <b> <span class=summary-item>{{ sub.name }} ({{ sub.subscription_id }})</span> </b>
-            <p>
-                <span class=summary-item>Subscription name: {{ sub.name }}</span>
-                <span class=summary-item>Subscription ID: {{ sub.subscription_id }}</span>
-            </p>
-            <p>
-                <span class=summary-item>Approval adjustment: £{{ "%.2f"|format(sub.approval) }}</span>
-                <span class=summary-item>Allocation adjustment: £{{ "%.2f"|format(sub.allocation) }}</span>
-            </p>
-        </li>
-        {% endfor %}
+        <ul>
+            {% for sub in abolishments %}
+            <li>
+                <b> <span class=summary-item>{{ sub.name }} ({{ sub.subscription_id }})</span> </b>
+                <p>
+                    <span class=summary-item>Subscription name: {{ sub.name }}</span>
+                    <span class=summary-item>Subscription ID: {{ sub.subscription_id }}</span>
+                </p>
+                <p>
+                    <span class=summary-item>Approval adjustment: £{{ "%.2f"|format(sub.approval) }}</span>
+                    <span class=summary-item>Allocation adjustment: £{{ "%.2f"|format(sub.allocation) }}</span>
+                </p>
+            </li>
+            {% endfor %}
+        </ul>
     </div>
     <div class="horizontal-line"></div>
 </div>
