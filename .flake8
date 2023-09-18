@@ -2,6 +2,7 @@
 max-line-length = 160
 per-file-ignores =
     __init__.py:F401
+    docs/conf.py:E402
     rctab/routers/accounting/routes.py:E711,E712
     rctab/routers/accounting/desired_states.py:E711,E712
     rctab/routers/accounting/send_emails.py:E712,E203
