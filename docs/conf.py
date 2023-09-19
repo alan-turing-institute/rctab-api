@@ -4,6 +4,7 @@ from unittest.mock import MagicMock
 
 import databases
 import pydantic
+import sphinx_rtd_theme
 
 # pylint: disable=invalid-name
 
@@ -18,7 +19,7 @@ import rctab
 
 # General configuration
 
-project = "rctab-infrastructure"
+project = "rctab-api"
 author = "The Alan Turing Institute's Research Computing Team"
 # pylint: disable=redefined-builtin
 copyright = f"2023, {author}"
@@ -29,11 +30,6 @@ release = version
 
 templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
-
-# -- Options for HTML output -------------------------------------------------
-
-html_theme = "alabaster"
-html_static_path = ["_static"]
 
 # -- General configuration
 
@@ -47,3 +43,12 @@ extensions = [
 # -- Options for HTML output
 
 html_theme = "sphinx_rtd_theme"
+html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
+html_static_path = ["_static"]
+
+html_logo = "RCTab-hex.png"
+
+
+def setup(app):  # type: ignore
+    """Tasks to perform during app setup."""
+    app.add_css_file("css/custom.css")
