@@ -1,4 +1,4 @@
-Welcome to rctab-infrastructure's documentation!
+Welcome to rctab-api's documentation!
 ================================================
 
 .. automodule:: rctab.main
