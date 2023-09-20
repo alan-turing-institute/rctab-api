@@ -1,14 +1,17 @@
 Welcome to rctab-api's documentation!
 ================================================
 
-.. automodule:: rctab.main
-    :members:
-
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
 
    sometext
+
+.. autosummary::
+   :toctree: _autosummary
+   :recursive:
+
+   rctab
 
 Indices and tables
 ==================
