@@ -38,6 +38,7 @@ extensions = [
     "sphinx.ext.doctest",
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
+    "sphinx.ext.napoleon",
 ]
 
 # -- Options for HTML output
@@ -52,3 +53,8 @@ html_logo = "RCTab-hex.png"
 def setup(app):  # type: ignore
     """Tasks to perform during app setup."""
     app.add_css_file("css/custom.css")
+
+
+# -- Options for autosummary extension
+
+autosummary_generate = True
