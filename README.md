@@ -1,12 +1,10 @@
 # RCTab API <img src="media/RCTab.png" width="260" align="right">
 
-![dev-deploy](https://github.com/alan-turing-institute/rctab-api/actions/workflows/dev-test-deploy.yml/badge.svg)
 ![docker-deploy](https://github.com/alan-turing-institute/rctab-api/actions/workflows/deploy.yml/badge.svg)
 ![tests](https://github.com/alan-turing-institute/rctab-api/actions/workflows/test.yml/badge.svg)
 ![linter](https://github.com/alan-turing-institute/rctab-api/actions/workflows/linter.yml/badge.svg)
-
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit)](https://github.com/pre-commit/pre-commit)
-![Coverage Badge](https://rctabtestcoverageblob.blob.core.windows.net/rctabcoveragecontainer/coverage-badge.svg)
+[![Documentation Status](https://readthedocs.org/projects/rctab-api/badge/?version=latest)](https://rctab-api.readthedocs.io/en/latest/?badge=latest)
 
 The RCTab API webserver.
 
