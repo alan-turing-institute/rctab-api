@@ -1,4 +1,0 @@
-Some Text
----------
-
-Lorem ipsum...

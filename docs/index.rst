@@ -3,10 +3,20 @@ Welcome to rctab-api's documentation!
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents
+   :caption: External Links
+   :glob:
    :hidden:
 
-   sometext
+   RCTab docs home <https://rctab.readthedocs.io/en/latest/>
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Contents
+   :hidden:
+   :glob:
+
+   Home <self>
+   content/*
 
 .. autosummary::
    :toctree: _autosummary
