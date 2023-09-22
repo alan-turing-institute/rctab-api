@@ -39,6 +39,7 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
     "sphinx.ext.napoleon",
+    "myst_parser",
 ]
 
 # -- Options for HTML output
@@ -58,3 +59,8 @@ def setup(app):  # type: ignore
 # -- Options for autosummary extension
 
 autosummary_generate = True
+
+# -- Options for MyST
+
+# myst_heading_slug_func = my_slug_func
+myst_heading_anchors = 5
