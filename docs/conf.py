@@ -62,5 +62,4 @@ autosummary_generate = True
 
 # -- Options for MyST
 
-# myst_heading_slug_func = my_slug_func
 myst_heading_anchors = 5
