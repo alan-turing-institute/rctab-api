@@ -54,7 +54,7 @@ class Usage(HashBaseModel):
     effective_price: Optional[float]
     cost: Optional[float]
     amortised_cost: Optional[float]
-    total_cost: confloat(ge=0.0)  # type: ignore
+    total_cost: float
     unit_price: Optional[float]
     billing_currency: Optional[str]
     resource_location: Optional[str]
