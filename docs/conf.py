@@ -1,19 +1,25 @@
 """Configuration file for the Sphinx documentation builder."""
+import os
 from importlib import metadata
-from unittest.mock import MagicMock
+from unittest.mock import patch
 
-import databases
-import pydantic
 import sphinx_rtd_theme
 
 # pylint: disable=invalid-name
 
-# Patch settings base class to avoid having to set env vars
+# Set mandatory env vars
+os.environ["SESSION_EXPIRE_TIME_MINUTES"] = "1"
+os.environ["SESSION_SECRET"] = "don't use this in production"
+os.environ["CLIENT_ID"] = "00000000-0000-0000-0000-000000000000"
+os.environ["CLIENT_SECRET"] = "this is a secret"
+os.environ["TENANT_ID"] = "00000000-0000-0000-0000-000000000000"
+os.environ["DB_HOST"] = "localhost"
+os.environ["DB_PASSWORD"] = "notarealpassword"
+os.environ["DB_USER"] = "the_username"
 
-pydantic.BaseSettings = MagicMock()  # type: ignore
-databases.Database = MagicMock()  # type: ignore
-# pylint: disable=wrong-import-position
-import rctab
+with patch("databases.Database"):
+    # pylint: disable=wrong-import-position
+    import rctab
 
 # pylint: enable=wrong-import-position
 
