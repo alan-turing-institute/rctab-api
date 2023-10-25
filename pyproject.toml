@@ -26,6 +26,8 @@ requests = "^2.25.1"
 sendgrid = "^6.9.1"
 sqlalchemy = "~1.4.32"
 uvicorn = { version = "^0.17.4", extras = ["standard"] }
+jupyter = "^1.0.0"
+matplotlib = "^3.7.2"
 
 [tool.poetry.group.dev.dependencies]
 black = "^22.12.0"
