@@ -139,6 +139,9 @@
 
 <div id="SubscriptionFCA" class="tabcontent" style="display: none">
     <h3>Details of subscription finances and cost recovery</h3>
+    <p1>Total costs recovered by project funding: <b>£{{ total_recovered_costs | round(2) }}</b></p1>
+    <br>
+    <p1 class="tooltip">Total costs <i>currently</i> charged to to core funding: <b>£{{ (subscription_details.total_cost - total_recovered_costs) | round(2) }}</b><span class="tooltiptext">Cost recovery may reduce this value</span></p1>
     <div class="flex-grid">
         <div class="col">
 
@@ -152,6 +155,7 @@
                     <th>Priority</th>
                     <th>Amount</th>
                     <th>Created on</th>
+                    <th>Costs Recovered</th>
                 </tr>
                 {% for item in all_finance %}
                 <tr>
@@ -162,6 +166,7 @@
                     <td>{{ item.priority }}</td>
                     <td>£{{ item.amount | round(2) }}</td>
                     <td>{{ item.time_created.strftime('%Y-%m-%d') }}</td>
+                    <td>£{{ item.total_recovered | round(2) }} ({{ (item.total_recovered / item.amount * 100) | round | int }}%)</td>
                 </tr>
                 {% endfor %}
             </table>

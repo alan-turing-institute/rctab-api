@@ -20,7 +20,7 @@ from rctab.crud.schema import (
     AllocationListItem,
     ApprovalListItem,
     CostRecovery,
-    FinanceListItem,
+    FinanceWithCostRecovery,
     RoleAssignment,
     SubscriptionDetails,
     Usage,
@@ -29,7 +29,7 @@ from rctab.routers.accounting.routes import (
     get_allocations,
     get_approvals,
     get_costrecovery,
-    get_finance,
+    get_finance_costs_recovered,
     get_subscription_details,
     get_subscriptions_with_disable,
     get_usage,
@@ -238,17 +238,16 @@ async def subscription_details(
     ]
     # pylint: disable=line-too-long
 
-    all_finance = [
-        FinanceListItem(**i)
-        for i in await get_finance(
-            subscription_id, raise_404=False
-        )  # pylint: disable=unexpected-keyword-arg
-    ]
-    # pylint: disable=line-too-long
-
     all_costrecovery = [
         CostRecovery(**i)
         for i in await get_costrecovery(
+            subscription_id, raise_404=False
+        )  # pylint: disable=unexpected-keyword-arg
+    ]
+
+    all_finance_with_costs_recovered = [
+        FinanceWithCostRecovery(**i)
+        for i in await get_finance_costs_recovered(
             subscription_id, raise_404=False
         )  # pylint: disable=unexpected-keyword-arg
     ]
@@ -311,10 +310,13 @@ async def subscription_details(
             "subscription_details": subscription_details_info,
             "all_approvals": all_approvals,
             "all_allocations": all_allocations,
-            "all_finance": all_finance,
+            "all_finance": all_finance_with_costs_recovered,
             "all_costrecovery": all_costrecovery,
             "all_rbac_assignments": sorted_all_rbac_assignments,
             "views": views,
+            "total_recovered_costs": sum(
+                item.total_recovered for item in all_finance_with_costs_recovered
+            ),
         },
     )
 

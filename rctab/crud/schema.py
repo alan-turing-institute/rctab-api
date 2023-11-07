@@ -266,6 +266,12 @@ class CostRecovery(BaseModel):
     date_recovered: Optional[datetime.date] = None
 
 
+class FinanceWithCostRecovery(FinanceListItem):
+    """Finance including a total costs recovered field."""
+
+    total_recovered: float
+
+
 class Currency(str, Enum):
     """Recognised currencies."""
 
