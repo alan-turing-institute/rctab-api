@@ -3,7 +3,7 @@
 {% else %}
 <div>
     <h3>Subscription usage since {{ time_frame_start }}</h3>
-    <button id="download_btn" class="download" onclick="download_table_as_csv('subscription_usage', '{{ time_frame_start }}');">Download full usage data as CSV</button>
+    <button id="download_btn" class="download" onclick="downloadTableAsCsv('subscription_usage', '{{ time_frame_start }}');">Download full usage data as CSV</button>
 </div>
     <div class="col usageFigure">
         {{ usage_fig | safe }}

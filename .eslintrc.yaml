@@ -1,0 +1,18 @@
+---
+env:
+  browser: true
+  es6: true
+  jquery: true
+extends: "eslint:recommended"
+rules:
+  strict: ["error", "global"]
+  no-unused-vars: "off"
+  init-declarations: "error"
+  no-delete-var: "error"
+  no-label-var: "error"
+  no-shadow-restricted-names: "error"
+  no-undef-init: "error"
+  no-undef: "error"
+  no-undefined: "error"
+  no-use-before-define: "error"
+  no-var: "error"
