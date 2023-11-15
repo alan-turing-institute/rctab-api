@@ -45,6 +45,49 @@ app = FastAPI(
     openapi_url=None,
 )
 
+## secure begin
+import secure
+
+server = secure.Server().set("Secure")
+
+csp = (
+    secure.ContentSecurityPolicy()
+    .default_src("'none'")
+    .base_uri("'self'")
+    .connect_src("'self'" "api.spam.com")
+    .frame_src("'none'")
+    .img_src("'self'", "static.spam.com")
+)
+
+hsts = secure.StrictTransportSecurity().include_subdomains().preload().max_age(2592000)
+
+referrer = secure.ReferrerPolicy().no_referrer()
+
+permissions_value = (
+    secure.PermissionsPolicy().geolocation("self", "'spam.com'").vibrate()
+)
+
+cache_value = secure.CacheControl().must_revalidate()
+
+secure_headers = secure.Secure(
+    server=server,
+    # ToDo - add CSP
+    csp=None,
+    hsts=hsts,
+    referrer=referrer,
+    permissions=permissions_value,
+    cache=cache_value,
+)
+
+
+@app.middleware("http")
+async def set_secure_headers(request, call_next):
+    response = await call_next(request)
+    secure_headers.framework.fastapi(response)
+    return response
+
+
+## secure end
 
 # Add session middleware and authentication routes
 fastapimsal.init_auth(
