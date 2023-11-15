@@ -416,6 +416,45 @@ def get_approvals(sub_id: UUID) -> Select:
 
 
 @db_select
+def get_finance_costs_recovered(sub_id: UUID) -> Select:
+    """Get all finance items and the total costs recovered for each ID."""
+    costs_recovered = (
+        select(
+            [
+                cost_recovery.c.finance_id,
+                func.sum(cost_recovery.c.amount).label("total_recovered"),
+            ]
+        )
+        .group_by(cost_recovery.c.finance_id)
+        .alias()
+    )
+    return (
+        select(
+            [
+                finance.c.id,
+                finance.c.ticket,
+                finance.c.amount,
+                finance.c.priority,
+                finance.c.finance_code,
+                finance.c.date_from,
+                finance.c.date_to,
+                finance.c.time_created,
+                costs_recovered.c.total_recovered,
+            ]
+        )
+        .select_from(
+            finance.join(
+                costs_recovered,
+                finance.c.id == costs_recovered.c.finance_id,
+                isouter=True,
+            )
+        )
+        .where(finance.c.subscription_id == sub_id)
+        .order_by(finance.c.time_created)
+    )
+
+
+@db_select
 def get_finance(sub_id: UUID) -> Select:
     """Get all finance items."""
     return select(
