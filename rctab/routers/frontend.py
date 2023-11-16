@@ -95,16 +95,13 @@ def access_to_span(status: bool) -> str:
 
 async def check_user_on_subscription(subscription_id: UUID, username: str) -> bool:
     """Check whether a user has a role assignment on the subscription."""
-    rbac_assignments = [
-        RoleAssignment(**i)
-        for i in (await get_subscription_details(subscription_id))[0][
-            "role_assignments"
-        ]
+    role_assignments = (await get_subscription_details(subscription_id))[0][
+        "role_assignments"
     ]
-
-    for entry in rbac_assignments:
-        if entry.mail == username:
-            return True
+    if role_assignments:
+        for item in role_assignments:
+            if RoleAssignment(**item).mail == username:
+                return True
 
     return False
 
