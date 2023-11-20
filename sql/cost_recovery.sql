@@ -113,7 +113,7 @@ JOIN app_tbl
     AND fin_tbl.ticket = app_tbl.ticket
 join names n
     on n.subscription_id = fin_tbl.subscription_id
-where app_tbl.date_to > '2023-04-00'  -- First day of the financial year
+where app_tbl.date_to >= '2023-04-00'  -- First day of the financial year
 -- and app_tbl.date_from > '2023-07-00' -- you may wish to limit to the recovery period
 order by n.display_name asc;
 
@@ -141,7 +141,7 @@ where not exists (
   from accounting.finance f
   where f.ticket like (a.ticket || '%')
 )
-and a.date_to > '2023-04-00' -- First day of the financial year
+and a.date_to >= '2023-04-00' -- First day of the financial year
 -- and a.date_from > '2023-07-00' -- you may wish to limit to the recovery period
 order by n.display_name asc;
 
@@ -150,11 +150,12 @@ order by n.display_name asc;
 -- Finance without a matching approvals row
 select *
 from accounting.finance f
-where f.ticket not in (
-  select distinct a.ticket
+where not exists (
+  select 1
   from accounting.approvals a
+	where a.ticket like f.ticket || '%'  -- some approvals are e.g. 'C0123-456 (comment)'
 )
-and f.date_to >= '2023-07-01' -- first day of the recovery period
+and f.date_to >= '2023-10-01' -- first day of the recovery period
 order by f.date_to asc;
 
 
