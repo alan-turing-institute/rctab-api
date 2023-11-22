@@ -36,30 +36,31 @@ templates = Jinja2Templates(directory=Path("rctab/templates"))
 
 background_tasks = set()
 
-from celery import Celery
-from celery.schedules import crontab
+# from celery import Celery
+# from celery.schedules import crontab
+import rctab.tasks
 
-celery_app = Celery()
-
-
-@celery_app.on_after_configure.connect
-def setup_periodic_tasks(sender, **kwargs):
-
-    # Calls test('hello') every 30 seconds.
-    # It uses the same signature of previous task, an explicit name is
-    # defined to avoid this task replacing the previous one defined.
-    sender.add_periodic_task(30.0, test.s("hello"), name="add every 30")
-
-    # Executes every Monday morning at 7:30 a.m.
-    # sender.add_periodic_task(
-    #     crontab(hour=7, minute=30, day_of_week=1),
-    #     test.s('Happy Mondays!'),
-    # )
+# celery_app = Celery()
 
 
-@celery_app.task
-def test(arg):
-    logging.warning(arg)
+# @celery_app.on_after_configure.connect
+# def setup_periodic_tasks(sender, **kwargs):
+#
+#     # Calls test('hello') every 30 seconds.
+#     # It uses the same signature of previous task, an explicit name is
+#     # defined to avoid this task replacing the previous one defined.
+#     sender.add_periodic_task(30.0, test.s("hello"), name="add every 30")
+#
+#     # Executes every Monday morning at 7:30 a.m.
+#     # sender.add_periodic_task(
+#     #     crontab(hour=7, minute=30, day_of_week=1),
+#     #     test.s('Happy Mondays!'),
+#     # )
+#
+#
+# @celery_app.task
+# def test(arg):
+#     logging.warning(arg)
 
 
 app = FastAPI(
