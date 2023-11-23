@@ -17,7 +17,6 @@ from rctab.routers.accounting.abolishment import abolish_subscriptions
 from rctab.settings import get_settings
 
 # todo shut down celery and redis on exit
-# todo set timezone to London?
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +26,8 @@ celery_app = Celery(
     "rctab.tasks",
     broker=CELERY_BROKER_URL,
 )
+
+celery_app.conf.timezone = "Europe/London"
 
 
 @celery_app.on_after_configure.connect
