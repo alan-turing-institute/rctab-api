@@ -1,5 +1,6 @@
 """Tasks that run in the background."""
 import asyncio
+import logging
 from typing import Any, Final
 from uuid import UUID
 
@@ -16,9 +17,9 @@ from rctab.routers.accounting.abolishment import abolish_subscriptions
 from rctab.settings import get_settings
 
 # todo shut down celery and redis on exit
-# todo redis config file
-# todo set timezone to London
+# todo set timezone to London?
 
+logger = logging.getLogger(__name__)
 
 CELERY_BROKER_URL: Final = "redis://localhost:6379/0"
 
@@ -44,8 +45,11 @@ async def send() -> None:
     await database.connect()
     try:
         recipients = get_settings().admin_email_recipients
-        time_last_summary_email = await get_timestamp_last_summary_email()
-        await send_summary_email(recipients, time_last_summary_email)
+        if recipients:
+            time_last_summary_email = await get_timestamp_last_summary_email()
+            await send_summary_email(recipients, time_last_summary_email)
+        else:
+            logger.warning("No recipients for summary email found")
     finally:
         await database.disconnect()
 
