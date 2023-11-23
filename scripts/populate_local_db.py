@@ -87,21 +87,23 @@ def insert_into_local_db(data: list, tablename: str) -> None:
         data (list): Data to insert into the table. Json format.
         tablename (str): Name of the table to insert data in to.
     """
-    if len(data) > 100000:
-        data = data[:100000]
-    connection = psycopg2.connect(
-        user="postgres", password="password", host="localhost"
-    )
-    cursor = connection.cursor()
-    query = f""" INSERT INTO {tablename}
-            SELECT * FROM json_populate_recordset(NULL::{tablename}, %s)
-            """
-    cursor.execute(
-        query,
-        (json.dumps(data),),
-    )
-    connection.commit()
-    connection.close()
+    chunk_size = 100000
+    packets = [data[i : i + chunk_size] for i in range(0, len(data), chunk_size)]
+    for i in range(len(packets)):
+        print(f"\tUploading packet {i+1} of {len(packets)}")
+        connection = psycopg2.connect(
+            user="postgres", password="password", host="localhost"
+        )
+        cursor = connection.cursor()
+        query = f""" INSERT INTO {tablename}
+                SELECT * FROM json_populate_recordset(NULL::{tablename}, %s)
+                """
+        cursor.execute(
+            query,
+            (json.dumps(packets[i]),),
+        )
+        connection.commit()
+        connection.close()
 
 
 def read_json_data(tablename: str, dirpath: str) -> list:

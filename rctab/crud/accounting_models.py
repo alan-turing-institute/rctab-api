@@ -10,6 +10,7 @@ from sqlalchemy import (
     Integer,
     String,
     Table,
+    Text,
     false,
     true,
 )
@@ -387,5 +388,38 @@ cost_recovery_log = Table(
     Column("admin", UUID, ForeignKey("user_rbac.oid"), nullable=False),
     Column("time_created", DateTime(timezone=True), server_default=func.now()),
     Column("time_updated", DateTime(timezone=True), onupdate=func.now()),
+    schema="accounting",
+)
+
+subscription_usage_forecast_summary = Table(
+    "subscription_usage_forecast_summary",
+    metadata,
+    Column("id", Integer, autoincrement=True, primary_key=True),
+    Column("subscription_id", UUID, nullable=False),
+    Column("approval_end_date", Date, nullable=False),
+    Column("total_approved_amount", Float, nullable=False),
+    Column("fy_approved_amount", Float, nullable=False),
+    Column("approval_end_date_projected_spend", Float, nullable=True),
+    Column("fy_end_date", Date, nullable=False),
+    Column("fy_spend_to_date", Float, nullable=False),
+    Column("fy_projected_spend", Float, nullable=False),
+    Column("costs_recovered_fy", Float, nullable=False),
+    Column("current_fy_finance", Float, nullable=False),
+    Column("fy_projected_dif", Float, nullable=False),
+    Column("fy_predicted_core_spending", Float, nullable=False),
+    Column("datetime_data_updated", DateTime(timezone=True), nullable=False),
+    schema="accounting",
+)
+
+subscription_usage_forecast = Table(
+    "subscription_usage_forecast",
+    metadata,
+    Column("id", Integer, autoincrement=True, primary_key=True),
+    Column("subscription_id", UUID, nullable=False),
+    Column("date", Date, nullable=True),
+    Column("total_cost", Float, nullable=False),
+    Column("cumulative_total_cost", Float, nullable=False),
+    Column("DTYPE", String, nullable=True),
+    Column("datetime_data_updated", DateTime(timezone=True), nullable=False),
     schema="accounting",
 )

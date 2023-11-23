@@ -10,6 +10,9 @@
 
 {% block logout %}
     <a id="logout" href="/logout">Logout</a>
+    {% if is_admin %}
+    <a id="logout" href="/azreport">Report</a>
+    {% endif %}
 {% endblock %}
 
 {% block isadmin %}

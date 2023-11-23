@@ -1,0 +1,80 @@
+<h1>Azure usage report for Financial Year {{ financial_year }}</h1>
+
+<h3>Subscription status</h3>
+
+<table>
+    <thead>
+    <tr>
+        <th></th>
+        <th>New or existing subscription</th>
+        <th>Status</th>
+        <th>Abolished</th>
+        <th>Number of subscriptions</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for index, row in subscription_pivot.iterrows() %}
+        <tr>
+        <td>{{ index[0] }}</td>
+        <td>{{ index[1] }}</td>
+        <td>{{ index[2] }}</td>
+        <td>{{ index[3] }}</td>
+        <td>{{ row['subscription_id'] }}</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+<br>
+
+<h3>Subscription costs</h3>
+
+<table>
+    <tr>
+        <th></th>
+        <th>Core</th>
+        <th>Project</th>
+    </tr>
+    {% for index, row in report_pivot.iterrows() %}
+        <tr>
+            <td>{{ row['rowname'] }}</td>
+            <td>{% if row['Core'] != 0 %} £{{ '{:,.2f}'.format(row['Core']|round(2)) }} {% endif %}</td>
+            <td>{% if row['Project'] != 0 %} £{{ '{:,.2f}'.format(row['Project']|round(2)) }} {% endif %}</td>
+
+        </tr>
+    {% endfor %}
+</table>
+
+<h3>Cumulative usage</h3>
+<div class="flex-grid">
+    <div class="col leftMargin">
+        <h4>Core</h4>
+        {{ forecast_core_fig|safe }}
+    </div>
+    <div class="col">
+        <h4>Project</h4>
+        {{ forecast_project_fig|safe }}
+    </div>
+</div>
+
+<h3>Monthly usage</h3>
+<div class="flex-grid">
+    <div class="col leftMargin">
+        <h4>Core</h4>
+        {{ core_monthly_fig|safe }}
+    </div>
+    <div class="col">
+        <h4>Project</h4>
+        {{ project_monthly_fig|safe }}
+    </div>
+</div>
+
+<h3>Current Consumed Services</h3>
+<div class="flex-grid">
+    <div class="col leftMargin">
+        {{ core_fig|safe }}
+    </div>
+    <div class="col">
+        {{ project_fig|safe }}
+    </div>
+</div>

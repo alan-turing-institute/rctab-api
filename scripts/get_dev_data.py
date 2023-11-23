@@ -166,8 +166,12 @@ def query_table(table_name: str) -> list:
     """
     secrets_path = os.path.join(os.path.dirname(__file__), ".get_dev_secrets")
     secrets = get_secrets(secrets_path)
-    query = sql.SQL("SELECT * FROM {tbl} WHERE subscription_id = {subid}").format(
-        tbl=sql.SQL(table_name), subid=sql.Literal(secrets["subscription_id"])
+    subscription_ids_list = [
+        item.strip() for item in secrets["subscription_id"].split(",")
+    ]
+    query = sql.SQL("SELECT * FROM {tbl} WHERE subscription_id IN ({subids})").format(
+        tbl=sql.SQL(table_name),
+        subids=sql.SQL(",").join(map(sql.Literal, subscription_ids_list)),
     )
     connection = psycopg2.connect(
         dbname=secrets["dbname"],

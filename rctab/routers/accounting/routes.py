@@ -4,6 +4,7 @@ import uuid
 from typing import List, Optional, Union
 from uuid import UUID
 
+import pandas as pd
 from fastapi import APIRouter
 from pydantic import BaseModel
 from sqlalchemy import desc, func, select, true
@@ -18,9 +19,12 @@ from rctab.crud.accounting_models import (
     status,
     subscription,
     subscription_details,
+    subscription_usage_forecast,
+    subscription_usage_forecast_summary,
     usage,
     usage_view,
 )
+from rctab.crud.models import database
 from rctab.utils import db_select
 
 router = APIRouter()
@@ -439,7 +443,9 @@ def get_finance_costs_recovered(sub_id: UUID) -> Select:
                 finance.c.date_from,
                 finance.c.date_to,
                 finance.c.time_created,
-                costs_recovered.c.total_recovered,
+                func.coalesce(costs_recovered.c.total_recovered, 0).label(
+                    "total_recovered"
+                ),
             ]
         )
         .select_from(
@@ -548,6 +554,27 @@ def get_usage(sub_id: UUID, target_date: datetime.datetime) -> Select:
 
 
 @db_select
+def get_daily_usage_total(sub_id: UUID, target_date: datetime.datetime) -> Select:
+    """Get the usage data for a subscription aggregated by date and subscription_id."""
+    return (
+        select(
+            [
+                usage.c.subscription_id,
+                usage.c.date,
+                func.sum(usage.c.cost).label("cost"),
+                func.coalesce(func.sum(usage.c.amortised_cost), 0).label(
+                    "amortised_cost"
+                ),
+                func.sum(usage.c.total_cost).label("total_cost"),
+            ]
+        )
+        .group_by(usage.c.subscription_id, usage.c.date)
+        .where((usage.c.subscription_id == sub_id) & (usage.c.date >= target_date))
+        .order_by(usage.c.date)
+    )
+
+
+@db_select
 def get_subscription_name(sub_id: Optional[UUID] = None) -> Select:
     """Make a query to find the display name(s) of a subscription.
 
@@ -559,4 +586,87 @@ def get_subscription_name(sub_id: Optional[UUID] = None) -> Select:
     """
     return select([subscription_details.c.display_name.label("name")]).where(
         subscription_details.c.subscription_id == sub_id
+    )
+
+
+@db_select
+def get_usage_forecast_summary(sub_id: UUID) -> Select:
+    """Get the usage forecast summary data for a given subscription."""
+    query = select(
+        [
+            subscription_usage_forecast_summary.c.subscription_id,
+            subscription_usage_forecast_summary.c.approval_end_date,
+            subscription_usage_forecast_summary.c.total_approved_amount,
+            subscription_usage_forecast_summary.c.fy_approved_amount,
+            subscription_usage_forecast_summary.c.approval_end_date_projected_spend,
+            subscription_usage_forecast_summary.c.fy_end_date,
+            subscription_usage_forecast_summary.c.fy_spend_to_date,
+            subscription_usage_forecast_summary.c.fy_projected_spend,
+            subscription_usage_forecast_summary.c.costs_recovered_fy,
+            subscription_usage_forecast_summary.c.current_fy_finance,
+            subscription_usage_forecast_summary.c.fy_projected_dif,
+            subscription_usage_forecast_summary.c.fy_predicted_core_spending,
+            subscription_usage_forecast_summary.c.datetime_data_updated,
+        ]
+    ).where(subscription_usage_forecast_summary.c.subscription_id == sub_id)
+    return query
+
+
+@db_select
+def get_usage_forecast_summary_all() -> Select:
+    """Get the usage forecast summary data for all subscriptions."""
+    query = select(
+        [
+            subscription_usage_forecast_summary.c.subscription_id,
+            subscription_usage_forecast_summary.c.approval_end_date,
+            subscription_usage_forecast_summary.c.total_approved_amount,
+            subscription_usage_forecast_summary.c.fy_approved_amount,
+            subscription_usage_forecast_summary.c.approval_end_date_projected_spend,
+            subscription_usage_forecast_summary.c.fy_end_date,
+            subscription_usage_forecast_summary.c.fy_spend_to_date,
+            subscription_usage_forecast_summary.c.fy_projected_spend,
+            subscription_usage_forecast_summary.c.costs_recovered_fy,
+            subscription_usage_forecast_summary.c.current_fy_finance,
+            subscription_usage_forecast_summary.c.fy_projected_dif,
+            subscription_usage_forecast_summary.c.fy_predicted_core_spending,
+            subscription_usage_forecast_summary.c.datetime_data_updated,
+        ]
+    )
+    return query
+
+
+@db_select
+def get_usage_forecast_data(subscrition_id: UUID) -> Select:
+    """Get the usage forecast data for a given subscription."""
+    return select(
+        [
+            subscription_usage_forecast.c.subscription_id,
+            subscription_usage_forecast.c.date,
+            subscription_usage_forecast.c.total_cost,
+            subscription_usage_forecast.c.cumulative_total_cost,
+            subscription_usage_forecast.c.DTYPE,
+            subscription_usage_forecast.c.datetime_data_updated,
+        ]
+    ).where(subscription_usage_forecast.c.subscription_id == subscrition_id)
+
+
+@db_select
+def get_consumed_service_data(
+    sub_ids: list, fy_start_date: datetime.date, fy_end_date
+) -> Select:
+    return (
+        select(
+            [
+                usage.c.consumed_service,
+                func.sum(usage.c.cost).label("cost"),
+                func.sum(usage.c.amortised_cost).label("amortised_cost"),
+                func.sum(usage.c.total_cost).label("total_cost"),
+            ]
+        )
+        .group_by(usage.c.consumed_service)
+        .where(
+            (usage.c.subscription_id.in_(sub_ids))
+            & (usage.c.date >= fy_start_date)
+            & (usage.c.date < fy_end_date)
+        )
     )

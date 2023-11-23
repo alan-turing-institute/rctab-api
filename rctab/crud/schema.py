@@ -272,6 +272,54 @@ class FinanceWithCostRecovery(FinanceListItem):
     total_recovered: float
 
 
+class UsageDailyTotal(BaseModel):
+    """Total usage for a subscription for a given day."""
+
+    subscription_id: UUID
+    date: datetime.date
+    cost: float
+    amortised_cost: float
+    total_cost: float
+
+
+class UsageForecastSummary(BaseModel):
+    """Reporting data for a given subscription."""
+
+    subscription_id: UUID
+    approval_end_date: Optional[datetime.date] = None
+    total_approved_amount: float
+    fy_approved_amount: float
+    approval_end_date_projected_spend: Optional[float] = None
+    fy_end_date: datetime.date
+    fy_spend_to_date: float
+    fy_projected_spend: float
+    costs_recovered_fy: float
+    current_fy_finance: float
+    fy_projected_dif: float
+    fy_predicted_core_spending: float
+    datetime_data_updated: datetime.datetime
+
+
+class UsageForecastData(BaseModel):
+    """Forecasted usage data for a given subscription."""
+
+    subscription_id: UUID
+    date: Optional[datetime.date] = None
+    total_cost: float
+    cumulative_total_cost: float
+    DTYPE: Optional[str] = None
+    datetime_data_updated: datetime.datetime
+
+
+class ConsumedServiceData(BaseModel):
+    """Reporting data for a given subscription."""
+
+    consumed_service: Optional[str] = None
+    cost: float
+    amortised_cost: Optional[float] = None
+    total_cost: float
+
+
 class Currency(str, Enum):
     """Recognised currencies."""
 

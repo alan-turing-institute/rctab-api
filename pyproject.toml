@@ -26,6 +26,8 @@ requests = "^2.25.1"
 sendgrid = "^6.9.1"
 sqlalchemy = "~1.4.32"
 uvicorn = { version = "^0.17.4", extras = ["standard"] }
+statsmodels = "^0.14.0"
+prophet = "^1.1.5"
 
 [tool.poetry.group.dev.dependencies]
 black = "^22.12.0"

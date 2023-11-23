@@ -135,6 +135,50 @@
             </table>
         </div>
     </div>
+    <br>
+    <h3>Projected spending in the current financial year</h3>
+    <div class="flex-grid">
+        <div class="col">
+            <h4>Projected spending with approvals</h4>
+            {% if usage_fig_forecast is none %}
+                <p>Forecast figure not available.</p>
+            {% else %}
+                {{ usage_fig_forecast | safe }}
+            {% endif %}
+        </div>
+        <div class="col leftMargin">
+            <h4>Key usage costs</h4>
+            <table>
+                <tr>
+                    <th></th>
+                    <th></th>
+                </tr>
+                <tr>
+                    <td>Spending in current financial year:</td>
+                    <td>£{{ projection_data["fy_spend_to_date"][0] | round(2) }}</td>
+                </tr>
+                <tr>
+                    <td>Projected spending in current financial year:</td>
+                    <td>£{{ projection_data["fy_projected_spend"][0] | round(2) }}</td>
+                </tr>
+                <tr>
+                    <td>Required (+) / surplus (-) funds :</td>
+                    <td>£{{ projection_data["fy_projected_dif"][0] | round(2) }}</td>
+                </tr>
+                <tr>
+                    <td>Projected spending in current approval period :</td>
+                    <td>
+                        {% if projection_data["approval_end_date_projected_spend"][0] is not none %}
+                            £{{ projection_data["approval_end_date_projected_spend"][0] | round(2) }}
+                        {% else %}
+                            N/A - <i>end date beyond current financial year</i>
+                        {% endif %}
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
+    Forecast data last updated: {{ projection_data["datetime_data_updated"][0] }}
 </div>
 
 <div id="SubscriptionFCA" class="tabcontent" style="display: none">

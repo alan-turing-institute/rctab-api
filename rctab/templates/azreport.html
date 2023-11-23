@@ -1,0 +1,48 @@
+<script charset="utf-8" src="https://cdn.plot.ly/plotly-2.20.0.min.js"></script>
+<script type = "text/javascript">
+    async function generate_report(event) {
+        const usageSubmitBtn = document.getElementById("azreportsubmit")
+        usageSubmitBtn.disabled=true;
+        const usageInfoForm = document.getElementById("reportform")
+        const outDiv = document.getElementById("azreportinfo")
+        const financial_year = document.getElementById("financialyear").value
+        outDiv.innerHTML = '<div class="search-overlay"><div class="loader"></div><div class="loader-text"><br><br>Building report</div></div>'
+        event.preventDefault();
+        await fetch("/azreport/" + financial_year, {
+            method: "GET",
+        })
+        .then(response => {
+            return response.text();
+        })
+        .then(html => {
+            $("#azreportinfo").html(html)
+        })
+    usageSubmitBtn.disabled=false;
+    }
+</script>
+
+{% extends "signed_in_base.html" %}
+
+
+{% block noaccess %}
+
+<h1>Azure Usage Report</h1>
+<div>
+    <form method="get" class="tooltip" id="reportform">
+    <label for="financialyear">Select Financial Year</label>
+    <select id="financialyear" name="financialyear" required>
+        {% for year in range(current_year+1, 2020, -1) %}
+            {% set start_year = year - 1 %}
+            <option value="{{ '%02d-%02d'|format(start_year % 100, year % 100) }}">{{ '%02d-%02d'|format(start_year % 100, year % 100) }}</option>
+        {% endfor %}
+    </select>
+    <input type="button" id="azreportsubmit" value="Generate report" onclick="generate_report(event);">
+    </input>
+    </form>
+</div>
+<br>
+
+<div id="azreportinfo">
+</div>
+
+{% endblock %}
