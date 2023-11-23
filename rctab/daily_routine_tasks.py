@@ -136,7 +136,6 @@ async def send_summary_email(
                 insert(failed_emails)
                 .values(
                     {
-                        "subscription_id": UUID(int=0),
                         "type": subject,
                         "subject": error.subject,
                         "recipients": ";".join(error.recipients),
