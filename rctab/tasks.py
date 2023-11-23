@@ -6,6 +6,8 @@ from uuid import UUID
 
 from celery import Celery
 from celery.schedules import crontab
+from celery.signals import after_setup_logger, after_setup_task_logger
+from opencensus.ext.azure.log_exporter import AzureLogHandler
 
 from rctab.constants import ADMIN_OID
 from rctab.crud.models import database
@@ -13,10 +15,9 @@ from rctab.daily_routine_tasks import (
     get_timestamp_last_summary_email,
     send_summary_email,
 )
+from rctab.logutils import CustomDimensionsFilter
 from rctab.routers.accounting.abolishment import abolish_subscriptions
 from rctab.settings import get_settings
-
-# todo shut down celery and redis on exit
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +40,32 @@ def setup_periodic_tasks(sender: Any, **_) -> None:  # type: ignore[no-untyped-d
     sender.add_periodic_task(
         crontab(hour="01", minute="00"), run_abolish_subscriptions.s()
     )
+
+
+@after_setup_logger.connect
+def setup_logger(my_logger: Any, *_: Any, **__: Any) -> None:  # type: ignore[no-untyped-def]
+    """Set up celery logger."""
+    settings = get_settings()
+    if settings.central_logging_connection_string:
+        custom_dimensions = {"logger_name": "logger_celery"}
+        handler = AzureLogHandler(
+            connection_string=settings.central_logging_connection_string
+        )
+        handler.addFilter(CustomDimensionsFilter(custom_dimensions))
+        my_logger.addHandler(handler)
+
+
+@after_setup_task_logger
+def setup_task_logger(my_logger: Any, *_: Any, **__: Any) -> None:  # type: ignore[no-untyped-def]
+    """Set up celery task logger."""
+    settings = get_settings()
+    if settings.central_logging_connection_string:
+        custom_dimensions = {"logger_name": "logger_celery_worker"}
+        handler = AzureLogHandler(
+            connection_string=settings.central_logging_connection_string
+        )
+        handler.addFilter(CustomDimensionsFilter(custom_dimensions))
+        my_logger.addHandler(handler)
 
 
 async def send() -> None:
