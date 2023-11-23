@@ -9,13 +9,14 @@ from pytest_mock import MockerFixture
 from sqlalchemy import insert
 
 from rctab.constants import EMAIL_TYPE_SUMMARY
-from rctab.crud.accounting_models import emails, subscription
+from rctab.crud.accounting_models import emails, failed_emails, subscription
 from rctab.daily_routine_tasks import (
     calc_how_long_to_sleep_for,
     get_timestamp_last_summary_email,
     routine_tasks,
     send_summary_email,
 )
+from rctab.routers.accounting.send_emails import MissingEmailParamsError
 from tests.test_routes import constants
 from tests.test_routes.test_abolishment import create_expired_subscription
 from tests.test_routes.test_routes import (  # pylint: disable=unused-import # noqa
@@ -181,3 +182,34 @@ async def test_send_summary_email(
         {"mock new subs": "return_value"},
         email_recipients,
     )
+
+
+@pytest.mark.asyncio
+async def test_send_summary_email_missing_params(
+    mocker: MockerFixture,
+    test_db: Database,  # pylint: disable=redefined-outer-name  # noqa
+) -> None:
+    # pylint: disable=unused-argument
+    mock_prepare = AsyncMock()
+    mock_prepare.return_value = {"mock new subs": "return_value"}
+    mocker.patch("rctab.daily_routine_tasks.prepare_summary_email", mock_prepare)
+
+    mock_send = mocker.patch("rctab.daily_routine_tasks.send_with_sendgrid")
+    email_recipients = ["me@my.org", "they@their.org"]
+    mock_send.side_effect = MissingEmailParamsError(
+        subject="the_subject",
+        recipients=email_recipients,
+        from_email="the_email_address",
+        message="the_message",
+    )
+
+    await send_summary_email(email_recipients)
+
+    row = await test_db.fetch_one(failed_emails.select())
+
+    assert row is not None
+    assert row["type"] == "Daily summary"
+    assert row["subject"] == "the_subject"
+    assert row["recipients"] == "me@my.org;they@their.org"
+    assert row["from_email"] == "the_email_address"
+    assert row["message"] == "the_message"
