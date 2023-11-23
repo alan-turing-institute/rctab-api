@@ -1,4 +1,4 @@
-FROM docker.io/tiangolo/uvicorn-gunicorn-fastapi:python3.10-slim
+FROM docker.io/tiangolo/uvicorn-gunicorn-fastapi:python3.11-slim
 
 # Install dependencies
 RUN apt-get update
