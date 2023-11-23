@@ -110,8 +110,9 @@ source example.env
 # Stop automatically exporting variables
 set +a
 
-# Create schema
-poetry run scripts/prestart.sh
+# Create schema but don't start Celery, Redis, etc.
+sleep 5
+poetry run alembic upgrade head
 
 # Run tests
 if [ "$TEST_CONFIGURATION" = "main" ]; then
