@@ -19,7 +19,7 @@ from rctab.logutils import CustomDimensionsFilter
 from rctab.routers.accounting.abolishment import abolish_subscriptions
 from rctab.settings import get_settings
 
-logger = logging.getLogger(__name__)
+my_logger = logging.getLogger(__name__)
 
 CELERY_BROKER_URL: Final = "redis://localhost:6379/0"
 
@@ -43,7 +43,7 @@ def setup_periodic_tasks(sender: Any, **_) -> None:  # type: ignore[no-untyped-d
 
 
 @after_setup_logger.connect
-def setup_logger(my_logger: Any, *_: Any, **__: Any) -> None:  # type: ignore[no-untyped-def]
+def setup_logger(logger: Any, *_: Any, **__: Any) -> None:  # type: ignore[no-untyped-def]
     """Set up celery logger."""
     settings = get_settings()
     if settings.central_logging_connection_string:
@@ -52,11 +52,11 @@ def setup_logger(my_logger: Any, *_: Any, **__: Any) -> None:  # type: ignore[no
             connection_string=settings.central_logging_connection_string
         )
         handler.addFilter(CustomDimensionsFilter(custom_dimensions))
-        my_logger.addHandler(handler)
+        logger.addHandler(handler)
 
 
-@after_setup_task_logger
-def setup_task_logger(my_logger: Any, *_: Any, **__: Any) -> None:  # type: ignore[no-untyped-def]
+@after_setup_task_logger.connect
+def setup_task_logger(logger: Any, *_: Any, **__: Any) -> None:  # type: ignore[no-untyped-def]
     """Set up celery task logger."""
     settings = get_settings()
     if settings.central_logging_connection_string:
@@ -65,7 +65,7 @@ def setup_task_logger(my_logger: Any, *_: Any, **__: Any) -> None:  # type: igno
             connection_string=settings.central_logging_connection_string
         )
         handler.addFilter(CustomDimensionsFilter(custom_dimensions))
-        my_logger.addHandler(handler)
+        logger.addHandler(handler)
 
 
 async def send() -> None:
@@ -77,7 +77,7 @@ async def send() -> None:
             time_last_summary_email = await get_timestamp_last_summary_email()
             await send_summary_email(recipients, time_last_summary_email)
         else:
-            logger.warning("No recipients for summary email found")
+            my_logger.warning("No recipients for summary email found")
     finally:
         await database.disconnect()
 
