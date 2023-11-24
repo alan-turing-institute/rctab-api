@@ -103,12 +103,12 @@ You can further filter the log messages on the Azure portal.
 For example
 
 ```text
-traces
-| extend logger_name = tostring(customDimensions.logger_name)
-| extend module = tostring(customDimensions.module)
-| extend line_number = tostring(customDimensions.lineNumber)
+AppTraces
+| extend logger_name = tostring(Properties.logger_name)
+| extend module = tostring(Properties.module)
+| extend line_number = tostring(Properties.lineNumber)
 | where module == "main"
-| where message contains "Starting server"
+| where Message has "Starting server"
 ```
 
 The log levels used with the Python `Logger` correspond to `severityLevel` in `traces` on the Azure portal. `severityLevel` uses integer numbers. For convenience, these numbers can be easily substituted with the more familiar corresponding log levels by adding the following line to the `kusto` query:
