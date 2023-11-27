@@ -20,12 +20,12 @@ from opencensus.ext.azure.log_exporter import AzureLogHandler
 
 from rctab.constants import ADMIN_OID
 from rctab.crud.models import database
-from rctab.daily_routine_tasks import (
+from rctab.logutils import CustomDimensionsFilter
+from rctab.routers.accounting.abolishment import abolish_subscriptions
+from rctab.routers.accounting.summary_emails import (
     get_timestamp_last_summary_email,
     send_summary_email,
 )
-from rctab.logutils import CustomDimensionsFilter
-from rctab.routers.accounting.abolishment import abolish_subscriptions
 from rctab.settings import get_settings
 
 my_logger = logging.getLogger(__name__)
