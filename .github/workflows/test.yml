@@ -26,6 +26,11 @@ jobs:
           POSTGRES_PASSWORD: password
         ports:
           - 5432:5432
+      redis:
+        image: redis
+        ports:
+          # Opens tcp port 6379 on the host and service container
+          - 6379:6379
 
     steps:
       - name: Checkout
@@ -44,16 +49,7 @@ jobs:
 
       - name: Run main tests
         shell: bash
-        run: scripts/runtests.sh -d -c main
-
-      # - run: poetry run coverage xml
-      # - run: poetry run genbadge coverage --input-file coverage.xml --local
-      # - uses: LanceMcCarthy/Action-AzureBlobUpload@v1.11.0
-      #   name: Coverage Azure Blob Upload
-      #   with:
-      #     connection_string: ${{ secrets.AZURE_BLOB_CONNECTION_STR }}
-      #     container_name: rctabcoveragecontainer
-      #     source_folder: coverage-badge.svg
+        run: CELERY_RESULT_BACKEND="redis://localhost:6379/0" scripts/runtests.sh -d -c main
 
       - name: Run route tests
         shell: bash
