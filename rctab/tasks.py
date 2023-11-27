@@ -1,4 +1,13 @@
-"""Tasks that run in the background."""
+"""Tasks that run in the background.
+
+Be sure to test any changes to these tasks locally by running:
+`celery -A rctab.tasks worker --loglevel=info`
+and either calling the task manually from Python with:
+`taskname.delay()`
+or running Celery Beat in a shell and waiting
+for the task to run on schedule:
+`celery -A rctab.tasks beat --loglevel=info`
+"""
 import asyncio
 import logging
 from typing import Any, Final

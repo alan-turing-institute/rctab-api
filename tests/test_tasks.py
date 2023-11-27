@@ -1,81 +1,126 @@
 import logging
+import os
+import subprocess
+import time
+from typing import Generator, List
 from uuid import UUID
 
 import pytest
+from pytest_mock import MockerFixture
 
-from rctab.settings import Settings, get_settings
+from rctab.constants import ADMIN_OID
+from rctab.tasks import (
+    abolish,
+    run_abolish_subscriptions,
+    run_send_summary_email,
+    send,
+    setup_logger,
+    setup_periodic_tasks,
+    setup_task_logger,
+)
 
-# pylint: disable=unexpected-keyword-arg
-# pylint: disable=use-implicit-booleaness-not-comparison
+# pylint: disable=unused-argument
+# pylint: disable=redefined-outer-name
 
 
-def test_settings() -> None:
-    """Check testing is set to true. If not the tests will write to database"""
-    assert get_settings().testing, "Set the TESTING env var to True"
+@pytest.fixture(scope="session")
+def my_celery_worker() -> Generator[None, None, None]:
+    with subprocess.Popen(
+        [
+            "celery",
+            "-A",
+            "rctab.tasks",
+            "worker",
+            "--loglevel=info",
+            "--concurrency",
+            "1",
+            "--hostname",
+            "rctab-api-testworker",
+        ]
+    ) as worker_process:
+        time.sleep(5)
+        yield None
+        worker_process.terminate()
 
 
-def test_minimal_settings() -> None:
-    """Check that we can make a new settings with the minimal required values."""
-    settings = Settings(  # type: ignore
-        db_user="my_db_user",
-        db_password="my_db_password",
-        db_host="my_db_host",
-        # To stop any local .env files influencing the test
-        _env_file=None,
+@pytest.mark.skipif(
+    os.environ.get("CELERY_RESULT_BACKEND") is None,
+    reason="Start a celery backend and set env var to enable.",
+)
+def test_abolish_subscriptions_task(my_celery_worker: None) -> None:
+    result = run_abolish_subscriptions.delay()
+    return_value = result.wait(timeout=5)
+    assert return_value is None
+
+
+@pytest.mark.skipif(
+    os.environ.get("CELERY_RESULT_BACKEND") is None,
+    reason="Start a celery backend and set env var to enable.",
+)
+def test_send_summary_email_task(my_celery_worker: None) -> None:
+    result = run_send_summary_email.delay()
+    return_value = result.wait(timeout=1)
+    assert return_value is None
+
+
+def test_setup_periodic_tasks(
+    mocker: MockerFixture,
+) -> None:
+    """Check that we can set up periodic tasks."""
+    sender = mocker.MagicMock()
+    # https://docs.celeryq.dev/en/main/userguide/periodic-tasks.html#entries
+    setup_periodic_tasks(sender=sender)
+
+
+def test_setup_logger() -> None:
+    """Check that we can set up logging."""
+    logger = logging.getLogger(__name__)
+    # https://docs.celeryq.dev/en/stable/userguide/signals.html#after-setup-logger
+    setup_logger(logger=logger, loglevel=None, logfile=None, format=None, colorize=None)
+
+
+def test_setup_task_logger() -> None:
+    """Check that we can set up task logging."""
+    logger = logging.getLogger(__name__)
+    # https://docs.celeryq.dev/en/stable/userguide/signals.html#after-setup-task-logger
+    setup_task_logger(
+        logger=logger, loglevel=None, logfile=None, format=None, colorize=None
     )
 
-    # Check the defaults
-    assert settings.db_port == 5432
-    assert settings.db_name == ""
-    assert settings.ssl_required is False
-    assert settings.testing is True  # Tricky one to test
-    assert settings.log_level == logging.getLevelName(logging.WARNING)
-    assert settings.ignore_whitelist is False
-    assert settings.whitelist == []
-    assert settings.notifiable_roles == ["Contributor"]
-    assert settings.roles_filter == ["Contributor"]
-    assert settings.admin_email_recipients == []
+
+@pytest.mark.asyncio
+async def test_send(
+    mocker: MockerFixture,
+) -> None:
+    """Check that we can send summary emails."""
+    mock_send = mocker.patch("rctab.tasks.send_summary_email")
+    mock_get_settings = mocker.patch("rctab.tasks.get_settings")
+
+    recipients = ["me@my.org"]
+    mock_get_settings.return_value.admin_email_recipients = recipients
+    await send()
+    mock_send.assert_called_once_with(recipients, None)
 
 
-def test_settings_raises() -> None:
-    """Check that we raise an error if a PostgreSQL DSN is provided."""
-    with pytest.raises(ValueError):
-        Settings(  # type: ignore
-            db_user="my_db_user",
-            db_password="my_db_password",
-            db_host="my_db_host",
-            postgres_dsn="postgresql://user:password@0.0.0.0:6000/mypostgresdb",
-            # To stop any local .env files influencing the test
-            _env_file=None,
-        )
+@pytest.mark.asyncio
+async def test_send_no_recipients(
+    mocker: MockerFixture, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Check that we only send summary emails if we have recipients."""
+    mock_get_settings = mocker.patch("rctab.tasks.get_settings")
+
+    recipients: List[str] = []
+    mock_get_settings.return_value.admin_email_recipients = recipients
+    await send()
+    assert "No recipients for summary email found" in caplog.text
 
 
-def test_maximal_settings() -> None:
-    """Check that we can make a new Settings with all known values."""
-    settings = Settings(  # type: ignore
-        db_user="my_db_user",
-        db_password="my_db_password",
-        db_host="my_db_host",
-        db_port=5432,
-        db_name="my_db_name",
-        ssl_required=False,
-        testing=False,
-        sendgrid_api_key="sendgrid_key1234",
-        sendgrid_sender_email="myemail@myorg.com",
-        notifiable_roles=["Contributor", "Billing Reader"],
-        roles_filter=["Owner", "Contributor"],
-        log_level=logging.getLevelName(logging.INFO),
-        ignore_whitelist=False,
-        whitelist=[UUID(int=786)],
-        usage_func_public_key="3456",
-        status_func_public_key="2345",
-        controller_func_public_key="1234",
-        admin_email_recipients=["myemail@myorg.com"],
-        # To stop any local .env files influencing the test
-        _env_file=None,
-    )
+@pytest.mark.asyncio
+async def test_abolish(
+    mocker: MockerFixture,
+) -> None:
+    """Check that we can abolish subscriptions."""
+    mock_abolish = mocker.patch("rctab.tasks.abolish_subscriptions")
 
-    assert (
-        settings.postgres_dsn
-        == "postgresql://my_db_user:my_db_password@my_db_host:5432/my_db_name"
-    )
+    await abolish()
+    mock_abolish.assert_called_once_with(UUID(ADMIN_OID))
