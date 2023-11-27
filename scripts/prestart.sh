@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# todo remove logfiles
 
 # For background tasks, we need Redis and Celery running
 redis-server ./redis.conf &
