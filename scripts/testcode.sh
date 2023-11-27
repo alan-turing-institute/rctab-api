@@ -41,7 +41,7 @@ while getopts "hpc:e:d" option; do
 done
 shift $((OPTIND-1))
 
-POSTGRES_CONTAINER=docker.io/postgres:11
+POSTGRES_CONTAINER=docker.io/postgres:14
 CONTAINER_NAME=unittests
 POSTGRES_PORT=5432 # same as active database
 read -ra DOCKER_CONTAINERS < <(docker container ls -q)
