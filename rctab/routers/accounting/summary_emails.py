@@ -1,6 +1,6 @@
 """Background tasks that run daily."""
 import logging
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import List, Optional
 from uuid import UUID
 
@@ -16,17 +16,6 @@ from rctab.routers.accounting.send_emails import (
 )
 
 logger = logging.getLogger(__name__)
-
-
-def datetime_utcnow() -> datetime:
-    """Returns the current date and time in the UTC timezone.
-
-    Returns:
-        The current UTC date and time.
-    """
-    # This can be patched for testing more easily than datetime
-
-    return datetime.now(timezone.utc)
 
 
 async def send_summary_email(
