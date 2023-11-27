@@ -9,11 +9,11 @@ from pytest_mock import MockerFixture
 
 from rctab.constants import EMAIL_TYPE_SUMMARY
 from rctab.crud.accounting_models import emails, failed_emails, subscription
-from rctab.daily_routine_tasks import (
+from rctab.routers.accounting.send_emails import MissingEmailParamsError
+from rctab.routers.accounting.summary_emails import (
     get_timestamp_last_summary_email,
     send_summary_email,
 )
-from rctab.routers.accounting.send_emails import MissingEmailParamsError
 from tests.test_routes import constants
 from tests.test_routes.test_routes import (  # pylint: disable=unused-import # noqa
     create_subscription,
@@ -60,11 +60,15 @@ async def test_send_summary_email(
     # pylint: disable=unused-argument
     mock_prepare = AsyncMock()
     mock_prepare.return_value = {"mock new subs": "return_value"}
-    mocker.patch("rctab.daily_routine_tasks.prepare_summary_email", mock_prepare)
+    mocker.patch(
+        "rctab.routers.accounting.summary_emails.prepare_summary_email", mock_prepare
+    )
 
     email_recipients = ["test@test.com"]
 
-    mock_send = mocker.patch("rctab.daily_routine_tasks.send_with_sendgrid")
+    mock_send = mocker.patch(
+        "rctab.routers.accounting.summary_emails.send_with_sendgrid"
+    )
 
     await send_summary_email(email_recipients)
 
@@ -84,9 +88,13 @@ async def test_send_summary_email_missing_params(
     # pylint: disable=unused-argument
     mock_prepare = AsyncMock()
     mock_prepare.return_value = {"mock new subs": "return_value"}
-    mocker.patch("rctab.daily_routine_tasks.prepare_summary_email", mock_prepare)
+    mocker.patch(
+        "rctab.routers.accounting.summary_emails.prepare_summary_email", mock_prepare
+    )
 
-    mock_send = mocker.patch("rctab.daily_routine_tasks.send_with_sendgrid")
+    mock_send = mocker.patch(
+        "rctab.routers.accounting.summary_emails.send_with_sendgrid"
+    )
     email_recipients = ["me@my.org", "they@their.org"]
     mock_send.side_effect = MissingEmailParamsError(
         subject="the_subject",
