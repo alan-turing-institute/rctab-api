@@ -1,7 +1,7 @@
+"""Tests for the rctab.tasks module."""
 import logging
 import os
 import subprocess
-import time
 from typing import Generator, List
 from uuid import UUID
 
@@ -25,6 +25,7 @@ from rctab.tasks import (
 
 @pytest.fixture(scope="session")
 def my_celery_worker() -> Generator[None, None, None]:
+    """Start/stop a celery worker for testing."""
     with subprocess.Popen(
         [
             "celery",
@@ -38,7 +39,6 @@ def my_celery_worker() -> Generator[None, None, None]:
             "rctab-api-testworker",
         ]
     ) as worker_process:
-        time.sleep(5)
         yield None
         worker_process.terminate()
 
@@ -48,6 +48,7 @@ def my_celery_worker() -> Generator[None, None, None]:
     reason="Start a celery backend and set env var to enable.",
 )
 def test_abolish_subscriptions_task(my_celery_worker: None) -> None:
+    """Check that we can run the abolish subscriptions task."""
     result = run_abolish_subscriptions.delay()
     return_value = result.wait(timeout=5)
     assert return_value is None
@@ -58,8 +59,9 @@ def test_abolish_subscriptions_task(my_celery_worker: None) -> None:
     reason="Start a celery backend and set env var to enable.",
 )
 def test_send_summary_email_task(my_celery_worker: None) -> None:
+    """Check that we can run the summary email task."""
     result = run_send_summary_email.delay()
-    return_value = result.wait(timeout=1)
+    return_value = result.wait(timeout=5)
     assert return_value is None
 
 
