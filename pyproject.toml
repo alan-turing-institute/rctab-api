@@ -13,7 +13,7 @@ asyncpg = "^0.27.0"
 azure-identity = "^1.5.0"
 databases = { version = "^0.6.2", extras = ["postgresql"] }
 fastapi = "^0.95.0"
-fastapimsal = { git = "https://github.com/alan-turing-institute/fastapimsal", tag = "0.4.7" }
+fastapimsal = { git = "https://github.com/alan-turing-institute/fastapimsal", tag = "0.4.8" }
 Jinja2 = "^3.1.1"
 opencensus-ext-azure = "^1.1.7"
 pandas = "^1.1.3"

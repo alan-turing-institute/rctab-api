@@ -1056,7 +1056,7 @@ test = ["anyio[trio] (>=3.2.1,<4.0.0)", "black (==23.1.0)", "coverage[toml] (>=6
 
 [[package]]
 name = "fastapimsal"
-version = "0.4.6"
+version = "0.4.8"
 description = "Library to authenticate users using MSAL"
 optional = false
 python-versions = "^3.7"
@@ -1076,8 +1076,8 @@ uvicorn = {version = "^0.17.6", extras = ["standard"]}
 [package.source]
 type = "git"
 url = "https://github.com/alan-turing-institute/fastapimsal"
-reference = "0.4.7"
-resolved_reference = "3816aa10a67d4be021bd0ec00889687e2c67b8c2"
+reference = "0.4.8"
+resolved_reference = "92e0d1cb7c127d9964f88013ea7126a85b6ac310"
 
 [[package]]
 name = "filelock"
@@ -4318,4 +4318,4 @@ docs = ["myst-parser", "sphinx-rtd-theme", "sphinxcontrib-napoleon"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10 <3.12"
-content-hash = "3dc87f22773eb31d6815229032bdf619fdf42be2cc3c46f48e3dafb6a3e021a0"
+content-hash = "eaaa66d2f9e3509b7922c15fcce73e3785331e0b37521de31825ab06c4da78c5"
