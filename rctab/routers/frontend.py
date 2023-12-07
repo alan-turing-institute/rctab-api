@@ -45,8 +45,6 @@ router = APIRouter()
 
 BETA_ACCESS = False
 
-current_year = datetime.date.today().year
-
 
 async def get_cost_breakdown(usage_object_list: list) -> pd.DataFrame:
     """Get a cost breakdown to build a plot from."""
@@ -121,7 +119,7 @@ async def home(
                 "request": request,
                 "version": __version__,
                 "organisation": settings.organisation,
-                "current_year": current_year,
+                "current_year": datetime.date.today().year,
             },
         )
 
@@ -153,7 +151,7 @@ async def home(
             {
                 "request": request,
                 "version": __version__,
-                "current_year": current_year,
+                "current_year": datetime.date.today().year,
             },
         )
 
@@ -190,7 +188,7 @@ async def home(
             "is_admin": access_to_span(access_status.is_admin),
             "azure_sub_data": subscriptions_with_access,
             "organisation": settings.organisation,
-            "current_year": current_year,
+            "current_year": datetime.date.today().year,
         },
     )
 
@@ -315,7 +313,7 @@ async def subscription_details(
             "all_costrecovery": all_costrecovery,
             "all_rbac_assignments": sorted_all_rbac_assignments,
             "views": views,
-            "current_year": current_year,
+            "current_year": datetime.date.today().year,
         },
     )
 
