@@ -16,9 +16,6 @@ body {
   height: 5%;
   padding: 0;
   margin: 0;
- /* padding-left: 10vw;
-  padding-right: 10vw;
-  */
 }
 /* Style the links inside the navigation bar */
 .topnav a {
@@ -37,24 +34,14 @@ body {
 }
 /* Add a color to the active/current link */
 .topnav a.active {
-  background-color: #2AD2C9;
+  background-color: #2ad2c9;
   color: white;
-}
-.topnav a.title {
-  float: right;
-  font-weight: italic;
-}
-.topnav a.login {
-  float: right;
 }
 .topnav #logout {
   float: right;
 }
 .content {
-  margin-left: 5%;
-  margin-right: 5%;
-  margin-top: 5%;
-  margin-bottom: 5%;
+  margin: 5%;
   overflow: auto;
 }
 .footer {
@@ -90,6 +77,7 @@ body {
   width: 85vw;
   padding: 2vw;
   border-radius: 25px;
+  background-color: rgb(241, 241, 241);
   background-color: rgba(241, 241, 241, 0.671);
   position: relative;
 }
@@ -110,6 +98,7 @@ body {
   color: white;
 }
 .basicButton:disabled {
+  background-color: rgb(255, 255, 255);
   background-color: rgba(255, 255, 255, 25);
   color: rgb(134, 134, 134);
 }
