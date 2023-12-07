@@ -120,7 +120,6 @@ async def test_check_user_on_subscription(
     assert user_on_subscription is False
 
 
-
 @pytest.mark.asyncio
 async def test_render_home_page(mocker: MockerFixture, test_db: Database) -> None:
     """Check that we can pick up on undefined variable template issues."""
