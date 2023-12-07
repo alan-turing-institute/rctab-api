@@ -16,3 +16,5 @@ rules:
   no-undefined: "error"
   no-use-before-define: "error"
   no-var: "error"
+parserOptions:
+  ecmaVersion: 9
