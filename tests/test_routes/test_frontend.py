@@ -10,7 +10,7 @@ from pytest_mock import MockerFixture
 
 from rctab.crud.accounting_models import subscription, subscription_details
 from rctab.crud.schema import RoleAssignment, SubscriptionState, UserRBAC
-from rctab.routers.frontend import home
+from rctab.routers.frontend import check_user_on_subscription, home
 from tests.test_routes import constants
 from tests.test_routes.test_routes import test_db  # pylint: disable=unused-import
 
@@ -91,3 +91,26 @@ async def test_no_username_no_subscriptions(
 
     # Check that no subscriptions are passed to the template
     assert mock_templates.TemplateResponse.call_args.args[1]["azure_sub_data"] == []
+
+
+@pytest.mark.asyncio
+async def test_check_user_on_subscription(
+    test_db: Database,  # pylint: disable=redefined-outer-name
+) -> None:
+    subscription_id = UUID(int=1)
+
+    await test_db.execute(
+        subscription.insert().values(),
+        dict(
+            admin=str(constants.ADMIN_UUID),
+            subscription_id=str(subscription_id),
+        ),
+    )
+
+    # Since there is no subscription_detail row,
+    # there won't be any role assignments
+    user_on_subscription = await check_user_on_subscription(
+        subscription_id, username=""
+    )
+
+    assert user_on_subscription is False

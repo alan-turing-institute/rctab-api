@@ -67,3 +67,7 @@ repos:
             tests|
             scripts
           )
+  - repo: https://github.com/pre-commit/mirrors-eslint
+    rev: 'v8.53.0'
+    hooks:
+      - id: eslint
