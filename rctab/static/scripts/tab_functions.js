@@ -25,7 +25,25 @@ function openTab(evt, tabName) {
 
 
 $(document).ready( function () {
-    // Set the previously selected tab as active on page refresh if exists
+    // Get all tabs and hide them
+//    let tabcontent = document.getElementsByClassName("tabcontent");
+//    for (let i = 0; i < tabcontent.length; i++) {
+//        tabcontent[i].style.display = "none";
+//    }
+
+    const aaBtn = document.getElementById("SubscriptionAA_btn");
+    aaBtn.onclick = function(event) {openTab(event, 'SubscriptionAA')};
+
+    const fcaBtn = document.getElementById("SubscriptionFCA_btn");
+    fcaBtn.onclick = function(event) {openTab(event, 'SubscriptionFCA')};
+
+    const uaBtn = document.getElementById("SubscriptionUA_btn");
+    uaBtn.onclick = function(event) {openTab(event, 'SubscriptionUA')};
+
+    const uBtn = document.getElementById("SubscriptionU_btn");
+    uBtn.onclick = function(event) {openTab(event, 'SubscriptionU')};
+
+    // Set the previously selected tab as active on page refresh
     if(window.location.pathname.includes('/details/')) {
         const currentTab = sessionStorage.getItem('currentTab');
         if (currentTab) {

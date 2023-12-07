@@ -65,14 +65,14 @@
 </div>
 
 <div class="tab">
-    <button id="SubscriptionAA_btn" class="tablinks" onclick="openTab(event, 'SubscriptionAA')" name="defaultOpen">Approvals and Allocations</button>
-    <button id="SubscriptionFCA_btn" class="tablinks" onclick="openTab(event, 'SubscriptionFCA')">Finance and Cost Recovery</button>
-    <button id="SubscriptionUA_btn" class="tablinks" onclick="openTab(event, 'SubscriptionUA')">Users with access</button>
-    <button id="SubscriptionU_btn" class="tablinks" onclick="openTab(event, 'SubscriptionU')">Usage</button>
+    <button id="SubscriptionAA_btn" class="tablinks" name="defaultOpen">Approvals and Allocations</button>
+    <button id="SubscriptionFCA_btn" class="tablinks">Finance and Cost Recovery</button>
+    <button id="SubscriptionUA_btn" class="tablinks">Users with access</button>
+    <button id="SubscriptionU_btn" class="tablinks">Usage</button>
 </div>
 
 
-<div id="SubscriptionAA" class="tabcontent" style="display: none">
+<div id="SubscriptionAA" class="tabcontent">
     <h3>Details of subscription approvals and allocations</h3>
     <div class="flex-grid">
         <div class="col">
@@ -116,7 +116,7 @@
     </div>
 </div>
 
-<div id="SubscriptionFCA" class="tabcontent" style="display: none">
+<div id="SubscriptionFCA" class="tabcontent">
     <h3>Details of subscription finances and cost recovery</h3>
     <div class="flex-grid">
         <div class="col">
@@ -171,7 +171,7 @@
     </div>
 </div>
 
-<div id="SubscriptionUA" class="tabcontent" style="display: none">
+<div id="SubscriptionUA" class="tabcontent">
     <h3>Subscription users with access</h3>
     <div class="flex-grid">
         <div class="col usersTable">
@@ -198,13 +198,13 @@
     </div>
 </div>
 
-<div id="SubscriptionU" class="tabcontent" style="display: none">
+<div id="SubscriptionU" class="tabcontent">
     <h3>Usage breakdown</h3>
     <div>
         <form method="get" class="tooltip" id="usageinfoform">
         <label for="timeperiodstr">Start date</label>
         <input type="date" id="timeperiodstr" min="2015-03-01">
-        <input type="button" id="usagesubmitbtn" value="fetch data" onclick="fetchUsageData(event);">
+        <input type="button" id="usagesubmitbtn" value="fetch data">
         <span class="tooltiptext">Load usage data since start date. This may take some time depending on the length of time requested.</span>
         </form>
     </div>
