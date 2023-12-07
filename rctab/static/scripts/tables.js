@@ -1,18 +1,4 @@
-$(document).ready( function () {
-    // Only run on the main page
-    if ($('#subscription_table_all').length > 0) {
-        $('#subscription_table_all').DataTable({
-            columnDefs: [
-                { orderable: false, targets: 0 }
-            ],
-            order: [[2, 'asc']],
-            paging: false,
-        });
-        // Hide abolished rows by default
-        hideAbolishedRows(true);
-        document.getElementById("show_abolished_checkbox").checked = false;
-    }
-} );
+"use strict";
 
 function hideAbolishedRows(input) {
   // Hide or show abolished rows by finding rows with the red x and turning
@@ -30,3 +16,19 @@ function hideAbolishedRows(input) {
       }
   })
 }
+
+$(document).ready( function () {
+    // Only run on the main page
+    if ($('#subscription_table_all').length > 0) {
+        $('#subscription_table_all').DataTable({
+            columnDefs: [
+                { orderable: false, targets: 0 }
+            ],
+            order: [[2, 'asc']],
+            paging: false,
+        });
+        // Hide abolished rows by default
+        hideAbolishedRows(true);
+        document.getElementById("show_abolished_checkbox").checked = false;
+    }
+} );

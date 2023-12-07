@@ -1,29 +1,9 @@
-<script charset="utf-8" src="https://cdn.plot.ly/plotly-2.20.0.min.js"></script>
-<script type = "text/javascript">
-    async function fetchusagedata(event) {
-        const usageSubmitBtn = document.getElementById("usagesubmitbtn")
-        usageSubmitBtn.disabled=true;
-        const usageInfoForm = document.getElementById("usageinfoform")
-        const outDiv = document.getElementById("azureusageinfo")
-        const datestring = document.getElementById("timeperiodstr").value
-        const subscription_id = document.getElementById("subscription_id").innerText
-        outDiv.innerHTML = '<div class="search-overlay"><div class="loader"></div><div class="loader-text"><br><br>Loading data<br><br>This may take a few seconds or a few minutes depending on the length of time requested.</div></div>'
-        event.preventDefault();
-        await fetch("/process_usage/" + subscription_id + "?timeperiodstr=" + datestring, {
-            method: "GET",
-        })
-        .then(response => {
-            return response.text();
-        })
-        .then(html => {
-            $("#azureusageinfo").html(html)
-        })
-    usageSubmitBtn.disabled=false;
-    }
-</script>
-
-
 {% extends "signed_in_base.html" %}
+{% block head %}
+{{ super() }}
+<script charset="utf-8" src="https://cdn.plot.ly/plotly-2.20.0.min.js"></script>
+<script type="text/javascript" charset="utf8" src="{{ url_for('static', path ='scripts/usage_data.js') }}"></script>
+{% endblock %}
 
 {% block noaccess %}
 
@@ -36,7 +16,7 @@
         <tr>
             <th class="tooltip">Expiry Date<span class="tooltiptext">Your subscription will expire on this date</span></th>
             <th>Status</th>
-            <th class="tooltip">Approved<span class="tooltiptext">Approved credits are ring fenced for your use but cannot be spent until they are allocated</span></th>
+            <th class="tooltip">Approved<span class="tooltiptext">Approved credits are ring-fenced for your use but cannot be spent until they are allocated</span></th>
             <th class="tooltip">Allocated<span class="tooltiptext">Allocated credits are available to spend. When usage is greater than allocated your account will be disabled</span></th>
             <th class="tooltip">Total Costs<span class="tooltiptext">Totals Costs are the total usage and purchase costs, including amortised costs of reservations</span></th>
             <th class="tooltip">Remaining<span class="tooltiptext">If this goes below £0.0 your subscription will be disabled</span></th>
@@ -53,7 +33,6 @@
         </tr>
     </tbody>
 </table>
-
 
 <h3>Useful cost analysis views</h3>
 <p>
@@ -225,7 +204,7 @@
         <form method="get" class="tooltip" id="usageinfoform">
         <label for="timeperiodstr">Start date</label>
         <input type="date" id="timeperiodstr" min="2015-03-01">
-        <input type="button" id="usagesubmitbtn" value="fetch data" onclick="fetchusagedata(event);">
+        <input type="button" id="usagesubmitbtn" value="fetch data" onclick="fetchUsageData(event);">
         <span class="tooltiptext">Load usage data since start date. This may take some time depending on the length of time requested.</span>
         </form>
     </div>

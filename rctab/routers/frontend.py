@@ -2,7 +2,7 @@
 import datetime
 import logging
 from pathlib import Path
-from typing import Optional
+from typing import Dict, Final, List, Optional
 from uuid import UUID
 
 import pandas as pd
@@ -95,16 +95,13 @@ def access_to_span(status: bool) -> str:
 
 async def check_user_on_subscription(subscription_id: UUID, username: str) -> bool:
     """Check whether a user has a role assignment on the subscription."""
-    rbac_assignments = [
-        RoleAssignment(**i)
-        for i in (await get_subscription_details(subscription_id))[0][
-            "role_assignments"
-        ]
+    role_assignments = (await get_subscription_details(subscription_id))[0][
+        "role_assignments"
     ]
-
-    for entry in rbac_assignments:
-        if entry.mail == username:
-            return True
+    if role_assignments:
+        for item in role_assignments:
+            if RoleAssignment(**item).mail == username:
+                return True
 
     return False
 
@@ -253,44 +250,38 @@ async def subscription_details(
         )  # pylint: disable=unexpected-keyword-arg
     ]
 
-    # pylint: disable=line-too-long
     subscription_details_info = (await get_subscriptions_with_disable(subscription_id))[
         0
     ]
+    role_assignments = subscription_details_info["role_assignments"]
 
-    # return 404 if subscription does not have rbac
-    if subscription_details_info["role_assignments"] is None:
-        return templates.TemplateResponse(
-            "404.html",
-            {
-                "request": request,
-                "version": __version__,
-                "subscription_id": subscription_id,
-            },
-        )
+    all_rbac_assignments = (
+        [RoleAssignment(**i) for i in role_assignments] if role_assignments else []
+    )
 
-    all_rbac_assignments = [
-        RoleAssignment(**i)
-        for i in (await get_subscription_details(subscription_id, raise_404=False))[0][
-            "role_assignments"
-        ]
-    ]  # pylint: disable=unexpected-keyword-arg
-    # pylint: disable=line-too-long
-    role_order = [
+    role_order: Final = (
         "Owner",
         "User Access Administrator",
         "Management Group Contributor",
         "Contributor",
         "Billing Reader",
         "Reader",
-    ]
-    sorted_all_rbac_assignments = [
-        v
-        for x in role_order
-        for v in all_rbac_assignments
-        if v.role_name == x and "-function" not in v.display_name
-    ]
+    )
 
+    # Take one pass through the assignments to make a dict...
+    assignments_dict: Dict[str, List[RoleAssignment]] = {}
+    for assignment in all_rbac_assignments:
+        if assignment.role_name not in assignments_dict:
+            assignments_dict[assignment.role_name] = []
+        if "-function" not in assignment.display_name:
+            assignments_dict[assignment.role_name].append(assignment)
+
+    # ...then sort the assignments by role
+    sorted_all_rbac_assignments = []
+    for role in role_order:
+        sorted_all_rbac_assignments.extend(assignments_dict[role])
+
+    # pylint: disable=line-too-long
     views = {
         "by_resource_past_6m": "H4sIAAAAAAAAA41SXU%2FbQBD8L%2Ffs0BJCFHhLCI2QqB3Fpi8VijbnjTlxvnPvA9WN%2FN%2B7aycttA%2FweLszc7OzexAyOodGtuJarBZrkYgSAm7AVEiVe%2FBh%2BtWa8OSp8yOiI9xBhLbh7ry2LqhfWN5YHwYm5BgYUTkwUYNTgYV7Bd0SBKrKYQVBWdML2QC6Z9PDQM2qR7F9NHKAiTzWokv%2Bgh%2Fy5T94rvxPIY5nh6YS198PolQOT33wEk3JneSks1BaU6H3KrrHhGawsTmRjyMvVY3Gs8Yf3ga9jU5iwYjukY0SaO%2BGbmoNsnn5BC6wsQDymRPTsWYRkDLWlFTAkrp70B6p2qgXG%2Fw7H%2BfoXpTElF9d8hGL91YO0X8MvuIABnmKw0vbE3zceelUw0L%2B08X%2BHGY4no4QcDyaXF5cja4uxzD6DNPz2QTleDIDUn5u1JtxFrGskNeseOybLC%2B26fzb3WpeZJuzxcNydVtss3Vxl6X5WZqlt4REAzvNKQUXkZ4%2FA20Qy7UjW7Rk9K9v4n3B7lUGXyxdBvRn9%2BYXHrtUvtHQpoNwPVzydte6Y0gssZ2K7jdkaa%2FgSgMAAA%3D%3D",  # noqa: E501
         "by_resource_past_30d": "H4sIAAAAAAAAA41SXU%2FjQAz8L%2FucctAWVHhrG65CQknVpLycEDIbN6xIdnP7gS5X5b%2BfndCDwgM8rj0zOx57L2SwFrVsxZVYLdYiEgV43IAukSq34PzkNIbWUeN3QEuwvfBtw815baxXf7FYGucHImToGVFa0KECqzzrxqCqlgBQlhZL8MroXsZ4qHouPTTUrPkqtQtaDjCRhVp00Rt4m8Uf8Fz5TCGOY3%2B6FFe%2F9qJQFg99cBJ1wZ3ooLN1UGJMk4vuPiL7JjQH5uu0sapROxb4T9qgM8FKzBnR3bNLAu3s0E2MRnYun8B6duVBPnNYVahZBKQMNYXksaDuDiqHVG3Ui%2FHui48ztC9KYsKvLvqOxVsjh9y%2FB19xAIM8xeGk6QkuPDppVcNC7sdkdwYzHF%2BMEHA8mp5PLkeX52MYncLF2WyKcjydASk%2FN%2BponEUoSuQdKx57mWb5QzK%2Fu1nN83RzstjGq%2Bv8IV3nN2mSnSRpck1I1PBYcUreBqTnH0%2Frw2JtyRZtGN37g%2FhasHuXwU9DZwH9zR39wmMXyjUVtMkg3B8xn5sT3T%2Bo9DY9NgMAAA%3D%3D",  # noqa: E501
