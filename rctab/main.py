@@ -51,8 +51,12 @@ csp = (
     .connect_src("'self'")
     .frame_src("'none'")
     .img_src("'self'")
-    .style_src("'self'", "fonts.googleapis.com", "cdn.datatables.net")
-    .script_src("'self'", "ajax.googleapis.com", "cdn.datatables.net")
+    .style_src(
+        "'self'", "'unsafe-inline'", "fonts.googleapis.com", "cdn.datatables.net"
+    )
+    .script_src(
+        "'self'", "'unsafe-inline'", "ajax.googleapis.com", "cdn.datatables.net"
+    )
     .font_src("'self'", "fonts.gstatic.com")
 )
 
