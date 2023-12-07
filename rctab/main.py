@@ -50,21 +50,21 @@ csp = (
     .base_uri("'self'")
     .connect_src("'self'")
     .frame_src("'none'")
-    .img_src("'self'")
+    .img_src("'self'", "cdn.datatables.net")
     .style_src(
-        "'self'", "'unsafe-inline'", "fonts.googleapis.com", "cdn.datatables.net"
+        "'self'",
+        "fonts.googleapis.com",
+        "cdn.datatables.net",
+        "'sha256-IkjQ9EOnF8lU4Wz6Y99mLT43EodSNMW49MHfgL33IXM='",
+        "'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU='",
     )
-    .script_src(
-        "'self'", "'unsafe-inline'", "ajax.googleapis.com", "cdn.datatables.net"
-    )
+    .script_src("'self'", "ajax.googleapis.com", "cdn.datatables.net", "cdn.plot.ly")
     .font_src("'self'", "fonts.gstatic.com")
 )
 
 hsts = secure.StrictTransportSecurity().include_subdomains().preload().max_age(2592000)
 
 referrer = secure.ReferrerPolicy().no_referrer()
-
-permissions_value = secure.PermissionsPolicy()
 
 cache_value = secure.CacheControl().must_revalidate()
 
@@ -73,7 +73,6 @@ SECURE_HEADERS: Final = secure.Secure(
     csp=csp,
     hsts=hsts,
     referrer=referrer,
-    permissions=permissions_value,
     cache=cache_value,
 )
 
