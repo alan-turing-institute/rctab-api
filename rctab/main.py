@@ -1,9 +1,10 @@
 """The entrypoint of the FastAPI application."""
 import logging
 from pathlib import Path
-from typing import Dict
+from typing import Any, Callable, Dict, Final
 
 import fastapimsal
+import secure
 from asyncpg.exceptions import UniqueViolationError
 from fastapi import Depends, FastAPI, Request
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
@@ -40,6 +41,45 @@ app = FastAPI(
     redoc_url=None,
     openapi_url=None,
 )
+
+server = secure.Server().set("Secure")
+
+csp = (
+    secure.ContentSecurityPolicy()
+    .default_src("'none'")
+    .base_uri("'self'")
+    .connect_src("'self'")
+    .frame_src("'none'")
+    .img_src("'self'")
+    .style_src("'self'", "fonts.googleapis.com", "cdn.datatables.net")
+    .script_src("'self'", "ajax.googleapis.com", "cdn.datatables.net")
+    .font_src("'self'", "fonts.gstatic.com")
+)
+
+hsts = secure.StrictTransportSecurity().include_subdomains().preload().max_age(2592000)
+
+referrer = secure.ReferrerPolicy().no_referrer()
+
+permissions_value = secure.PermissionsPolicy()
+
+cache_value = secure.CacheControl().must_revalidate()
+
+SECURE_HEADERS: Final = secure.Secure(
+    server=server,
+    csp=csp,
+    hsts=hsts,
+    referrer=referrer,
+    permissions=permissions_value,
+    cache=cache_value,
+)
+
+
+@app.middleware("http")
+async def set_secure_headers(request: Any, call_next: Callable[[Any], Any]) -> Any:
+    """Set security headers for HTTP response."""
+    response = await call_next(request)
+    SECURE_HEADERS.framework.fastapi(response)
+    return response
 
 
 # Add session middleware and authentication routes

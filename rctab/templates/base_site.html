@@ -28,7 +28,7 @@
     <div class="footer">
         {% block footer %}
         <div class="copyright">
-            &copy; 2020-<script>document.write( new Date().getFullYear() );</script> <a href="https://www.turing.ac.uk/">The Alan Turing Institute</a>
+            &copy; 2020-{{ current_year }} <a href="https://www.turing.ac.uk/">The Alan Turing Institute</a>
         </div>
         {% block isadmin %}{% endblock %}
         <div class="version">
