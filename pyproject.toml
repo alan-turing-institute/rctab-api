@@ -5,8 +5,6 @@ description = "The RCTab API. Manage Azure budgets and usage"
 authors = []
 
 [tool.poetry.dependencies]
-# We only upper-bound the python version because SciPy 1.8 does, and we need
-# that to install on ARM Macs.
 python = ">=3.10 <3.12"
 alembic = "^1.7.1"
 asyncpg = "^0.27.0"
