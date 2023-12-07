@@ -286,7 +286,7 @@ async def subscription_details(
     # ...then sort the assignments by role
     sorted_all_rbac_assignments = []
     for role in role_order:
-        sorted_all_rbac_assignments.extend(assignments_dict[role])
+        sorted_all_rbac_assignments.extend(assignments_dict.get(role, []))
 
     # pylint: disable=line-too-long
     views = {
