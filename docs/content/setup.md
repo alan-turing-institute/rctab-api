@@ -131,7 +131,7 @@ docker start rctab_db
 
 You can stop it at any time with `docker stop rctab_db`.
 
-#### Create database schema
+#### Create Database Schema
 
 Before you start the API we must create the database schema:
 
@@ -139,11 +139,11 @@ Before you start the API we must create the database schema:
 scripts/prestart.sh
 ```
 
-#### Running tests
+#### Running Tests
 
 ##### Manually
 
-With the Poetry shell activated and our PostgreSQL database running, we can run all tests with
+With the Poetry shell activated and our PostgreSQL database running, we can run tests with
 
 ```bash
 TESTING=true pytest tests/
@@ -153,7 +153,14 @@ The `TESTING=true` env var is important so that database commits are rolled back
 
 **Note:** This will remove the contents of any [postgreSQL containers](#postgresql-container) you have running. If you don't want to lose them use [the helper script](#with-the-helper-script).
 
-##### With the helper script
+The tests for background tasks require Redis
+Once you have a [Redis server](https://redis.io/docs/install/install-redis/) running (or a [Redis Docker](https://hub.docker.com/_/redis) container running), you can run the unit tests, including the background task tests, with:
+
+```bash
+TESTING=true CELERY_RESULT_BACKEND="redis://localhost:6379/0" pytest tests/
+```
+
+##### With the Helper Script
 
 With the Poetry shell activated but no PostgreSQL database running (to avoid port conflicts), we can run all tests with:
 
@@ -179,7 +186,7 @@ Note: Running this tests this way, or manually, will remove any existing data in
 
 This does the same thing as `runtests.sh` but any existing/running databases are stopped first to ensure the testing doesn't wipe them. They are then restarted once the script has finished. This means your databases will not be removed by running tests.
 
-#### Run the API in development mode
+#### Run the API in Development Mode
 
 To start the API server run:
 
@@ -239,7 +246,7 @@ docker-compose -f compose/docker-compose-external.yaml up -d
 
 **Note** that environment variables declared in the compose file will override those from env files.
 
-#### Visit the homepage
+#### Visit the Homepage
 
 You should be able to view the login page at `http://localhost:8000`, but you will not be able to log in until you have completed the [Application Registration](#application-registration) steps.
 

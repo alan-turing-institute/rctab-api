@@ -1,5 +1,4 @@
 """The entrypoint of the FastAPI application."""
-import asyncio
 import logging
 from pathlib import Path
 from typing import Dict
@@ -26,15 +25,12 @@ from rctab.crud.auth import (
     user_authenticated,
 )
 from rctab.crud.models import database
-from rctab.daily_routine_tasks import routine_tasks
 from rctab.logutils import set_log_handler
 from rctab.routers import accounting, frontend
 from rctab.routers.accounting import routes
 from rctab.settings import get_settings
 
 templates = Jinja2Templates(directory=Path("rctab/templates"))
-
-background_tasks = set()
 
 app = FastAPI(
     title="RCTab API",
@@ -107,10 +103,6 @@ async def startup() -> None:
         logger.warning(
             "Starting server with subscription whitelist: %s", settings.whitelist
         )
-    if not settings.testing:
-        loop = asyncio.get_event_loop()
-        task = loop.create_task(routine_tasks())
-        background_tasks.add(task)
 
 
 @app.on_event("shutdown")
@@ -119,23 +111,6 @@ async def shutdown() -> None:
     logger = logging.getLogger(__name__)
     logger.warning("Shutting down server...")
 
-    while background_tasks:
-        task = background_tasks.pop()
-        task.cancel()
-        logger.info("Cancelled background task %s", task)
-        while True:
-            if task.done():
-                try:
-                    await task
-                except asyncio.CancelledError:
-                    logger.info("Awaited task was cancelled")
-                break
-
-            logger.info("Waiting for task to exit")
-            await asyncio.sleep(0.1)
-
-    # If pytest hangs here, it could be because our summary email
-    # background tasks are running
     logger.info("Disconnecting from database")
     await database.disconnect()
 

@@ -38,7 +38,7 @@ while getopts "hpc:e:d" option; do
 done
 shift $((OPTIND-1))
 
-POSTGRES_CONTAINER=docker.io/postgres:11
+POSTGRES_CONTAINER=docker.io/postgres:14
 CONTAINER_NAME=unittests
 POSTGRES_PORT=5001
 
@@ -98,8 +98,9 @@ source example.env
 # Stop automatically exporting variables
 set +a
 
-# Create schema
-poetry run scripts/prestart.sh
+# Create schema but don't start Celery, Redis, etc.
+sleep 5
+poetry run alembic upgrade head
 
 # Run tests
 if [ "$TEST_CONFIGURATION" = "main" ]; then

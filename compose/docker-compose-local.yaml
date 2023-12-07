@@ -4,7 +4,7 @@ version: '3'
 
 services:
   database:
-    image: docker.io/postgres:11
+    image: docker.io/postgres:14
     container_name: rctab_db
     environment:
       POSTGRES_PASSWORD: password
