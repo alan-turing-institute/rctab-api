@@ -44,23 +44,7 @@ app = FastAPI(
 
 server = secure.Server().set("Secure")
 
-csp = (
-    secure.ContentSecurityPolicy()
-    .default_src("'none'")
-    .base_uri("'self'")
-    .connect_src("'self'")
-    .frame_src("'none'")
-    .img_src("'self'", "cdn.datatables.net")
-    .style_src(
-        "'self'",
-        "fonts.googleapis.com",
-        "cdn.datatables.net",
-        "'sha256-IkjQ9EOnF8lU4Wz6Y99mLT43EodSNMW49MHfgL33IXM='",
-        "'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU='",
-    )
-    .script_src("'self'", "ajax.googleapis.com", "cdn.datatables.net", "cdn.plot.ly")
-    .font_src("'self'", "fonts.gstatic.com")
-)
+xfo = secure.XFrameOptions().deny()
 
 hsts = secure.StrictTransportSecurity().include_subdomains().preload().max_age(2592000)
 
@@ -70,8 +54,8 @@ cache_value = secure.CacheControl().must_revalidate()
 
 SECURE_HEADERS: Final = secure.Secure(
     server=server,
-    csp=csp,
     hsts=hsts,
+    xfo=xfo,
     referrer=referrer,
     cache=cache_value,
 )

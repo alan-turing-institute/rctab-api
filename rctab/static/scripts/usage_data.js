@@ -9,6 +9,7 @@ async function fetchUsageData(event) {
     const subscription_id = document.getElementById("subscription_id").innerText
     outDiv.innerHTML = '<div class="search-overlay"><div class="loader"></div><div class="loader-text"><br><br>Loading data<br><br>This may take a few seconds or a few minutes depending on the length of time requested.</div></div>'
     event.preventDefault();
+
     await fetch("/process_usage/" + subscription_id + "?timeperiodstr=" + datestring, {
         method: "GET",
     })
@@ -18,6 +19,7 @@ async function fetchUsageData(event) {
     .then(html => {
         $("#azureusageinfo").html(html)
     })
+
     usageSubmitBtn.disabled=false;
 }
 

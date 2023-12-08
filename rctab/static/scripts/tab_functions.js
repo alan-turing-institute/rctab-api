@@ -26,22 +26,30 @@ function openTab(evt, tabName) {
 
 $(document).ready( function () {
     // Get all tabs and hide them
-//    let tabcontent = document.getElementsByClassName("tabcontent");
-//    for (let i = 0; i < tabcontent.length; i++) {
-//        tabcontent[i].style.display = "none";
-//    }
+    let tabcontent = document.getElementsByClassName("tabcontent");
+    for (let i = 0; i < tabcontent.length; i++) {
+        tabcontent[i].style.display = "none";
+    }
 
     const aaBtn = document.getElementById("SubscriptionAA_btn");
-    aaBtn.onclick = function(event) {openTab(event, 'SubscriptionAA')};
+    if (aaBtn) {
+        aaBtn.onclick = function(event) {openTab(event, 'SubscriptionAA')};
+    }
 
     const fcaBtn = document.getElementById("SubscriptionFCA_btn");
-    fcaBtn.onclick = function(event) {openTab(event, 'SubscriptionFCA')};
+    if (fcaBtn) {
+        fcaBtn.onclick = function(event) {openTab(event, 'SubscriptionFCA')};
+    }
 
     const uaBtn = document.getElementById("SubscriptionUA_btn");
-    uaBtn.onclick = function(event) {openTab(event, 'SubscriptionUA')};
+    if (uaBtn) {
+        uaBtn.onclick = function(event) {openTab(event, 'SubscriptionUA')};
+    }
 
     const uBtn = document.getElementById("SubscriptionU_btn");
-    uBtn.onclick = function(event) {openTab(event, 'SubscriptionU')};
+    if (uBtn) {
+        uBtn.onclick = function(event) {openTab(event, 'SubscriptionU')};
+    }
 
     // Set the previously selected tab as active on page refresh
     if(window.location.pathname.includes('/details/')) {
