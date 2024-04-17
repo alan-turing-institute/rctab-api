@@ -92,12 +92,13 @@ def check_negative_approval(
         )
 
     unallocated_budget = subscription_summary.approved - subscription_summary.allocated
+    unallocated_budget -= approval.amount if approval.allocate else 0
     if unallocated_budget < abs(approval.amount):
         raise HTTPException(
             status_code=400,
             detail=(
                 f"The amount of unallocated_budget budget ({unallocated_budget})"
-                f" is less than the negative allocation ({ abs(approval.amount)})."
+                f" is less than the negative allocation ({abs(approval.amount)})."
             ),
         )
 

@@ -637,3 +637,66 @@ def test_post_approval_refreshes_desired_states(
         mock_refresh.assert_called_once_with(
             constants.ADMIN_UUID, [constants.TEST_SUB_UUID]
         )
+
+
+def test_negative_approval_deallocates(
+    auth_app: FastAPI, mocker: MockerFixture
+) -> None:
+    """A negative approval should deallocate the budget."""
+    with TestClient(auth_app) as client:
+        mock_send_email = AsyncMock()
+        mocker.patch(
+            "rctab.routers.accounting.send_emails.send_generic_email", mock_send_email
+        )
+
+        api_calls.create_subscription(
+            client, constants.TEST_SUB_UUID
+        ).raise_for_status()
+
+        api_calls.create_approval(
+            client,
+            constants.TEST_SUB_UUID,
+            ticket="T001-12",
+            amount=100.0,
+            date_from=datetime.date.today(),
+            date_to=datetime.date.today() + datetime.timedelta(days=1),
+            allocate=True,
+        ).raise_for_status()
+
+        # Check total approval amount is 100.
+        result = client.get(
+            PREFIX + "/subscription",
+            params={"sub_id": str(constants.TEST_SUB_UUID)},
+        )
+        assert result.status_code == 200
+        result_json = result.json()
+        assert len(result_json) == 1
+        details = SubscriptionDetails(**result_json[0])
+
+        assert details.allocated == 100.0
+        assert details.approved == 100.0
+
+        result = api_calls.create_approval(
+            client,
+            constants.TEST_SUB_UUID,
+            ticket="T001-13",
+            amount=-100.0,
+            date_from=datetime.date.today(),
+            date_to=datetime.date.today() + datetime.timedelta(days=1),
+            allocate=True,
+        )
+
+        assert result.status_code == 200, result.content.decode("utf-8")
+
+        # Check total approval amount is 0.
+        result = client.get(
+            PREFIX + "/subscription",
+            params={"sub_id": str(constants.TEST_SUB_UUID)},
+        )
+        assert result.status_code == 200
+        result_json = result.json()
+        assert len(result_json) == 1
+        details = SubscriptionDetails(**result_json[0])
+
+        assert details.allocated == 0.0
+        assert details.approved == 0.0
