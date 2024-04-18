@@ -30,8 +30,7 @@ repos:
         types: ['python']
       - id: safety
         name: Safety
-        # Ignore sql-alchemy and wheel vulnerabilities
-        entry: poetry run safety check --full-report -i 51668
+        entry: poetry run safety --stage cicd scan --policy-file .safety-policy.yml
         pass_filenames: false
         language: system
       - id: mypy
