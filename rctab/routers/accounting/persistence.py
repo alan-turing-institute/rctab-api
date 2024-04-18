@@ -1,4 +1,5 @@
 """Routes that determine whether a subscription is permanently on."""
+
 from typing import Any
 from uuid import UUID
 

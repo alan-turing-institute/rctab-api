@@ -1,4 +1,5 @@
 """Utilities for logging to a central log workspace."""
+
 import logging
 from typing import Optional
 

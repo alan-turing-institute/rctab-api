@@ -1,4 +1,5 @@
 """The accounting routes."""
+
 from rctab.routers.accounting import (
     allocations,
     approvals,

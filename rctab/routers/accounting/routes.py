@@ -1,4 +1,5 @@
 """Miscellaneous queries for the accounting schema."""
+
 import datetime
 import uuid
 from typing import List, Optional, Union

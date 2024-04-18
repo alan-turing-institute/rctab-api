@@ -1,4 +1,5 @@
 """Charge subscriptions' spending to a cost centre."""
+
 from datetime import date, timedelta
 from typing import Any, Dict, List, Optional
 from uuid import UUID

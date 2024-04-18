@@ -1,4 +1,5 @@
 """Receive data from the status function app."""
+
 from typing import Dict
 from uuid import UUID
 

@@ -1,4 +1,5 @@
 """Tests for the rctab.tasks module."""
+
 import logging
 import os
 import subprocess

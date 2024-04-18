@@ -1,4 +1,5 @@
 """Set and get usage data."""
+
 import calendar
 import datetime
 import logging

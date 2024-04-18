@@ -1,4 +1,5 @@
 """Deciding who to charge for a subscription's spending."""
+
 import calendar
 import datetime
 from typing import Any, List

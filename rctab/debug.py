@@ -1,4 +1,5 @@
 """Used as an entrypoint when debugging from an IDE."""
+
 import uvicorn
 
 from rctab.main import app
