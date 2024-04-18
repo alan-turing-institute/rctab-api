@@ -1,4 +1,5 @@
 """Calculate and disseminate the desired states of subscriptions."""
+
 import datetime
 import logging
 from typing import Dict, List, Optional

@@ -1,4 +1,5 @@
 """The user-facing web pages."""
+
 import datetime
 import logging
 from pathlib import Path

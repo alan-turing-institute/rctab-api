@@ -1,4 +1,5 @@
 """Utility functions for the RCTab API."""
+
 import functools
 import logging
 from contextlib import contextmanager

@@ -1,4 +1,5 @@
 """SQLAlchemy models for the default schema."""
+
 from typing import List, Mapping, Sequence, Tuple
 
 import asyncpg

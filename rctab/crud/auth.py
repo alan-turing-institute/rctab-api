@@ -1,4 +1,5 @@
 """User authentication with Active Directory."""
+
 from typing import Dict, Optional
 
 import fastapimsal

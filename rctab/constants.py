@@ -1,4 +1,5 @@
 """Constants that don't change often enough to go in Settings."""
+
 from importlib import metadata
 
 ADMIN_OID = "8b8fb95c-e391-43dd-a6f9-1b03574f7c39"

@@ -1,4 +1,5 @@
 """Test helper classes."""
+
 from typing import Any, List
 
 

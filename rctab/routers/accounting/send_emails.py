@@ -1,4 +1,5 @@
 """Tools for sending email notifications to users."""
+
 import logging
 from contextlib import AbstractAsyncContextManager
 from datetime import date, datetime, timedelta, timezone

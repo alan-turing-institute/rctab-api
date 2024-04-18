@@ -1,4 +1,5 @@
 """Pydantic models for the RCTab API."""
+
 import datetime
 from enum import Enum
 from typing import Dict, List, Optional, Tuple

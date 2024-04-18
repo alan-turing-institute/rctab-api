@@ -113,7 +113,6 @@ def app_with_signed_billing_token(
     get_oauth_settings_override: Callable,
     get_token_verified_override: Callable,
 ) -> Tuple[FastAPI, str]:
-
     """Sign a JWT with private key and mock get_settings with public key field"""
     private_key = tmp_path / "key"
     public_key = tmp_path / "key.pub"

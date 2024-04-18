@@ -1,4 +1,5 @@
 """Global app configuration."""
+
 from functools import lru_cache
 from typing import Any, List, Optional
 from uuid import UUID

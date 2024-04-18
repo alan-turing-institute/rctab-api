@@ -1,4 +1,5 @@
 """The entrypoint of the FastAPI application."""
+
 import logging
 from pathlib import Path
 from typing import Any, Callable, Dict, Final

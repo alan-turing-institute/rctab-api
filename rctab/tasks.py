@@ -8,6 +8,7 @@ or running Celery Beat in a shell and waiting
 for the task to run on schedule:
 `celery -A rctab.tasks beat --loglevel=info`
 """
+
 import asyncio
 import logging
 from typing import Any, Final
