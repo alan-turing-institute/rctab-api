@@ -1,0 +1,50 @@
+version: '3.0'
+
+scanning-settings:
+  max-depth: 6
+  exclude: []
+  include-files: []
+  system:
+    targets: []
+
+
+report:
+  dependency-vulnerabilities:
+    enabled: true
+    auto-ignore-in-report:
+      python:
+        environment-results: true
+        unpinned-requirements: true
+      cvss-severity: []
+      vulnerabilities:
+        64459:
+          reason: Python wide vulnerability.
+          expires: '2024-12-12'
+        64396:
+          reason: Python wide vulnerability.
+          expires: '2024-12-12'
+        67599:
+          reason: Only applies if using private package repo.
+          expires: '2026-04-17'
+        51668:
+          reason: We cannot currently use SQL Alchemy v2.
+          expires: '2024-12-12'
+
+
+fail-scan-with-exit-code:
+  dependency-vulnerabilities:
+    enabled: true
+    fail-on-any-of:
+      cvss-severity:
+        - medium
+        - critical
+        - high
+      exploitability:
+        - medium
+        - critical
+        - high
+
+security-updates:
+  dependency-vulnerabilities:
+    auto-security-updates-limit:
+      - patch

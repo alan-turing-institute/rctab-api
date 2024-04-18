@@ -46,4 +46,6 @@ jobs:
       - name: Install dependencies
         run: poetry install --all-extras
 
-      - uses: pre-commit/action@v3.0.0
+      - uses: pre-commit/action@v3.0.1
+        env:
+          SAFETY_API_KEY: ${{ secrets.SAFETY_API_KEY }}
