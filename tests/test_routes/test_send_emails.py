@@ -920,7 +920,7 @@ async def test_expiry_looming_doesnt_resend(
     mock_send.assert_not_called()
 
 
-def test_should_send_expiry_email() -> None:
+def test_should_send_expiry_email(mocker: MockerFixture) -> None:
     # pylint: disable=using-constant-test
     # pylint: disable=invalid-name
 
@@ -1048,6 +1048,17 @@ def test_should_send_expiry_email() -> None:
             date_of_expiry, date_of_last_email, SubscriptionState.ENABLED
         )
         is True
+    )
+    # Try again but having changed the settings
+    mock_get_settings = mocker.patch(
+        "rctab.routers.accounting.send_emails.get_settings"
+    )
+    mock_get_settings.return_value.expiry_email_freq = []
+    assert (
+        send_emails.should_send_expiry_email(
+            date_of_expiry, date_of_last_email, SubscriptionState.ENABLED
+        )
+        is False
     )
 
     if False:

@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     notifiable_roles: List[str] = ["Contributor"]  # Roles to email about a subscription
     roles_filter: List[str] = ["Contributor"]  # Send emails if one of these changes
     admin_email_recipients: List[str] = []  # Recipients of admin emails
+    expiry_email_freq: List[int] = [1, 7, 30]  # Days before expiry to send emails
 
     # Org name, for emails and frontend
     organisation: Optional[str] = "My organisation"

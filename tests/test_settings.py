@@ -35,6 +35,7 @@ def test_minimal_settings() -> None:
     assert settings.notifiable_roles == ["Contributor"]
     assert settings.roles_filter == ["Contributor"]
     assert settings.admin_email_recipients == []
+    assert settings.expiry_email_freq == [1, 7, 30]
 
 
 def test_settings_raises() -> None:
@@ -71,6 +72,7 @@ def test_maximal_settings() -> None:
         status_func_public_key="2345",
         controller_func_public_key="1234",
         admin_email_recipients=["myemail@myorg.com"],
+        expiry_email_freq=[1, 7, 30],
         # To stop any local .env files influencing the test
         _env_file=None,
     )
