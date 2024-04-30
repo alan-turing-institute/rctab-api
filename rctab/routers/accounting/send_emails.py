@@ -364,7 +364,8 @@ def should_send_expiry_email(
     one in that period. This is to allow for emails not being sent (e.g. if
     the email service goes down). We don't send emails before this
     period (shown as ~) or on the day of expiry (denoted by x). We send daily
-    emails to active subscriptions after expiry (marked with =).
+    emails to active subscriptions after expiry (marked with =). The exact
+    date values of | are customisable via the settings module.
 
     Args:
         date_of_expiry: Expiry date of a subscription.
@@ -386,7 +387,9 @@ def should_send_expiry_email(
         else:
             return False
 
-    for days_remaining in (1, 7, 30):
+    # Not technically a frequency, more of a schedule.
+    expiry_email_schedule: List[int] = get_settings().expiry_email_freq
+    for days_remaining in expiry_email_schedule:
         if date_of_expiry <= date.today() + timedelta(days=days_remaining):
             if not date_of_last_email:
                 return True
