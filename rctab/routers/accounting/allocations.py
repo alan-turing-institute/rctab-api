@@ -26,7 +26,9 @@ async def check_allocation(allocation: Allocation) -> None:
     subscription_summary = await get_subscriptions_summary(sub_id=allocation.sub_id)
 
     # Get the first row (should only be one)
-    subscription_summary = SubscriptionSummary(**subscription_summary[0])
+    # pylint: disable=protected-access
+    subscription_summary = SubscriptionSummary(**subscription_summary[0]._mapping)
+    # pylint: enable=protected-access
 
     if not subscription_summary.approved_to:
         raise HTTPException(
