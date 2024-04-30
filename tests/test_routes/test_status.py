@@ -378,6 +378,7 @@ async def test_post_status_sends_looming(
     mock_get_settings.return_value.website_hostname = (
         "https://rctab-t1-teststack.azurewebsites.net/"
     )
+    mock_get_settings.return_value.expiry_email_freq = [1, 7, 30]
 
     mock_send_email = mocker.patch(
         "rctab.routers.accounting.send_emails.send_with_sendgrid"
@@ -487,7 +488,6 @@ async def test_post_status_sends_looming(
     )
 
     assert mock_send_email.call_count == 3
-    # mock_send_email.assert_has_calls([welcome_call, new_approval_call, expiry_call])
     mock_send_email.assert_has_calls([welcome_call, new_approval_call, expiry_call])
 
 
