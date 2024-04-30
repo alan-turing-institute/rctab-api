@@ -110,7 +110,9 @@ async def check_approval(approval: Approval) -> None:
     subscription_summary = await get_subscriptions_summary(sub_id=approval.sub_id)
 
     # Get the first row (should only be one)
-    subscription_summary = SubscriptionSummary(**subscription_summary[0])
+    # pylint: disable=protected-access
+    subscription_summary = SubscriptionSummary(**subscription_summary[0]._mapping)
+    # pylint: enable=protected-access
 
     current_date = datetime.date.today()
 
