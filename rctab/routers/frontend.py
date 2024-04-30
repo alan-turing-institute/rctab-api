@@ -2,18 +2,17 @@
 
 import datetime
 import logging
-from pathlib import Path
 from typing import Dict, Final, List, Optional
 from uuid import UUID
 
 import pandas as pd
 import plotly.express as px
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.templating import Jinja2Templates
 from fastapimsal import RequiresLoginException, UserIdentityToken
+from jinja2 import Environment, PackageLoader, select_autoescape
 from jose import jwt
 from pydantic import BaseModel, EmailStr, ValidationError
-from starlette.templating import _TemplateResponse
+from starlette.templating import Jinja2Templates, _TemplateResponse
 
 from rctab.constants import __version__
 from rctab.crud.auth import check_user_access, user_authenticated_no_error
@@ -39,9 +38,8 @@ from rctab.settings import get_settings
 
 logger = logging.getLogger(__name__)
 
-templates = Jinja2Templates(
-    directory=str((Path(__file__).parent.parent / "templates").absolute())
-)
+jinja_env = Environment(loader=PackageLoader("rctab"), autoescape=select_autoescape())
+templates = Jinja2Templates(env=jinja_env)
 router = APIRouter()
 
 BETA_ACCESS = False
@@ -115,9 +113,9 @@ async def home(
     settings = get_settings()
     if not user:
         return templates.TemplateResponse(
-            "index.html",
-            {
-                "request": request,
+            request=request,
+            name="index.html",
+            context={
                 "version": __version__,
                 "organisation": settings.organisation,
                 "current_year": datetime.date.today().year,
@@ -148,9 +146,9 @@ async def home(
     # If we're in Beta release mode, only users with 'has_access' can access
     if BETA_ACCESS and (not access_status.has_access):
         return templates.TemplateResponse(
-            "index.html",
-            {
-                "request": request,
+            request=request,
+            name="index.html",
+            context={
                 "version": __version__,
                 "current_year": datetime.date.today().year,
             },
@@ -180,9 +178,9 @@ async def home(
                         subscriptions_with_access.append(sub)
                         break
     return templates.TemplateResponse(
-        "signed_in_azure_info.html",
-        {
-            "request": request,
+        request=request,
+        name="signed_in_azure_info.html",
+        context={
             "name": user_name,
             "version": __version__,
             "has_access": access_to_span(access_status.has_access),
@@ -202,7 +200,7 @@ async def subscription_details(
 ) -> _TemplateResponse:
     """The subscription details page."""
     if not user:
-        return templates.TemplateResponse("index.html", {"request": request})
+        return templates.TemplateResponse(request=request, name="index.html")
 
     # Get the username from cached token
     user_name = jwt.get_unverified_claims(user.token["access_token"])["name"]
@@ -299,9 +297,9 @@ async def subscription_details(
     # pylint: enable=line-too-long
 
     return templates.TemplateResponse(
-        "signed_in_azure_info_details.html",
-        {
-            "request": request,
+        request=request,
+        name="signed_in_azure_info_details.html",
+        context={
             "name": user_name,
             "version": __version__,
             "has_access": access_to_span(access_status.has_access),
@@ -328,7 +326,7 @@ async def subscription_details_1(
 ) -> _TemplateResponse:
     """Get html for the usage tab of the details page."""
     if not user:
-        return templates.TemplateResponse("index.html", {"request": request})
+        return templates.TemplateResponse(request=request, name="index.html")
 
     # Get the username from cached token
     # user_name = jwt.get_unverified_claims(user.token["access_token"])["name"]
@@ -363,9 +361,9 @@ async def subscription_details_1(
         timeperiod = datetime.datetime.strptime(timeperiodstr, "%Y-%m-%d")
     except ValueError:
         return templates.TemplateResponse(
-            "azure_usage_info.html",
-            {
-                "request": request,
+            request=request,
+            name="azure_usage_info.html",
+            context={
                 "cost_breakdown": None,
             },
         )
@@ -397,9 +395,9 @@ async def subscription_details_1(
             "<div>", '<div class="usageFigure">'
         )
     return templates.TemplateResponse(
-        "azure_usage_info.html",
-        {
-            "request": request,
+        request=request,
+        name="azure_usage_info.html",
+        context={
             "cost_breakdown": cost_breakdown,
             "all_usage": all_usage,
             "time_frame_start": time_frame_start,
