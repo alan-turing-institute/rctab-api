@@ -8,7 +8,7 @@ import pytest
 from databases import Database
 from fastapi import HTTPException
 from fastapi.templating import Jinja2Templates
-from jinja2 import StrictUndefined
+from jinja2 import Environment, PackageLoader, StrictUndefined, select_autoescape
 from pytest_mock import MockerFixture
 
 import rctab
@@ -95,7 +95,10 @@ async def test_no_username_no_subscriptions(
     await home(mock_request, mock_user)
 
     # Check that no subscriptions are passed to the template
-    assert mock_templates.TemplateResponse.call_args.args[1]["azure_sub_data"] == []
+    assert (
+        mock_templates.TemplateResponse.call_args.kwargs["context"]["azure_sub_data"]
+        == []
+    )
 
 
 @pytest.mark.asyncio
@@ -129,10 +132,11 @@ async def test_render_home_page(mocker: MockerFixture, test_db: Database) -> Non
     mocker.patch(
         "rctab.routers.frontend.templates",
         Jinja2Templates(
-            (
-                Path(rctab.routers.frontend.__file__).parent.parent / "templates"
-            ).absolute(),
-            undefined=StrictUndefined,
+            env=Environment(
+                loader=PackageLoader("rctab"),
+                autoescape=select_autoescape(),
+                undefined=StrictUndefined,
+            )
         ),
     )
     subscription_id = UUID(int=random.randint(0, (2**32) - 1))
