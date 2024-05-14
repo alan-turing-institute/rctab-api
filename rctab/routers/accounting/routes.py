@@ -391,60 +391,77 @@ def get_total_usage(
 @db_select
 def get_allocations(sub_id: UUID) -> Select:
     """Get all allocations for a subscription."""
-    return select(
-        [
-            allocations.c.ticket,
-            allocations.c.amount,
-            allocations.c.currency,
-            allocations.c.time_created,
-        ]
-    ).where(allocations.c.subscription_id == sub_id)
+    return (
+        select(
+            [
+                allocations.c.ticket,
+                allocations.c.amount,
+                allocations.c.currency,
+                allocations.c.time_created,
+            ]
+        )
+        .where(allocations.c.subscription_id == sub_id)
+        .order_by(desc(allocations.c.time_created))
+    )
 
 
 @db_select
 def get_approvals(sub_id: UUID) -> Select:
     """Get all approvals for a subscription."""
-    return select(
-        [
-            approvals.c.ticket,
-            approvals.c.amount,
-            approvals.c.currency,
-            approvals.c.date_from,
-            approvals.c.date_to,
-            approvals.c.time_created,
-        ]
-    ).where(approvals.c.subscription_id == sub_id)
+    return (
+        select(
+            [
+                approvals.c.ticket,
+                approvals.c.amount,
+                approvals.c.currency,
+                approvals.c.date_from,
+                approvals.c.date_to,
+                approvals.c.time_created,
+            ]
+        )
+        .where(approvals.c.subscription_id == sub_id)
+        .order_by(desc(approvals.c.date_to))
+    )
 
 
 @db_select
 def get_finance(sub_id: UUID) -> Select:
     """Get all finance items."""
-    return select(
-        [
-            finance.c.ticket,
-            finance.c.amount,
-            finance.c.priority,
-            finance.c.finance_code,
-            finance.c.date_from,
-            finance.c.date_to,
-            finance.c.time_created,
-        ]
-    ).where(finance.c.subscription_id == sub_id)
+    return (
+        select(
+            [
+                finance.c.ticket,
+                finance.c.amount,
+                finance.c.priority,
+                finance.c.finance_code,
+                finance.c.date_from,
+                finance.c.date_to,
+                finance.c.time_created,
+            ]
+        )
+        .where(finance.c.subscription_id == sub_id)
+        .order_by(desc(finance.c.date_to))
+    )
 
 
 @db_select
 def get_costrecovery(sub_id: UUID) -> Select:
-    """Get all cost recovery items for a subscription."""
-    return select(
-        [
-            cost_recovery.c.subscription_id,
-            cost_recovery.c.finance_id,
-            cost_recovery.c.month,
-            cost_recovery.c.finance_code,
-            cost_recovery.c.amount,
-            cost_recovery.c.date_recovered,
-        ]
-    ).where(cost_recovery.c.subscription_id == sub_id)
+    """Get all cost recovery items for a subscription in asc date order."""
+    # order by month asc
+    return (
+        select(
+            [
+                cost_recovery.c.subscription_id,
+                cost_recovery.c.finance_id,
+                cost_recovery.c.month,
+                cost_recovery.c.finance_code,
+                cost_recovery.c.amount,
+                cost_recovery.c.date_recovered,
+            ]
+        )
+        .where(cost_recovery.c.subscription_id == sub_id)
+        .order_by(desc(cost_recovery.c.month))
+    )
 
 
 @db_select
