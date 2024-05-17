@@ -426,7 +426,7 @@ def get_approvals(sub_id: UUID) -> Select:
 
 @db_select
 def get_finance(sub_id: UUID) -> Select:
-    """Get all finance items."""
+    """Get all finance items for a subscription."""
     return (
         select(
             [
@@ -446,8 +446,7 @@ def get_finance(sub_id: UUID) -> Select:
 
 @db_select
 def get_costrecovery(sub_id: UUID) -> Select:
-    """Get all cost recovery items for a subscription in asc date order."""
-    # order by month asc
+    """Get all cost recovery items for a subscription."""
     return (
         select(
             [
@@ -466,7 +465,7 @@ def get_costrecovery(sub_id: UUID) -> Select:
 
 @db_select
 def get_usage(sub_id: UUID, target_date: datetime.datetime) -> Select:
-    """Get all of the usage items."""
+    """Get all usage items for a subscription."""
     return (
         select(
             [
