@@ -30,7 +30,7 @@ report:
           reason: We cannot currently use SQL Alchemy v2.
           expires: '2024-12-12'
         70612:
-          reason: No known fix for jinja2==3.1.4.
+          reason: We do not use untrusted templates that would require the from_string() method.
           expires: '2024-12-12'
 
 
