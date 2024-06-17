@@ -11,7 +11,7 @@ from uuid import UUID
 from databases import Database
 from jinja2 import Environment, PackageLoader, exceptions
 from sendgrid import Mail, SendGridAPIClient
-from sqlalchemy import asc, func, insert, or_, select
+from sqlalchemy import asc, desc, func, insert, or_, select
 from sqlalchemy.sql import Select
 
 from rctab.constants import (
@@ -725,9 +725,13 @@ async def get_emails_sent_since(
 
     emails_by_subscription = []
     for key, value in groupby(all_emails_sent, extract_sub_id):
-        name_query = select([subscription_details.c.display_name.label("name")]).where(
-            subscription_details.c.subscription_id == key
+        name_query = (
+            select([subscription_details.c.display_name.label("name")])
+            .where(subscription_details.c.subscription_id == key)
+            .order_by(desc(subscription_details.c.time_created))
+            .limit(1)
         )
+
         name_rows = await database.fetch_all(name_query)
         if name_rows:
             name = name_rows[0]["name"]
@@ -766,9 +770,13 @@ async def get_finance_entries_since(
     all_new_entries = [{**row._mapping} for row in rows]
     entries_by_subscription = []
     for key, value in groupby(all_new_entries, extract_sub_id):
-        name_query = select([subscription_details.c.display_name.label("name")]).where(
-            subscription_details.c.subscription_id == key
+        name_query = (
+            select([subscription_details.c.display_name.label("name")])
+            .where(subscription_details.c.subscription_id == key)
+            .order_by(desc(subscription_details.c.time_created))
+            .limit(1)
         )
+
         name_rows = await database.fetch_all(name_query)
         if name_rows:
             name = name_rows[0]["name"]
