@@ -29,6 +29,9 @@ report:
         51668:
           reason: We cannot currently use SQL Alchemy v2.
           expires: '2024-12-12'
+        70612:
+          reason: No known fix for jinja2==3.1.4.
+          expires: '2024-12-12'
 
 
 fail-scan-with-exit-code:
