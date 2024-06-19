@@ -296,6 +296,7 @@ async def test_post_status_sends_status_change_roles(
         ),
         {"fake": "authentication"},
     )
+    template_data: Dict[str, Any] = {}
     template_data = {
         "removed_from_rbac": [],
         "added_to_rbac": [
