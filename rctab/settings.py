@@ -4,7 +4,9 @@ from functools import lru_cache
 from typing import Any, List, Optional
 from uuid import UUID
 
-from pydantic import BaseSettings, PostgresDsn, validator
+from pydantic import HttpUrl, PostgresDsn, field_validator, model_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from typing_extensions import Self
 
 
 class Settings(BaseSettings):
@@ -17,12 +19,12 @@ class Settings(BaseSettings):
     db_port: int = 5432
     db_user: str  # e.g. "postgres" or "rctab-user"
     db_password: str
-    db_name: str = ""  # e.g. RCTab or empty for the user's default db
+    db_name: Optional[str] = None  # e.g. RCTab or empty for the user's default db
     ssl_required: bool = False  # Usually False for local and True for Azure DBs
 
     # Email settings
-    sendgrid_api_key: Optional[str]  # An API key with which to send emails
-    sendgrid_sender_email: Optional[str]  # The "from:" address for sent emails
+    sendgrid_api_key: Optional[str] = None  # An API key with which to send emails
+    sendgrid_sender_email: Optional[str] = None  # The "from:" address for sent emails
     notifiable_roles: List[str] = ["Contributor"]  # Roles to email about a subscription
     roles_filter: List[str] = ["Contributor"]  # Send emails if one of these changes
     admin_email_recipients: List[str] = []  # Recipients of admin emails
@@ -32,7 +34,7 @@ class Settings(BaseSettings):
     organisation: Optional[str] = "My organisation"
 
     # Current server hostname, for emails (automatically set by Azure)
-    website_hostname: Optional[str]
+    website_hostname: Optional[str] = None
 
     # Gradual rollout settings
     ignore_whitelist: bool = False  # By default, only manage whitelist subscriptions
@@ -42,40 +44,40 @@ class Settings(BaseSettings):
     log_level: str = "WARNING"
 
     # To copy log messages to a central app insights
-    central_logging_connection_string: Optional[str]
+    central_logging_connection_string: Optional[str] = None
 
     # Whether we are running unit tests
     testing: bool = False  # A True value rolls back all commits between tests
 
     # Public keys for function apps
-    usage_func_public_key: Optional[str]
-    status_func_public_key: Optional[str]
-    controller_func_public_key: Optional[str]
+    usage_func_public_key: Optional[str] = None
+    status_func_public_key: Optional[str] = None
+    controller_func_public_key: Optional[str] = None
 
     # postgres_dsn is calculated so do not provide it explicitly
-    postgres_dsn: Optional[PostgresDsn]
+    postgres_dsn: Optional[PostgresDsn] = None
 
-    @validator("postgres_dsn", pre=True)
-    def validate_postgres_dsn(cls, _: Optional[PostgresDsn], values: Any) -> str:
+    # Settings for the settings class itself.
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+
+    @model_validator(mode="before")
+    def validate_postgres_dsn(self) -> Self:
         """Build a DSN string from the host, db name, port, username and password."""
         # We want to build the Data Source Name ourselves so none should be provided
-        if _:
+        if self.get("postgres_dsn") is not None:
             raise ValueError("postgres_dsn should not be provided")
 
-        user = values["db_user"]
-        password = values["db_password"]
-        host = values["db_host"]
-        port = values["db_port"]
-        db_name = values["db_name"]
+        self["postgres_dsn"] = (
+            f'postgresql://{self["db_user"]}:{self["db_password"]}@{self["db_host"]}:{self["db_port"]}/{self.get("db_name", "")}'
+        )
 
-        dsn = f"postgresql://{user}:{password}@{host}:{port}/{db_name}"
+        if self.get("ssl_required"):
+            self["postgres_dsn"] += "?sslmode=require"
 
-        if values["ssl_required"]:
-            return dsn + "?sslmode=require"
+        return self
 
-        return dsn
-
-    @validator("log_level")
+    @field_validator("log_level")
+    @classmethod
     def validate_log_level(cls, log_level: str) -> str:
         """Check that the log level has a valid value."""
         # See https://docs.python.org/3/library/logging.html#logging-levels
@@ -92,12 +94,6 @@ class Settings(BaseSettings):
         if log_level not in allowed_levels:
             raise ValueError(f"{log_level} not in {allowed_levels}")
         return log_level
-
-    class Config:
-        """Meta-settings for the Settings class."""
-
-        env_file = ".env"
-        env_file_encoding = "utf-8"
 
 
 @lru_cache()
