@@ -1,5 +1,7 @@
+"""Configuration for Alembic migrations."""
+
 from logging.config import fileConfig
-from typing import Any, Literal, Optional
+from typing import Literal, Optional
 
 from sqlalchemy import engine_from_config, pool
 from sqlalchemy.sql.schema import SchemaItem
@@ -7,6 +9,10 @@ from sqlalchemy.sql.schema import SchemaItem
 from alembic import context
 from rctab.crud.models import metadata
 from rctab.settings import Settings
+
+# pylint: disable=unused-argument
+# pylint: disable=no-member
+# pylint: disable=redefined-builtin
 
 settings = Settings()
 # this is the Alembic Config object, which provides
@@ -41,10 +47,7 @@ def include_object(
     reflected: bool,
     compare_to: Optional[SchemaItem],
 ) -> bool:
-    """
-    Exclude views from Alembic's consideration.
-    """
-
+    """Exclude views from Alembic's consideration."""
     if object.info:
         if object.info.get("is_view", False):
             return False

@@ -1,4 +1,4 @@
-"""Squash
+"""Squash (previous migrations).
 
 Revision ID: b65796c99771
 Revises:
@@ -11,6 +11,9 @@ from sqlalchemy import text
 from sqlalchemy.dialects import postgresql
 
 from alembic import op
+
+# pylint: disable=no-member
+# pylint: disable=invalid-name
 
 # revision identifiers, used by Alembic.
 revision = "b65796c99771"
@@ -68,6 +71,7 @@ class FinanceHistorySql:
 
 
 def upgrade() -> None:
+    """Upgrade the database."""
     op.execute(text("create schema accounting"))
     op.create_table(
         "user_cache",
@@ -487,6 +491,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    """Downgrade the database."""
     op.drop_table("cost_recovery", schema="accounting")
     op.execute(
         "DROP MATERIALIZED VIEW {schema}.usage_view;".format(schema="accounting")

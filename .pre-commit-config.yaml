@@ -43,7 +43,6 @@ repos:
         entry: poetry run pylint --rcfile=.python-lint
         language: system
         types: ['python']
-        exclude: ^alembic/
       - id: flake8
         name: Flake8
         entry: poetry run flake8
@@ -61,7 +60,6 @@ repos:
         language: system
         types: ['python']
         exclude: (?x)(
-            alembic|
             tests|
             scripts
           )
