@@ -38,7 +38,6 @@ repos:
         entry: poetry run mypy --install-types --non-interactive
         language: system
         types: ['python']
-        exclude: ^alembic/
       - id: pylint
         name: Pylint
         entry: poetry run pylint --rcfile=.python-lint

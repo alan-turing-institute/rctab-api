@@ -1,6 +1,8 @@
 from logging.config import fileConfig
+from typing import Any, Literal, Optional
 
 from sqlalchemy import engine_from_config, pool
+from sqlalchemy.sql.schema import SchemaItem
 
 from alembic import context
 from rctab.crud.models import metadata
@@ -13,6 +15,7 @@ config = context.config
 config.set_main_option("sqlalchemy.url", str(settings.postgres_dsn))
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
+assert config.config_file_name is not None
 fileConfig(config.config_file_name)
 
 # add your model's MetaData object here
@@ -26,16 +29,29 @@ target_metadata = metadata
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
 
+SchemaType = Literal[
+    "schema", "table", "column", "index", "unique_constraint", "foreign_key_constraint"
+]
 
-def include_object(object, name, type_, reflected, compare_to):
+
+def include_object(
+    object: SchemaItem,
+    name: Optional[str],
+    type_: SchemaType,
+    reflected: bool,
+    compare_to: Optional[SchemaItem],
+) -> bool:
     """
     Exclude views from Alembic's consideration.
     """
 
-    return not object.info.get("is_view", False)
+    if object.info:
+        if object.info.get("is_view", False):
+            return False
+    return True
 
 
-def run_migrations_offline():
+def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode.
 
     This configures the context with just a URL
@@ -61,7 +77,7 @@ def run_migrations_offline():
         context.run_migrations()
 
 
-def run_migrations_online():
+def run_migrations_online() -> None:
     """Run migrations in 'online' mode.
 
     In this scenario we need to create an Engine

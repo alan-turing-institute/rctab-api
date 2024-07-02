@@ -67,7 +67,7 @@ class FinanceHistorySql:
     DROP_FUNCTION = "DROP FUNCTION {schema}.finance_changed();"
 
 
-def upgrade():
+def upgrade() -> None:
     op.execute(text("create schema accounting"))
     op.create_table(
         "user_cache",
@@ -362,9 +362,7 @@ def upgrade():
         sa.Column("subscription_id", postgresql.UUID(), nullable=False),
         sa.Column("display_name", sa.String(), nullable=False),
         sa.Column("state", sa.String(), nullable=False),
-        sa.Column(
-            "role_assignments", postgresql.JSONB(astext_type=sa.Text()), nullable=True
-        ),
+        sa.Column("role_assignments", postgresql.JSONB(), nullable=True),
         sa.Column(
             "time_created",
             sa.DateTime(timezone=True),
@@ -385,7 +383,7 @@ def upgrade():
         sa.Column("id", sa.String(), nullable=False),
         sa.Column("name", sa.String(), nullable=True),
         sa.Column("type", sa.String(), nullable=True),
-        sa.Column("tags", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+        sa.Column("tags", postgresql.JSONB(), nullable=True),
         sa.Column("billing_account_id", sa.String(), nullable=True),
         sa.Column("billing_account_name", sa.String(), nullable=True),
         sa.Column("billing_period_start_date", sa.Date(), nullable=True),
@@ -488,7 +486,7 @@ def upgrade():
     )
 
 
-def downgrade():
+def downgrade() -> None:
     op.drop_table("cost_recovery", schema="accounting")
     op.execute(
         "DROP MATERIALIZED VIEW {schema}.usage_view;".format(schema="accounting")
