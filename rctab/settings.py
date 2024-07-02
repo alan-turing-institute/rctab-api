@@ -16,9 +16,9 @@ class Settings(BaseSettings):
     # https://www.postgresql.org/docs/11/libpq-connect.html#LIBPQ-PARAMKEYWORDS
     db_host: str  # e.g. "mydb.postgres.database.azure.com" or "0.0.0.0"
     db_port: int = 5432
-    db_user: str  # e.g. "postgres" or "rctab-user"
+    db_user: str  # e.g. "postgres" or "rctab-api-user"
     db_password: str
-    db_name: Optional[str] = None  # e.g. RCTab or empty for the user's default db
+    db_name: str = ""  # e.g. "RCTab" or empty for the user's default db
     ssl_required: bool = False  # Usually False for local and True for Azure DBs
 
     # Email settings
@@ -54,13 +54,11 @@ class Settings(BaseSettings):
     controller_func_public_key: Optional[str] = None
 
     # postgres_dsn is calculated so do not provide it explicitly
-    postgres_dsn: Optional[PostgresDsn] = None
+    postgres_dsn: PostgresDsn
 
     # Settings for the settings class itself.
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
-    # Note that mode="before" means that we get (and return)
-    # a dict and not a Settings object.
     @model_validator(mode="before")
     def validate_postgres_dsn(  # type: ignore
         self: dict[str, Any],
@@ -70,12 +68,28 @@ class Settings(BaseSettings):
         if self.get("postgres_dsn") is not None:
             raise ValueError("postgres_dsn should not be provided")
 
-        self["postgres_dsn"] = (
-            f'postgresql://{self["db_user"]}:{self["db_password"]}@{self["db_host"]}:{self["db_port"]}/{self.get("db_name", "")}'
-        )
+        user = self["db_user"]
 
-        if self.get("ssl_required"):
-            self["postgres_dsn"] += "?sslmode=require"
+        # Default to 5432 if not provided.
+        port = self.get("db_port", 5432)
+        self["db_port"] = port
+
+        # Default to "" if not provided.
+        db_name = self.get("db_name", "")
+        self["db_name"] = db_name
+
+        host = self["db_host"]
+        password = self["db_password"]
+
+        # Default to False if not provided.
+        ssl = self.get("ssl_required", False)
+        self["ssl_required"] = ssl
+
+        ssl_str = "?sslmode=require" if ssl else ""
+
+        self["postgres_dsn"] = (
+            f"postgresql://{user}:{password}@{host}:{port}/{db_name}{ssl_str}"
+        )
 
         return self
 

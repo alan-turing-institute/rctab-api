@@ -242,8 +242,10 @@ async def post_usage(
 async def get_usage(_: UserRBAC = Depends(token_admin_verified)) -> Any:
     """Get all usage data."""
     usage_query = select([accounting_models.usage])
+    rows = [dict(x) for x in await database.fetch_all(usage_query)]
+    result = [Usage(**x) for x in rows]
 
-    return await database.fetch_all(usage_query)
+    return result
 
 
 @router.post("/all-cm-usage", response_model=TmpReturnStatus)

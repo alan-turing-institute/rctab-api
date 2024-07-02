@@ -6,7 +6,7 @@ from sqlalchemy.engine import Connection
 from rctab.crud.models import DATABASE_URL, user_rbac
 from tests.test_routes import constants
 
-engine = create_engine(DATABASE_URL)
+engine = create_engine(str(DATABASE_URL))
 
 
 def pytest_configure(config: Any) -> None:  # pylint: disable=unused-argument
