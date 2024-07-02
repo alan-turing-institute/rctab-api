@@ -1131,8 +1131,8 @@ uvicorn = {version = "^0.30.1", extras = ["standard"]}
 [package.source]
 type = "git"
 url = "https://github.com/alan-turing-institute/fastapimsal"
-reference = "update-pydantic"
-resolved_reference = "58cb41a803796d9a98d57c894e2dab868d807add"
+reference = "0.6.0"
+resolved_reference = "5e063a695474359c14ac8f8e099fc8fc14556012"
 
 [[package]]
 name = "filelock"
@@ -3265,13 +3265,13 @@ pylint = ">=2.5.0,<4"
 
 [[package]]
 name = "pymarkdownlnt"
-version = "0.9.20"
+version = "0.9.21"
 description = "A GitHub Flavored Markdown compliant Markdown linter."
 optional = false
 python-versions = ">=3.8.0"
 files = [
-    {file = "pymarkdownlnt-0.9.20-py3-none-any.whl", hash = "sha256:d9cd2db8e79dce67396236b7cdbaebe788bc8a07f95af9731433d353a91fe3d9"},
-    {file = "pymarkdownlnt-0.9.20.tar.gz", hash = "sha256:75e3792e066c3ba53d71c2ef9b411cb3e429ad5d612ad02607f3c1ad120c5abc"},
+    {file = "pymarkdownlnt-0.9.21-py3-none-any.whl", hash = "sha256:5efc4092898469c92cdc33686c356f3d94afb99aca09addf79119ba58959f350"},
+    {file = "pymarkdownlnt-0.9.21.tar.gz", hash = "sha256:f30f231f1fa36d98d646c7d2bedf2e8f3696a78b5e420d7a40a0d2f1c9159c0a"},
 ]
 
 [package.dependencies]
@@ -4871,4 +4871,4 @@ docs = ["myst-parser", "sphinx-rtd-theme", "sphinxcontrib-napoleon"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10 <3.12"
-content-hash = "a7c9f6848a02f1783333d91061f6065b5b92a6cbf55ead388bd53852d29c3455"
+content-hash = "dcda59271bea4bc24aeed3580885d058b11523433809977073581197d77e237a"
