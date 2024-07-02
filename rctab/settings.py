@@ -4,9 +4,8 @@ from functools import lru_cache
 from typing import Any, List, Optional
 from uuid import UUID
 
-from pydantic import HttpUrl, PostgresDsn, field_validator, model_validator
+from pydantic import PostgresDsn, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing_extensions import Self
 
 
 class Settings(BaseSettings):
@@ -60,8 +59,12 @@ class Settings(BaseSettings):
     # Settings for the settings class itself.
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
+    # Note that mode="before" means that we get (and return)
+    # a dict and not a Settings object.
     @model_validator(mode="before")
-    def validate_postgres_dsn(self) -> Self:
+    def validate_postgres_dsn(  # type: ignore
+        self: dict[str, Any],
+    ) -> dict[str, Any]:
         """Build a DSN string from the host, db name, port, username and password."""
         # We want to build the Data Source Name ourselves so none should be provided
         if self.get("postgres_dsn") is not None:
