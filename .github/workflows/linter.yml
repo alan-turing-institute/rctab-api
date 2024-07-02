@@ -48,9 +48,9 @@ jobs:
         shell: bash
         run: poetry install --all-extras
 
-      - name: Clear MyPy Cache
+      - name: Ready the MyPy Cache
         shell: bash
-        run: rm -rf .mypy_cache
+        run: mkdir .mypy_cache
 
       - uses: pre-commit/action@v3.0.1
         env:
