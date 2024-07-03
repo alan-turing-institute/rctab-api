@@ -108,6 +108,7 @@ async def post_subscription_allocation(
 @router.get("/allocations", response_model=List[AllocationListItem])
 async def get_subscription_allocations(
     subscription: SubscriptionItem, _: UserRBAC = Depends(token_admin_verified)
-) -> Any:
+) -> List[AllocationListItem]:
     """Return a list of allocations for a subscription."""
-    return await get_allocations(subscription.sub_id)
+    rows = await get_allocations(subscription.sub_id)
+    return [AllocationListItem(**dict(x)) for x in rows]

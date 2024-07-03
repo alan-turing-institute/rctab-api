@@ -2,7 +2,7 @@
 
 import datetime
 from datetime import timedelta
-from typing import Any, List, Optional
+from typing import Any, List
 
 from fastapi import Depends, HTTPException
 from sqlalchemy import insert
@@ -143,9 +143,10 @@ async def check_approval(approval: Approval) -> None:
 @router.get("/approvals", response_model=List[ApprovalListItem])
 async def get_subscription_approvals(
     subscription: SubscriptionItem, _: UserRBAC = Depends(token_admin_verified)
-) -> Optional[List[ApprovalListItem]]:
+) -> List[ApprovalListItem]:
     """Returns a list approvals for a subscription."""
-    return await get_approvals(subscription.sub_id)
+    rows = await get_approvals(subscription.sub_id)
+    return [ApprovalListItem(**dict(x)) for x in rows]
 
 
 @router.post("/approve", status_code=200)

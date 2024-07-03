@@ -280,7 +280,9 @@ async def post_cm_usage(
 
 
 @router.get("/all-cm-usage", response_model=List[CMUsage])
-async def get_cm_usage(_: UserRBAC = Depends(token_admin_verified)) -> Any:
+async def get_cm_usage(_: UserRBAC = Depends(token_admin_verified)) -> List[CMUsage]:
     """Get all cost-management data."""
     cm_query = select([accounting_models.costmanagement])
-    return await database.fetch_all(cm_query)
+    rows = [dict(x) for x in await database.fetch_all(cm_query)]
+    result = [CMUsage(**x) for x in rows]
+    return result
