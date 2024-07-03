@@ -1,8 +1,9 @@
 """The entrypoint of the FastAPI application."""
 
 import logging
+from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Any, Callable, Dict, Final
+from typing import Any, AsyncIterator, Callable, Dict, Final
 
 import fastapimsal
 import secure
@@ -34,6 +35,29 @@ from rctab.settings import get_settings
 
 templates = Jinja2Templates(directory=Path("rctab/templates"))
 
+
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    """Handle setup and teardown."""
+    await database.connect()
+    settings = get_settings()
+    logging.basicConfig(level=settings.log_level)
+    set_log_handler()
+    if not settings.ignore_whitelist:
+        logger = logging.getLogger(__name__)
+        logger.warning(
+            "Starting server with subscription whitelist: %s", settings.whitelist
+        )
+
+    yield
+
+    logger = logging.getLogger(__name__)
+    logger.warning("Shutting down server...")
+
+    logger.info("Disconnecting from database")
+    await database.disconnect()
+
+
 app = FastAPI(
     title="RCTab API",
     description="API for RCTab",
@@ -41,6 +65,7 @@ app = FastAPI(
     docs_url=None,
     redoc_url=None,
     openapi_url=None,
+    lifespan=lifespan,
 )
 
 server = secure.Server().set("Secure")
@@ -74,30 +99,6 @@ async def set_secure_headers(request: Any, call_next: Callable[[Any], Any]) -> A
 fastapimsal.init_auth(
     app, f_load_cache=load_cache, f_save_cache=save_cache, f_remove_cache=remove_cache
 )
-
-
-@app.on_event("startup")
-async def startup() -> None:
-    """Start the server up."""
-    await database.connect()
-    settings = get_settings()
-    logging.basicConfig(level=settings.log_level)
-    set_log_handler()
-    if not settings.ignore_whitelist:
-        logger = logging.getLogger(__name__)
-        logger.warning(
-            "Starting server with subscription whitelist: %s", settings.whitelist
-        )
-
-
-@app.on_event("shutdown")
-async def shutdown() -> None:
-    """Shut the server down."""
-    logger = logging.getLogger(__name__)
-    logger.warning("Shutting down server...")
-
-    logger.info("Disconnecting from database")
-    await database.disconnect()
 
 
 @app.exception_handler(UniqueViolationError)
