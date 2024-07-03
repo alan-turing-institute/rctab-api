@@ -78,6 +78,6 @@ def test_maximal_settings() -> None:
     )
 
     assert (
-        settings.postgres_dsn
+        str(settings.postgres_dsn)
         == "postgresql://my_db_user:my_db_password@my_db_host:5432/my_db_name"
     )

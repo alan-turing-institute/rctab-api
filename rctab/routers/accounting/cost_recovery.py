@@ -214,21 +214,22 @@ async def calc_cost_recovery_app(
 @router.post("/cli-cost-recovery", response_model=List[CostRecovery])
 async def post_calc_cost_recovery_cli(
     recovery_month: CostRecoveryMonth, user: UserRBAC = Depends(token_admin_verified)
-) -> Any:
+) -> List[CostRecovery]:
     """Route for the CLI to trigger cost recovery calculation."""
-    resp = await calc_cost_recovery(
+    rows = await calc_cost_recovery(
         recovery_month, commit_transaction=True, admin=user.oid
     )
 
-    return resp
+    return [CostRecovery(**dict(x)) for x in rows]
 
 
 @router.get("/cli-cost-recovery", response_model=List[CostRecovery])
 async def get_calc_cost_recovery_cli(
     recovery_month: CostRecoveryMonth, user: UserRBAC = Depends(token_admin_verified)
-) -> Any:
+) -> List[CostRecovery]:
     """Route for the CLI to do a dry-run of the cost recovery calculation."""
-    result = await calc_cost_recovery(
+    rows = await calc_cost_recovery(
         recovery_month, commit_transaction=False, admin=user.oid
     )
-    return result
+
+    return [CostRecovery(**dict(x)) for x in rows]

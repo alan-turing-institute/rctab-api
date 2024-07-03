@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import date, timedelta
 from uuid import UUID
 
 import pytest
@@ -29,7 +29,7 @@ async def create_expired_subscription(
     Creates a subscription which has been inactive for more than 90 days.
     """
 
-    date_91d_ago = datetime.now() - timedelta(days=91)
+    date_91d_ago = date.today() - timedelta(days=91)
 
     approved = 100
     allocated = 80

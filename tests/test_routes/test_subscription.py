@@ -1,7 +1,9 @@
+from typing import Tuple
+
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from rctab.crud.schema import SubscriptionDetails
+from rctab.crud.schema import BillingStatus, SubscriptionDetails, SubscriptionState
 from rctab.routers.accounting.routes import PREFIX
 from tests.test_routes import api_calls, constants
 
@@ -39,14 +41,17 @@ def test_post_subscription_twice(auth_app: FastAPI) -> None:
         assert result.status_code == 409
 
 
-def test_get_subscription_summary(auth_app: FastAPI) -> None:
+def test_get_subscription_summary(
+    app_with_signed_status_and_controller_tokens: Tuple[FastAPI, str, str],
+) -> None:
     """Get subscription information"""
+    auth_app, status_token, _ = app_with_signed_status_and_controller_tokens
 
     expected_details = SubscriptionDetails(
         subscription_id=constants.TEST_SUB_UUID,
-        name=None,
-        role_assignments=None,
-        status=None,
+        name="sub display name",
+        role_assignments=(),
+        status=SubscriptionState.ENABLED,
         approved_from=None,
         approved_to=None,
         always_on=None,
@@ -58,13 +63,20 @@ def test_get_subscription_summary(auth_app: FastAPI) -> None:
         remaining=0.0,
         first_usage=None,
         latest_usage=None,
-        desired_status_info=None,
+        desired_status_info=BillingStatus.EXPIRED,
         abolished=False,
     )
 
     with TestClient(auth_app) as client:
 
-        result = api_calls.create_subscription(client, constants.TEST_SUB_UUID)
+        result = api_calls.create_subscription_detail(
+            client,
+            status_token,
+            constants.TEST_SUB_UUID,
+            SubscriptionState.ENABLED,
+            role_assignments=(),
+            display_name="sub display name",
+        )
         assert result.status_code == 200
 
         api_calls.assert_subscription_status(client, expected_details=expected_details)

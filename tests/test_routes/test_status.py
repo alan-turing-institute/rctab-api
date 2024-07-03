@@ -113,9 +113,9 @@ async def test_post_status_sends_welcome(
         # someone to send a welcome email to
         role_assignments=(
             RoleAssignment(
-                role_definition_id=99,
+                role_definition_id="role99",
                 role_name="Contributor",
-                principal_id=1010,
+                principal_id="principal1010",
                 display_name="MyUser",
                 mail="myuser@example.com",
                 scope=f"/subscription_id/{constants.TEST_SUB_UUID}",
@@ -176,9 +176,9 @@ async def test_post_status_sends_status_change_name(
     mocker.patch("rctab.routers.accounting.status.refresh_desired_states", mock_refresh)
 
     first_assignment = RoleAssignment(
-        role_definition_id=99,
+        role_definition_id="role99",
         role_name="Contributor",
-        principal_id=1010,
+        principal_id="principal1010",
         display_name="MyUser",
         mail="myuser@example.com",
         scope=f"/subscription_id/{constants.TEST_SUB_UUID}",
@@ -254,9 +254,9 @@ async def test_post_status_sends_status_change_roles(
     mocker.patch("rctab.routers.accounting.status.refresh_desired_states", mock_refresh)
 
     first_assignment = RoleAssignment(
-        role_definition_id=99,
+        role_definition_id="role99",
         role_name="Contributor",
-        principal_id=1010,
+        principal_id="principal1010",
         display_name="MyUser",
         mail="myuser@example.com",
         scope=f"/subscription_id/{constants.TEST_SUB_UUID}",
@@ -275,9 +275,9 @@ async def test_post_status_sends_status_change_roles(
     )
 
     second_assignment = RoleAssignment(
-        role_definition_id="666",
+        role_definition_id="role666",
         role_name="Contributor",
-        principal_id="777",
+        principal_id="principal777",
         display_name="Leif Erikson",
         mail="leif@poee.org",
         scope=f"a/scope/string/{constants.TEST_SUB_UUID}",
@@ -401,9 +401,9 @@ async def test_post_status_sends_looming(
         # someone to send a welcome email to
         role_assignments=(
             RoleAssignment(
-                role_definition_id=99,
+                role_definition_id="role99",
                 role_name="Contributor",
-                principal_id=1010,
+                principal_id="principal1010",
                 display_name="MyUser",
                 mail="myuser@example.com",
                 scope=f"/subscription_id/{constants.TEST_SUB_UUID}",
@@ -432,8 +432,8 @@ async def test_post_status_sends_looming(
     # The first status call should have sent a welcome email
     mock_send_email.assert_has_calls([welcome_call])
 
-    #  So that we have an expiry date
-    today = datetime.datetime.now()
+    # So that we have an expiry date
+    today = datetime.date.today()
     new_approval = Approval(
         sub_id=constants.TEST_SUB_UUID,
         ticket="N/A",
@@ -452,8 +452,11 @@ async def test_post_status_sends_looming(
     )
     if sub_summary:
         approval_data["summary"] = dict(sub_summary)
-    approval_data = {**new_approval.dict(), **approval_data}
-    approval_data["rctab_url"] = "https://rctab-t1-teststack.azurewebsites.net/"
+    approval_data = {
+        **new_approval.dict(),
+        **approval_data,
+        "rctab_url": "https://rctab-t1-teststack.azurewebsites.net/",
+    }
     new_approval_call = mocker.call(
         "New approval for your Azure subscription: name",
         "new_approval.html",
@@ -479,8 +482,8 @@ async def test_post_status_sends_looming(
         "days": days_remaining,
         "extra_info": str(days_remaining),
         **expiry_data,
+        "rctab_url": "https://rctab-t1-teststack.azurewebsites.net/",
     }
-    expiry_data["rctab_url"] = "https://rctab-t1-teststack.azurewebsites.net/"  # type: ignore
     expiry_call = mocker.call(
         f"{days_remaining} days until the expiry of your Azure subscription: name",
         "expiry_looming.html",

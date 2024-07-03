@@ -3,7 +3,7 @@
 import calendar
 import datetime
 import logging
-from typing import Any, Dict, List
+from typing import Dict, List
 from uuid import UUID
 
 import jwt
@@ -239,11 +239,13 @@ async def post_usage(
 
 
 @router.get("/all-usage", response_model=List[Usage])
-async def get_usage(_: UserRBAC = Depends(token_admin_verified)) -> Any:
+async def get_usage(_: UserRBAC = Depends(token_admin_verified)) -> List[Usage]:
     """Get all usage data."""
     usage_query = select([accounting_models.usage])
+    rows = [dict(x) for x in await database.fetch_all(usage_query)]
+    result = [Usage(**x) for x in rows]
 
-    return await database.fetch_all(usage_query)
+    return result
 
 
 @router.post("/all-cm-usage", response_model=TmpReturnStatus)
@@ -278,7 +280,9 @@ async def post_cm_usage(
 
 
 @router.get("/all-cm-usage", response_model=List[CMUsage])
-async def get_cm_usage(_: UserRBAC = Depends(token_admin_verified)) -> Any:
+async def get_cm_usage(_: UserRBAC = Depends(token_admin_verified)) -> List[CMUsage]:
     """Get all cost-management data."""
     cm_query = select([accounting_models.costmanagement])
-    return await database.fetch_all(cm_query)
+    rows = [dict(x) for x in await database.fetch_all(cm_query)]
+    result = [CMUsage(**x) for x in rows]
+    return result

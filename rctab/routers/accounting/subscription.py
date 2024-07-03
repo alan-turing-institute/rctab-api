@@ -34,10 +34,12 @@ async def create_subscription(subscription: SubscriptionItem, user: UserRBAC) ->
 async def get_subscription(
     sub_id: Optional[UUID] = None,
     _: UserRBAC = Depends(token_admin_verified),
-) -> SubscriptionDetails:
+) -> List[SubscriptionDetails]:
     """Whether a subscription with the specified uuid is registered."""
-    retval = await get_subscriptions_with_disable(sub_id)
-    return retval
+    rows = [dict(x) for x in await get_subscriptions_with_disable(sub_id)]
+    result = [SubscriptionDetails(**x) for x in rows]
+
+    return result
 
 
 @router.post("/subscription")
