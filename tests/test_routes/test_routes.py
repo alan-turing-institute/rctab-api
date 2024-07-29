@@ -1,7 +1,7 @@
 # pylint: disable=redefined-outer-name,
 import random
 from datetime import date, timedelta
-from typing import Any, AsyncGenerator, Callable, Coroutine, Dict, Optional, Tuple
+from typing import Any, AsyncGenerator, Callable, Coroutine, Optional, Tuple
 from unittest.mock import AsyncMock
 from uuid import UUID
 
@@ -145,15 +145,11 @@ async def create_subscription(
 
 def make_async_execute(
     connection: Engine,
-) -> Callable[
-    [VarArg(Tuple[Any, ...]), KwArg(Dict[str, Any])], Coroutine[Any, Any, ResultProxy]
-]:
+) -> Callable[[VarArg(Any), KwArg(Any)], Coroutine[Any, Any, ResultProxy]]:
     """We need an async function to patch database.execute() with
     but connection.execute() is synchronous so make a wrapper for it."""
 
-    async def async_execute(
-        *args: Tuple[Any, ...], **kwargs: Dict[str, Any]
-    ) -> ResultProxy:
+    async def async_execute(*args: Any, **kwargs: Any) -> ResultProxy:
         """An async wrapper around connection.execute()."""
         return connection.execute(*args, **kwargs)  # type: ignore
 
