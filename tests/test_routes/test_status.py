@@ -58,7 +58,7 @@ def test_post_status(
 
         resp = client.post(
             "accounting/all-status",
-            content=all_status.json(),
+            content=all_status.model_dump_json().encode("utf-8"),
             headers={"authorization": "Bearer " + token},
         )
         assert resp.status_code == 200

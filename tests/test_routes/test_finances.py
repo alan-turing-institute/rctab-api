@@ -46,7 +46,9 @@ def test_finance_route(auth_app: FastAPI) -> None:
         result = client.request(
             "GET",
             PREFIX + "/finance",
-            content=SubscriptionItem(sub_id=UUID(int=33)).json(),
+            content=SubscriptionItem(sub_id=UUID(int=33))
+            .model_dump_json()
+            .encode("utf-8"),
         )
 
         assert result.status_code == 200
