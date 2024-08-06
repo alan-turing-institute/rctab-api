@@ -7,10 +7,7 @@ from uuid import UUID
 import pytest
 from databases import Database
 from jinja2 import Environment, PackageLoader, StrictUndefined
-
-from rctab.constants import EMAIL_TYPE_SUB_WELCOME, EMAIL_TYPE_USAGE_ALERT
-from rctab.crud import accounting_models
-from rctab.crud.schema import (
+from rctab_models.models import (
     Allocation,
     Approval,
     BillingStatus,
@@ -19,6 +16,9 @@ from rctab.crud.schema import (
     SubscriptionState,
     SubscriptionStatus,
 )
+
+from rctab.constants import EMAIL_TYPE_SUB_WELCOME, EMAIL_TYPE_USAGE_ALERT
+from rctab.crud import accounting_models
 from rctab.routers.accounting import send_emails
 from rctab.routers.accounting.routes import get_subscriptions_summary
 from tests.test_routes.constants import ADMIN_DICT, ADMIN_UUID

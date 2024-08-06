@@ -5,13 +5,13 @@ from datetime import timedelta
 from typing import Any, List
 
 from fastapi import Depends, HTTPException
+from rctab_models.models import Approval, ApprovalListItem, UserRBAC
 from sqlalchemy import insert
 
 from rctab.constants import EMAIL_TYPE_SUB_APPROVAL
 from rctab.crud import accounting_models
 from rctab.crud.auth import token_admin_verified
 from rctab.crud.models import database
-from rctab.crud.schema import Approval, ApprovalListItem, UserRBAC
 from rctab.routers.accounting import send_emails
 from rctab.routers.accounting.desired_states import refresh_desired_states
 from rctab.routers.accounting.routes import (

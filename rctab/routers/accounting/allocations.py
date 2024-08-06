@@ -3,12 +3,12 @@
 from typing import Any, List
 
 from fastapi import Depends, HTTPException
+from rctab_models.models import Allocation, AllocationListItem, UserRBAC
 from sqlalchemy import insert
 
 from rctab.crud import accounting_models
 from rctab.crud.auth import token_admin_verified
 from rctab.crud.models import database
-from rctab.crud.schema import Allocation, AllocationListItem, UserRBAC
 from rctab.routers.accounting import send_emails
 from rctab.routers.accounting.desired_states import refresh_desired_states
 from rctab.routers.accounting.routes import (

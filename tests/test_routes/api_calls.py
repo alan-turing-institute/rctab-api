@@ -5,8 +5,7 @@ from uuid import UUID, uuid4
 from devtools import debug
 from fastapi.testclient import TestClient
 from httpx import Response
-
-from rctab.crud.schema import (
+from rctab_models.models import (
     AllSubscriptionStatus,
     AllUsage,
     RoleAssignment,
@@ -15,6 +14,7 @@ from rctab.crud.schema import (
     SubscriptionStatus,
     Usage,
 )
+
 from rctab.routers.accounting.routes import PREFIX
 
 # pylint: disable=too-many-arguments
