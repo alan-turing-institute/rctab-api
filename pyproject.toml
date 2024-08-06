@@ -25,6 +25,7 @@ pydantic = { extras = ["email"], version = "^2.7.1" }
 pydantic-settings = "^2.3.4"
 PyJWT = { extras = ["crypto"], version = "^2.4.0" }
 python-dotenv = "^1.0.1"
+rctab_models = { git = "https://github.com/alan-turing-institute/rctab-models", tag = "0.1.0" }
 redis = {extras = ["hiredis"], version = "^5.0.1"}
 requests = "^2.32.3"
 sendgrid = "^6.9.1"
