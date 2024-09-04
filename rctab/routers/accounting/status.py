@@ -8,12 +8,12 @@ from fastapi import Depends, HTTPException, status
 from fastapi.logger import logger
 from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel
+from rctab_models.models import AllSubscriptionStatus, SubscriptionStatus
 from sqlalchemy import and_, desc, insert, select
 
 from rctab.constants import ADMIN_OID, EMAIL_TYPE_SUB_WELCOME
 from rctab.crud.accounting_models import emails, subscription_details
 from rctab.crud.models import database
-from rctab.crud.schema import AllSubscriptionStatus, SubscriptionStatus
 from rctab.crud.utils import insert_subscriptions_if_not_exists
 from rctab.routers.accounting import send_emails
 from rctab.routers.accounting.desired_states import refresh_desired_states

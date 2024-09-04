@@ -12,11 +12,7 @@ from fastapimsal import RequiresLoginException, UserIdentityToken
 from jinja2 import Environment, PackageLoader, select_autoescape
 from jose import jwt
 from pydantic import BaseModel, EmailStr, ValidationError
-from starlette.templating import Jinja2Templates, _TemplateResponse
-
-from rctab.constants import __version__
-from rctab.crud.auth import check_user_access, user_authenticated_no_error
-from rctab.crud.schema import (
+from rctab_models.models import (
     AllocationListItem,
     ApprovalListItem,
     CostRecovery,
@@ -25,6 +21,10 @@ from rctab.crud.schema import (
     SubscriptionDetails,
     Usage,
 )
+from starlette.templating import Jinja2Templates, _TemplateResponse
+
+from rctab.constants import __version__
+from rctab.crud.auth import check_user_access, user_authenticated_no_error
 from rctab.routers.accounting.routes import (
     get_allocations,
     get_approvals,

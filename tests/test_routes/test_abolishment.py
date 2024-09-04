@@ -4,10 +4,10 @@ from uuid import UUID
 import pytest
 from databases import Database
 from pytest_mock import MockerFixture
+from rctab_models.models import SubscriptionState
 from sqlalchemy import select
 
 from rctab.crud.accounting_models import subscription_details
-from rctab.crud.schema import SubscriptionState
 from rctab.routers.accounting.abolishment import (
     adjust_budgets_to_zero,
     get_inactive_subs,

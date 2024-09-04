@@ -10,10 +10,10 @@ from fastapi import HTTPException
 from fastapi.templating import Jinja2Templates
 from jinja2 import Environment, PackageLoader, StrictUndefined, select_autoescape
 from pytest_mock import MockerFixture
+from rctab_models.models import RoleAssignment, SubscriptionState, UserRBAC
 
 import rctab
 from rctab.crud.accounting_models import subscription, subscription_details
-from rctab.crud.schema import RoleAssignment, SubscriptionState, UserRBAC
 from rctab.routers.frontend import check_user_on_subscription, home
 from rctab.routers.frontend import subscription_details as subscription_details_page
 from tests.test_routes import constants

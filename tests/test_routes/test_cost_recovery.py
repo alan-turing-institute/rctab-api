@@ -9,12 +9,12 @@ from databases import Database
 from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 from pytest_mock import MockerFixture
+from rctab_models.models import CostRecovery, Finance, Usage
 from sqlalchemy import insert, select
 
 from rctab.constants import ADMIN_OID
 from rctab.crud import accounting_models
 from rctab.crud.accounting_models import usage
-from rctab.crud.schema import CostRecovery, Finance, Usage
 from rctab.routers.accounting.cost_recovery import (
     CostRecoveryMonth,
     calc_cost_recovery,

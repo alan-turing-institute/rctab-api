@@ -8,6 +8,7 @@ from databases import Database
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from pytest_mock import MockerFixture
+from rctab_models.models import BillingStatus, DesiredState, SubscriptionState
 from sqlalchemy import select
 
 from rctab.crud.accounting_models import refresh_materialised_view
@@ -15,7 +16,6 @@ from rctab.crud.accounting_models import status as status_table
 from rctab.crud.accounting_models import usage as usage_table
 from rctab.crud.accounting_models import usage_view
 from rctab.crud.models import database
-from rctab.crud.schema import BillingStatus, DesiredState, SubscriptionState
 from rctab.routers.accounting import desired_states
 from rctab.routers.accounting.desired_states import refresh_desired_states
 from rctab.routers.accounting.routes import PREFIX, get_subscriptions_summary

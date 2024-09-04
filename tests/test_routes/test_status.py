@@ -11,17 +11,17 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from hypothesis import given, settings
 from hypothesis import strategies as st
-from sqlalchemy import select
-
-from rctab.constants import ADMIN_OID
-from rctab.crud.accounting_models import subscription_details
-from rctab.crud.schema import (
+from rctab_models.models import (
     AllSubscriptionStatus,
     Approval,
     RoleAssignment,
     SubscriptionState,
     SubscriptionStatus,
 )
+from sqlalchemy import select
+
+from rctab.constants import ADMIN_OID
+from rctab.crud.accounting_models import subscription_details
 from rctab.routers.accounting import status
 from rctab.routers.accounting.approvals import post_approval
 from rctab.routers.accounting.routes import get_subscriptions_summary

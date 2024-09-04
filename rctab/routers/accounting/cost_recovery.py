@@ -7,6 +7,7 @@ from uuid import UUID
 import sqlalchemy
 from fastapi import Depends, HTTPException
 from pydantic import BaseModel
+from rctab_models.models import CostRecovery, UserRBAC
 from sqlalchemy import and_, between, desc, func, insert, select
 
 from rctab.constants import ADMIN_OID
@@ -18,7 +19,6 @@ from rctab.crud.accounting_models import (
 )
 from rctab.crud.auth import token_admin_verified
 from rctab.crud.models import database
-from rctab.crud.schema import CostRecovery, UserRBAC
 from rctab.routers.accounting.routes import router
 from rctab.routers.accounting.usage import authenticate_usage_app
 

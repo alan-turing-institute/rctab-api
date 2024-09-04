@@ -2,8 +2,8 @@ from typing import Tuple
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from rctab_models.models import BillingStatus, SubscriptionDetails, SubscriptionState
 
-from rctab.crud.schema import BillingStatus, SubscriptionDetails, SubscriptionState
 from rctab.routers.accounting.routes import PREFIX
 from tests.test_routes import api_calls, constants
 

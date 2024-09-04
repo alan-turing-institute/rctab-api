@@ -6,10 +6,10 @@ from devtools import debug
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from pytest_mock import MockerFixture
+from rctab_models.models import Approval, SubscriptionDetails
 
 from rctab.constants import EMAIL_TYPE_SUB_APPROVAL
 from rctab.crud.models import database
-from rctab.crud.schema import Approval, SubscriptionDetails
 from rctab.routers.accounting.routes import PREFIX
 from tests.test_routes import api_calls, constants
 from tests.test_routes.test_routes import test_db  # pylint: disable=unused-import

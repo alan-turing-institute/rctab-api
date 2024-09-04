@@ -9,6 +9,12 @@ import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel
+from rctab_models.models import (
+    DEFAULT_CURRENCY,
+    BillingStatus,
+    DesiredState,
+    SubscriptionState,
+)
 from sqlalchemy import Enum, and_, case, cast, func, literal_column, not_, or_, select
 
 from rctab.constants import ADJUSTMENT_DELTA, ADMIN_OID, EXPIRY_ADJUSTMENT_MSG
@@ -16,12 +22,6 @@ from rctab.crud.accounting_models import allocations as allocations_table
 from rctab.crud.accounting_models import approvals as approvals_table
 from rctab.crud.accounting_models import status as status_table
 from rctab.crud.models import database
-from rctab.crud.schema import (
-    DEFAULT_CURRENCY,
-    BillingStatus,
-    DesiredState,
-    SubscriptionState,
-)
 from rctab.routers.accounting import send_emails
 from rctab.routers.accounting.routes import get_subscriptions_summary, router
 from rctab.settings import get_settings

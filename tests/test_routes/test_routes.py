@@ -9,6 +9,12 @@ import pytest
 from databases import Database
 from mypy_extensions import KwArg, VarArg
 from pytest_mock import MockerFixture
+from rctab_models.models import (
+    RoleAssignment,
+    SubscriptionState,
+    SubscriptionStatus,
+    Usage,
+)
 from sqlalchemy import and_, func, select
 from sqlalchemy.engine import ResultProxy
 from sqlalchemy.engine.base import Engine
@@ -25,12 +31,6 @@ from rctab.crud.accounting_models import (
     usage_view,
 )
 from rctab.crud.models import database
-from rctab.crud.schema import (
-    RoleAssignment,
-    SubscriptionState,
-    SubscriptionStatus,
-    Usage,
-)
 from rctab.routers.accounting.desired_states import refresh_desired_states
 from tests.test_routes import constants
 

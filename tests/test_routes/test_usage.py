@@ -13,11 +13,7 @@ from databases import Database
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from pytest_mock import MockerFixture
-
-from rctab.constants import ADMIN_OID, EMAIL_TYPE_USAGE_ALERT
-from rctab.crud.accounting_models import usage_view
-from rctab.crud.models import database
-from rctab.crud.schema import (
+from rctab_models.models import (
     AllCMUsage,
     AllUsage,
     BillingStatus,
@@ -25,6 +21,10 @@ from rctab.crud.schema import (
     SubscriptionDetails,
     Usage,
 )
+
+from rctab.constants import ADMIN_OID, EMAIL_TYPE_USAGE_ALERT
+from rctab.crud.accounting_models import usage_view
+from rctab.crud.models import database
 from rctab.routers.accounting.usage import get_usage, post_monthly_usage, post_usage
 from tests.test_routes import api_calls, constants
 from tests.test_routes.test_routes import (  # pylint: disable=unused-import

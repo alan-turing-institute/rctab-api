@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from typing import List, Optional
 from uuid import UUID
 
+from rctab_models.models import DEFAULT_CURRENCY, SubscriptionState
 from sqlalchemy import and_, func, insert, select
 
 from rctab.constants import ABOLISHMENT_ADJUSTMENT_MSG, ADJUSTMENT_DELTA
@@ -14,7 +15,6 @@ from rctab.crud.accounting_models import emails, failed_emails
 from rctab.crud.accounting_models import subscription as subscription_table
 from rctab.crud.accounting_models import subscription_details
 from rctab.crud.models import database
-from rctab.crud.schema import DEFAULT_CURRENCY, SubscriptionState
 from rctab.routers.accounting.routes import get_subscriptions_summary
 from rctab.routers.accounting.send_emails import (
     MissingEmailParamsError,

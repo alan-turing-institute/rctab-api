@@ -7,6 +7,7 @@ from databases import Database
 from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 from pytest_mock import MockerFixture
+from rctab_models.models import Finance, FinanceWithID
 from sqlalchemy import insert, select
 
 from rctab.crud.accounting_models import (
@@ -16,7 +17,6 @@ from rctab.crud.accounting_models import (
     finance_history,
 )
 from rctab.crud.models import user_rbac
-from rctab.crud.schema import Finance, FinanceWithID
 from rctab.routers.accounting.cost_recovery import CostRecoveryMonth
 from rctab.routers.accounting.finances import (
     check_create_finance,
