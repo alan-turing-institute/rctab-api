@@ -6,11 +6,11 @@ import fastapimsal
 import msal
 from asyncpg.exceptions import UniqueViolationError
 from fastapi import Depends, HTTPException
+from rctab_models.models import UserRBAC
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.sql import select
 
 from rctab.crud.models import database, user_cache, user_rbac
-from rctab.crud.schema import UserRBAC
 
 
 # Define cache functions

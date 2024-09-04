@@ -10,6 +10,7 @@ import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel
+from rctab_models.models import AllCMUsage, AllUsage, CMUsage, Usage, UserRBAC
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.inspection import inspect
@@ -19,7 +20,6 @@ from rctab.crud import accounting_models
 from rctab.crud.accounting_models import refresh_materialised_view, usage_view
 from rctab.crud.auth import token_admin_verified
 from rctab.crud.models import database, executemany
-from rctab.crud.schema import AllCMUsage, AllUsage, CMUsage, Usage, UserRBAC
 from rctab.crud.utils import insert_subscriptions_if_not_exists
 from rctab.routers.accounting.desired_states import refresh_desired_states
 from rctab.routers.accounting.routes import router

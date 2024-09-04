@@ -6,9 +6,9 @@ import pytest_mock
 from devtools import debug
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from rctab_models.models import SubscriptionDetails
 
 from rctab.crud.models import database
-from rctab.crud.schema import SubscriptionDetails
 from tests.test_routes import api_calls, constants
 
 date_from = datetime.date.today()
