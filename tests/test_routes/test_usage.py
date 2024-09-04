@@ -284,7 +284,7 @@ def test_post_monthly_usage(
 ) -> None:
     auth_app, token = app_with_signed_billing_token
 
-    example_1_file = Path("tests/data/example-monthly-wrong2.json")
+    example_1_file = Path("tests/data/example-monthly-wrong.json")
     example_1_data = json.loads(example_1_file.read_text(encoding="utf-8"))
 
     example_2_file = Path("tests/data/example-monthly-correct.json")
