@@ -72,7 +72,7 @@ def test_post_status(
         # Check that we can POST the same status again without issue (idempotency).
         resp = client.post(
             "accounting/all-status",
-            content=all_status.json(),
+            content=all_status.model_dump_json(),
             headers={"authorization": "Bearer " + token},
         )
         assert resp.status_code == 200

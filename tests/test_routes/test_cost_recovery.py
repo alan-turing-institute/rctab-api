@@ -43,7 +43,7 @@ def test_cost_recovery_app_route(
         recovery_period = CostRecoveryMonth(first_day=date(year=2001, month=1, day=1))
         result = client.post(
             PREFIX + "/app-cost-recovery",
-            content=recovery_period.json(),
+            content=recovery_period.model_dump_json(),
             headers={"authorization": "Bearer " + token},
         )
 
@@ -73,7 +73,7 @@ def test_cost_recovery_cli_route(
         recovery_period = CostRecoveryMonth(first_day=date(year=2001, month=1, day=1))
         result = client.post(
             PREFIX + "/cli-cost-recovery",
-            content=recovery_period.json(),
+            content=recovery_period.model_dump_json(),
         )
 
         mock.assert_called_once_with(
@@ -99,7 +99,7 @@ def test_cost_recovery_cli_route_dry_run(
         result = client.request(
             "GET",
             PREFIX + "/cli-cost-recovery",
-            content=recovery_period.json(),
+            content=recovery_period.model_dump_json(),
         )
 
         mock.assert_called_once_with(

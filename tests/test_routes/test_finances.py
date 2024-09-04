@@ -119,7 +119,7 @@ def test_finances_route(auth_app: FastAPI) -> None:
             finance_code="test_finance",
             priority=1,
         )
-        result = client.post(PREFIX + "/finances", content=f_a.json())
+        result = client.post(PREFIX + "/finances", content=f_a.model_dump_json())
 
         assert result.status_code == 201
 
@@ -366,13 +366,14 @@ def test_finance_post_get_put_delete(auth_app: FastAPI) -> None:
             finance_code="test_finance",
             priority=1,
         )
-        result = client.post(PREFIX + "/finances", content=f_a.json())
+        result = client.post(PREFIX + "/finances", content=f_a.model_dump_json())
         assert result.status_code == 201
         f_a_returned = FinanceWithID.parse_raw(result.content)
 
         f_a_returned.amount = 10.0
         result = client.put(
-            PREFIX + f"/finances/{f_a_returned.id}", content=f_a_returned.json()
+            PREFIX + f"/finances/{f_a_returned.id}",
+            content=f_a_returned.model_dump_json(),
         )
         assert result.status_code == 200
 
@@ -383,7 +384,7 @@ def test_finance_post_get_put_delete(auth_app: FastAPI) -> None:
         result = client.request(
             "DELETE",
             PREFIX + f"/finances/{f_a_returned.id}",
-            content=SubscriptionItem(sub_id=constants.TEST_SUB_UUID).json(),
+            content=SubscriptionItem(sub_id=constants.TEST_SUB_UUID).model_dump_json(),
         )
         assert result.status_code == 200
 
@@ -547,19 +548,20 @@ def test_finance_can_update(auth_app: FastAPI) -> None:
             finance_code="test_finance",
             priority=1,
         )
-        result = client.post(PREFIX + "/finances", content=f_a.json())
+        result = client.post(PREFIX + "/finances", content=f_a.model_dump_json())
         assert result.status_code == 201
         f_a_returned = FinanceWithID.parse_raw(result.content)
 
         result = client.post(
             PREFIX + "/cli-cost-recovery",
-            content=CostRecoveryMonth(first_day="2022-09-01").json(),
+            content=CostRecoveryMonth(first_day="2022-09-01").model_dump_json(),
         )
         assert result.status_code == 200
 
         f_a_returned.amount = 10.0
         result = client.put(
-            PREFIX + f"/finances/{f_a_returned.id}", content=f_a_returned.json()
+            PREFIX + f"/finances/{f_a_returned.id}",
+            content=f_a_returned.model_dump_json(),
         )
         assert result.status_code == 200
 
