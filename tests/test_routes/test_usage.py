@@ -53,7 +53,7 @@ def test_post_usage(
 
         resp = client.post(
             "usage/all-usage",
-            content=post_data.json(),
+            content=post_data.model_dump_json(),
             headers={"authorization": "Bearer " + token},
         )
 
@@ -221,7 +221,7 @@ def _post_costmanagement(
     post_client = client.post(
         "/usage/all-cm-usage",
         headers={"authorization": "Bearer " + token},
-        content=all_usage.json(),
+        content=all_usage.model_dump_json(),
     )  # type: ignore
     return post_client  # type: ignore
 
@@ -300,7 +300,7 @@ def test_post_monthly_usage(
 
         resp = client.post(
             "usage/monthly-usage",
-            content=post_example_1_data.json(),
+            content=post_example_1_data.model_dump_json(),
             headers={"authorization": "Bearer " + token},
         )
 
@@ -308,7 +308,7 @@ def test_post_monthly_usage(
 
         resp = client.post(
             "usage/monthly-usage",
-            content=post_example_2_data.json(),
+            content=post_example_2_data.model_dump_json(),
             headers={"authorization": "Bearer " + token},
         )
 
@@ -316,7 +316,7 @@ def test_post_monthly_usage(
 
         resp = client.post(
             "usage/monthly-usage",
-            content=post_example_3_data.json(),
+            content=post_example_3_data.model_dump_json(),
             headers={"authorization": "Bearer " + token},
         )
 
@@ -383,7 +383,7 @@ def test_post_usage_emails(
 
         resp = client.post(
             "usage/all-usage",
-            content=post_data.json(),
+            content=post_data.model_dump_json(),
             headers={"authorization": "Bearer " + token},
         )
         assert resp.status_code == 200

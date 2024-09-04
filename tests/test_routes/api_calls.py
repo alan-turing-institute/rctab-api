@@ -71,7 +71,7 @@ def create_subscription_detail(
                     role_assignments=role_assignments,
                 )
             ]
-        ).json(),
+        ).model_dump_json(),
         headers={"authorization": "Bearer " + token},
     )
 
@@ -177,6 +177,6 @@ def create_usage(
 
     return client.post(
         "usage/all-usage",
-        content=post_data.json(),
+        content=post_data.model_dump_json(),
         headers={"authorization": "Bearer " + token},
     )
