@@ -1,6 +1,5 @@
 """Set and get usage data."""
 
-import calendar
 import datetime
 import logging
 from typing import Dict, List
@@ -109,19 +108,24 @@ async def post_monthly_usage(
     """Inserts monthly usage data into the database."""
     logger.info("Post monthly usage called")
 
+    if len(all_usage.usage_list) == 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Monthly usage data must have at least one record.",
+        )
+
     post_start = datetime.datetime.now()
 
-    date_min = datetime.date.today() + datetime.timedelta(days=4000)
-    date_max = datetime.date.today() - datetime.timedelta(days=4000)
-    monthly_usage = True
-
     for usage in all_usage.usage_list:
-        if usage.date < date_min:
-            date_min = usage.date
-        if usage.date > date_max:
-            date_max = usage.date
         if usage.monthly_upload is None:
-            monthly_usage = False
+            raise HTTPException(
+                status_code=400,
+                detail="Post monthly usage data must have the monthly_upload column populated.",
+            )
+
+    dates = sorted([x.date for x in all_usage.usage_list])
+    date_min = dates[0]
+    date_max = dates[-1]
 
     logger.info(
         "Post monthly usage received data for %s - %s containing %d records",
@@ -130,79 +134,36 @@ async def post_monthly_usage(
         len(all_usage.usage_list),
     )
 
-    if date_min.year != date_max.year or date_min.month != date_max.month:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Post monthly usage data should contain usage only for one month. Min, Max usage date: ({str(date_min)}), ({str(date_max)}).",
+    async with database.transaction():
+
+        logger.info(
+            "Post monthly usage deleting existing usage data for %s - %s",
+            date_min,
+            date_max,
         )
 
-    if not monthly_usage:
-        raise HTTPException(
-            status_code=400,
-            detail="Post monthly usage data must have the monthly_upload column populated.",
+        # Delete all usage for the time period to have a blank slate.
+        query_del = (
+            accounting_models.usage.delete()
+            .where(accounting_models.usage.c.date >= date_min)
+            .where(accounting_models.usage.c.date <= date_max)
+        )
+        await database.execute(query_del)
+
+        logger.info(
+            "Post monthly usage inserting new subscriptions if they don't exist"
         )
 
-    month_start = datetime.date(date_min.year, date_min.month, 1)
-    month_end = datetime.date(
-        date_min.year,
-        date_min.month,
-        calendar.monthrange(date_min.year, date_min.month)[1],
-    )
+        unique_subscriptions = list({i.subscription_id for i in all_usage.usage_list})
 
-    logger.info(
-        "Post monthly usage checks if data for %s - %s has already been posted",
-        month_start,
-        month_end,
-    )
+        await insert_subscriptions_if_not_exists(unique_subscriptions)
 
-    # Check if monthly usage has already been posted for the month
-    query = select([accounting_models.usage])
-    query = query.where(accounting_models.usage.c.date >= month_start)
-    query = query.where(accounting_models.usage.c.date <= month_end)
-    query = query.where(accounting_models.usage.c.monthly_upload.isnot(None))
+        logger.info("Post monthly usage inserting monthly usage data")
 
-    query_result = await database.fetch_all(query)
+        await insert_usage(all_usage)
 
-    if query_result is not None and len(query_result) > 0:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Post monthly usage data for {str(month_start)}-{str(month_end)} has already been posted.",
-        )
-
-    async with UsageEmailContextManager(database):
-
-        async with database.transaction():
-
-            logger.info(
-                "Post monthly usage deleting existing usage data for %s - %s",
-                month_start,
-                month_end,
-            )
-
-            # delete al the usage for the month
-            query_del = accounting_models.usage.delete().where(
-                accounting_models.usage.c.date >= month_start
-            )
-            query_del = query_del.where(accounting_models.usage.c.date <= month_end)
-            await database.execute(query_del)
-
-            logger.info(
-                "Post monthly usage inserting new subscriptions if they don't exist"
-            )
-
-            unique_subscriptions = list(
-                {i.subscription_id for i in all_usage.usage_list}
-            )
-
-            await insert_subscriptions_if_not_exists(unique_subscriptions)
-
-            logger.info("Post monthly usage inserting monthly usage data")
-
-            await insert_usage(all_usage)
-
-    logger.info("Post monthly usage refreshing desired states")
-
-    await refresh_desired_states(UUID(ADMIN_OID), unique_subscriptions)
+    # Note that we don't refresh the desired states here as we don't
+    # want to trigger excess emails.
 
     logger.info("Post monthly usage data took %s", datetime.datetime.now() - post_start)
 
