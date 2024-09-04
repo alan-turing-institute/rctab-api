@@ -4195,21 +4195,6 @@ pymysql = ["pymysql", "pymysql (<1)"]
 sqlcipher = ["sqlcipher3_binary"]
 
 [[package]]
-name = "sqlalchemy-stubs"
-version = "0.3"
-description = "SQLAlchemy stubs and mypy plugin"
-optional = false
-python-versions = "*"
-files = [
-    {file = "sqlalchemy-stubs-0.3.tar.gz", hash = "sha256:a3318c810697164e8c818aa2d90bac570c1a0e752ced3ec25455b309c0bee8fd"},
-    {file = "sqlalchemy_stubs-0.3-py3-none-any.whl", hash = "sha256:ca1250605a39648cc433f5c70cb1a6f9fe0b60bdda4c51e1f9a2ab3651daadc8"},
-]
-
-[package.dependencies]
-mypy = ">=0.720"
-typing-extensions = ">=3.7.4"
-
-[[package]]
 name = "stack-data"
 version = "0.5.1"
 description = "Extract data from python stack frames and tracebacks for informative displays"
@@ -4871,4 +4856,4 @@ docs = ["myst-parser", "sphinx-rtd-theme", "sphinxcontrib-napoleon"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10 <3.12"
-content-hash = "dcda59271bea4bc24aeed3580885d058b11523433809977073581197d77e237a"
+content-hash = "427bd8b6f28faa6d40293f4cd0b6ce104bdbbd1d563127b206cbf59d8b2febe7"

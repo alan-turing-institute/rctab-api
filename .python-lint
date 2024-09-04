@@ -203,7 +203,7 @@ ignored-classes=optparse.Values,thread._local,_thread._local
 # and thus existing member attributes cannot be deduced by static analysis). It
 # supports qualified module names, as well as Unix pattern matching.
 # We ignore Pulumi modules since we don't list them in pyproject.toml.
-ignored-modules=pulumi,pulumi_random,pulumi_azure_native,pulumi_postgresql
+ignored-modules=
 
 # Show a hint with possible names when a member name was not found. The aspect
 # of finding the hint is based on edit distance.
