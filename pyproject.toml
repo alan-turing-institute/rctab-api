@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "RCTab"
-version = "1.4.0"
+version = "1.5.0"
 description = "The RCTab API. Manage Azure budgets and usage"
 authors = []
 
