@@ -83,6 +83,12 @@ def test_post_usage(
         )
 
 
+def test_post_usage2(
+    mocker: pytest_mock.MockerFixture,
+) -> None:
+    del mocker
+
+
 def test_write_usage(
     app_with_signed_billing_token: Tuple[FastAPI, str], mocker: MockerFixture
 ) -> None:
