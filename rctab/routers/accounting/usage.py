@@ -199,6 +199,8 @@ async def post_usage(
     )
 
 
+# TODO: remove this decorator and leave it as a standard function as it's only
+# used in test. Hence, it will prevent any accidental call to the function.
 @router.get("/all-usage", response_model=List[Usage])
 async def get_usage(_: UserRBAC = Depends(token_admin_verified)) -> List[Usage]:
     """Get all usage data."""
