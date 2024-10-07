@@ -88,10 +88,94 @@ def test_post_usage(
         )
 
 
-def test_post_usage2(
-    mocker: pytest_mock.MockerFixture,
+@pytest.mark.asyncio
+async def test_post_usage2(
+    test_db: Database,  # pylint: disable=redefined-outer-name
 ) -> None:
-    del mocker
+    sub1 = await create_subscription(test_db)
+    # create some usage data across 2 or more dates
+    usage_items = AllUsage(
+        usage_list=[
+            Usage(
+                id=str(UUID(int=0)),
+                subscription_id=sub1,
+                date="2024-04-01",
+                total_cost=1.0,
+                invoice_section="-",
+            ),
+            Usage(
+                id=str(UUID(int=1)),
+                subscription_id=sub1,
+                date="2024-04-02",
+                total_cost=2.0,
+                invoice_section="-",
+            ),
+            Usage(
+                id=str(UUID(int=2)),
+                subscription_id=sub1,
+                date="2024-04-03",
+                total_cost=4.0,
+                invoice_section="-",
+            ),
+        ],
+        start_date="2024-04-01",
+        end_date="2024-04-03",
+    )
+    await post_usage(usage_items, {"mock": "authentication"})
+    all_usage = await get_usage()
+    assert len(all_usage) == 3
+
+    # upload some usage data for some subset of the dates
+    usage_list = [
+        Usage(
+            id=str(UUID(int=0)),
+            subscription_id=sub1,
+            date="2024-04-01",
+            total_cost=4.0,
+            invoice_section="-",
+        ),
+    ]
+    usage_items = AllUsage(
+        usage_list=usage_list,
+        start_date="2024-04-01",
+        end_date="2024-04-03",
+    )
+    await post_usage(usage_items, {"mock": "authentication"})
+
+    # check that some usage data was left alone and some was replaced
+    all_usage = await get_usage()
+    assert all_usage == usage_list
+
+
+@pytest.mark.asyncio
+async def test_post_usage3(
+    test_db: Database,  # pylint: disable=redefined-outer-name
+) -> None:
+    sub1 = await create_subscription(test_db)
+    # create some usage data across 2 or more dates
+    usage_items = AllUsage(
+        usage_list=[
+            Usage(
+                id=str(UUID(int=0)),
+                subscription_id=sub1,
+                date="2024-04-01",
+                total_cost=1.0,
+                invoice_section="A",
+            ),
+            Usage(
+                id=str(UUID(int=0)),
+                subscription_id=sub1,
+                date="2024-04-02",
+                total_cost=1.0,
+                invoice_section="B",
+            ),
+        ],
+        start_date="2024-04-01",
+        end_date="2024-04-02",
+    )
+    await post_usage(usage_items, {"mock": "authentication"})
+    all_usage = await get_usage()
+    assert len(all_usage) == 2
 
 
 def test_write_usage(
