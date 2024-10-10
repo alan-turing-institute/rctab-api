@@ -78,19 +78,14 @@ async def insert_usage(all_usage: AllUsage) -> None:
         all_usage: Usage data to insert.
     """
     usage_query = insert(accounting_models.usage)
-    update_dict = {c.name: c for c in usage_query.excluded if not c.primary_key}
-    on_duplicate_key_stmt = usage_query.on_conflict_do_update(
-        index_elements=inspect(accounting_models.usage).primary_key,
-        set_=update_dict,
-    )
 
     logger.info("Inserting usage data")
     insert_start = datetime.datetime.now()
 
     await executemany(
         database,
-        on_duplicate_key_stmt,
-        values=[i.dict() for i in all_usage.usage_list],
+        usage_query,
+        values=[i.model_dump() for i in all_usage.usage_list],
     )
     logger.info("Inserting usage data took %s", datetime.datetime.now() - insert_start)
     refresh_start = datetime.datetime.now()
@@ -199,6 +194,8 @@ async def post_usage(
     )
 
 
+# TODO: remove this decorator and leave it as a standard function as it's only
+# used in test. Hence, it will prevent any accidental call to the function.
 @router.get("/all-usage", response_model=List[Usage])
 async def get_usage(_: UserRBAC = Depends(token_admin_verified)) -> List[Usage]:
     """Get all usage data."""
