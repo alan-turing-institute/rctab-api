@@ -152,7 +152,7 @@ async def test_post_usage3(
     test_db: Database,  # pylint: disable=redefined-outer-name
 ) -> None:
     sub1 = await create_subscription(test_db)
-    # create some usage data across 2 or more dates
+    # create two usage items with the same usage id
     usage_items = AllUsage(
         usage_list=[
             Usage(
@@ -165,13 +165,13 @@ async def test_post_usage3(
             Usage(
                 id=str(UUID(int=0)),
                 subscription_id=sub1,
-                date="2024-04-02",
+                date="2024-04-01",
                 total_cost=1.0,
                 invoice_section="B",
             ),
         ],
         start_date="2024-04-01",
-        end_date="2024-04-02",
+        end_date="2024-04-01",
     )
     await post_usage(usage_items, {"mock": "authentication"})
     all_usage = await get_usage()
