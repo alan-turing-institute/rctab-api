@@ -1,7 +1,7 @@
 import datetime
 import json
 from pathlib import Path
-from typing import List, Tuple, Union
+from typing import Iterable, List, Tuple, Union
 from unittest.mock import AsyncMock
 from uuid import UUID
 
@@ -45,9 +45,14 @@ def test_post_usage(
     auth_app, token = app_with_signed_billing_token
     example_usage_file = Path("tests/data/example.json")
 
-    example_usage_data = json.loads(example_usage_file.read_text(encoding="utf-8"))
+    example_usage_data: Iterable[dict] = json.loads(
+        example_usage_file.read_text(encoding="utf-8")
+    )
+    dates = {item["date"] for item in example_usage_data}
 
-    post_data = AllUsage(usage_list=example_usage_data)
+    post_data = AllUsage(
+        usage_list=example_usage_data, start_date=min(dates), end_date=max(dates)
+    )
 
     with TestClient(auth_app) as client:
         mock_refresh = AsyncMock()
@@ -81,6 +86,118 @@ def test_post_usage(
             sum(i["total_cost"] for i in resp_data),
             sum(i.total_cost for i in post_data.usage_list),
         )
+
+
+@pytest.mark.asyncio
+async def test_post_usage2(
+    test_db: Database,  # pylint: disable=redefined-outer-name
+) -> None:
+    sub1 = await create_subscription(test_db)
+    # create some usage data across 2 or more dates
+    usage_items = AllUsage(
+        usage_list=[
+            Usage(
+                id=str(UUID(int=0)),
+                subscription_id=sub1,
+                date="2024-04-01",
+                total_cost=1.0,
+                invoice_section="-",
+            ),
+            Usage(
+                id=str(UUID(int=1)),
+                subscription_id=sub1,
+                date="2024-04-02",
+                total_cost=2.0,
+                invoice_section="-",
+            ),
+            Usage(
+                id=str(UUID(int=2)),
+                subscription_id=sub1,
+                date="2024-04-03",
+                total_cost=4.0,
+                invoice_section="-",
+            ),
+        ],
+        start_date="2024-04-01",
+        end_date="2024-04-03",
+    )
+    await post_usage(usage_items, {"mock": "authentication"})
+    all_usage = await get_usage()
+    assert len(all_usage) == 3
+
+    # upload some usage data for some subset of the dates
+    usage_list = [
+        Usage(
+            id=str(UUID(int=3)),
+            subscription_id=sub1,
+            date="2024-04-02",
+            total_cost=4.0,
+            invoice_section="-",
+        ),
+    ]
+    usage_items = AllUsage(
+        usage_list=usage_list,
+        start_date="2024-04-02",
+        end_date="2024-04-02",
+    )
+    await post_usage(usage_items, {"mock": "authentication"})
+
+    # check that the uploaded usage data replaced the existing ones
+    all_usage = await get_usage()
+    assert set(all_usage) == {
+        Usage(
+            id=str(UUID(int=0)),
+            subscription_id=sub1,
+            date="2024-04-01",
+            total_cost=1.0,
+            invoice_section="-",
+        ),
+        Usage(
+            id=str(UUID(int=3)),
+            subscription_id=sub1,
+            date="2024-04-02",
+            total_cost=4.0,
+            invoice_section="-",
+        ),
+        Usage(
+            id=str(UUID(int=2)),
+            subscription_id=sub1,
+            date="2024-04-03",
+            total_cost=4.0,
+            invoice_section="-",
+        ),
+    }
+
+
+@pytest.mark.asyncio
+async def test_post_usage3(
+    test_db: Database,  # pylint: disable=redefined-outer-name
+) -> None:
+    sub1 = await create_subscription(test_db)
+    # create two usage items with the same usage id
+    usage_items = AllUsage(
+        usage_list=[
+            Usage(
+                id=str(UUID(int=0)),
+                subscription_id=sub1,
+                date="2024-04-01",
+                total_cost=1.0,
+                invoice_section="A",
+            ),
+            Usage(
+                id=str(UUID(int=0)),
+                subscription_id=sub1,
+                date="2024-04-01",
+                total_cost=1.0,
+                invoice_section="B",
+            ),
+        ],
+        start_date="2024-04-01",
+        end_date="2024-04-01",
+    )
+    await post_usage(usage_items, {"mock": "authentication"})
+    all_usage = await get_usage()
+    assert len(all_usage) == 2
 
 
 def test_write_usage(
@@ -286,12 +403,18 @@ def test_post_monthly_usage(
 
     example_1_file = Path("tests/data/example-monthly-wrong.json")
     example_1_data = json.loads(example_1_file.read_text(encoding="utf-8"))
+    dates_ex1 = {item["date"] for item in example_1_data}
 
     example_2_file = Path("tests/data/example-monthly-correct.json")
     example_2_data = json.loads(example_2_file.read_text(encoding="utf-8"))
+    dates_ex2 = {item["date"] for item in example_2_data}
 
-    post_example_1_data = AllUsage(usage_list=example_1_data)
-    post_example_2_data = AllUsage(usage_list=example_2_data)
+    post_example_1_data = AllUsage(
+        usage_list=example_1_data, start_date=min(dates_ex1), end_date=max(dates_ex1)
+    )
+    post_example_2_data = AllUsage(
+        usage_list=example_2_data, start_date=min(dates_ex2), end_date=max(dates_ex2)
+    )
 
     with TestClient(auth_app) as client:
         mock_refresh = AsyncMock()
@@ -302,7 +425,11 @@ def test_post_monthly_usage(
         # Should error if there is no data.
         resp = client.post(
             "usage/monthly-usage",
-            content=AllUsage(usage_list=[]).model_dump_json().encode("utf-8"),
+            content=AllUsage(
+                usage_list=[], start_date="2021-04-01", end_date="2021-04-30"
+            )
+            .model_dump_json()
+            .encode("utf-8"),
             headers={"authorization": "Bearer " + token},
         )
 
@@ -371,7 +498,9 @@ async def test_monthly_usage_2(
                     total_cost=4.0,
                     invoice_section="-",
                 ),
-            ]
+            ],
+            start_date="2024-04-01",
+            end_date="2024-04-03",
         ),
         {"mock": "authentication"},
     )
@@ -395,7 +524,9 @@ async def test_monthly_usage_2(
                     invoice_section="-",
                     monthly_upload=datetime.date.today(),
                 ),
-            ]
+            ],
+            start_date="2024-04-01",
+            end_date="2024-04-02",
         ),
         {"mock": "authentication"},
     )
@@ -438,7 +569,10 @@ async def test_post_usage_refreshes_view(
         "rctab.routers.accounting.usage.refresh_materialised_view", mock_refresh
     )
 
-    await post_usage(AllUsage(usage_list=[]), {"mock": "authentication"})
+    await post_usage(
+        AllUsage(usage_list=[], start_date="2021-04-01", end_date="2021-04-30"),
+        {"mock": "authentication"},
+    )
 
     mock_refresh.assert_called_once_with(test_db, usage_view)
 
@@ -452,7 +586,10 @@ def test_post_usage_emails(
     auth_app, token = app_with_signed_billing_token
     example_usage_file = Path("tests/data/example.json")
     example_usage_data = json.loads(example_usage_file.read_text(encoding="utf-8"))
-    post_data = AllUsage(usage_list=example_usage_data)
+    dates = {item["date"] for item in example_usage_data}
+    post_data = AllUsage(
+        usage_list=example_usage_data, start_date=min(dates), end_date=max(dates)
+    )
 
     with TestClient(auth_app) as client:
         mock_send_emails = AsyncMock()
