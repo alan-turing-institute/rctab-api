@@ -10,7 +10,10 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel
 from rctab_models.models import AllCMUsage, AllUsage, CMUsage, Usage, UserRBAC
-from sqlalchemy import select
+from sqlalchemy import delete, select
+
+# require the postgre specific insert rather than the generic sqlachemy for;
+# `post_cm_usage` fn where "excluded" and "on_conflict_do_update" are used.
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.inspection import inspect
 
@@ -94,6 +97,27 @@ async def insert_usage(all_usage: AllUsage) -> None:
         "Refreshing the usage view took %s",
         datetime.datetime.now() - refresh_start,
     )
+
+
+async def delete_usage(start_date: datetime.date, end_date: datetime.date) -> None:
+    """Deletes usage(s) within a date range from the database.
+
+    Args:
+        start_date: Defines the beginning of the date range.
+        end_date: Defines the end of the date range.
+    """
+    usage_query = (
+        delete(accounting_models.usage)
+        .where(accounting_models.usage.c.date >= start_date)
+        .where(accounting_models.usage.c.date <= end_date)
+    )
+
+    logger.info("Delete usage data within a date range")
+    delete_start = datetime.datetime.now()
+
+    await database.execute(usage_query)
+
+    logger.info("Delete usage data took %s", datetime.datetime.now() - delete_start)
 
 
 @router.post("/monthly-usage", response_model=TmpReturnStatus)
@@ -180,6 +204,7 @@ async def post_usage(
             unique_subscriptions = list(
                 {i.subscription_id for i in all_usage.usage_list}
             )
+            await delete_usage(all_usage.start_date, all_usage.end_date)
 
             await insert_subscriptions_if_not_exists(unique_subscriptions)
 

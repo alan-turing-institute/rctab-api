@@ -128,23 +128,45 @@ async def test_post_usage2(
     # upload some usage data for some subset of the dates
     usage_list = [
         Usage(
-            id=str(UUID(int=0)),
+            id=str(UUID(int=3)),
             subscription_id=sub1,
-            date="2024-04-01",
+            date="2024-04-02",
             total_cost=4.0,
             invoice_section="-",
         ),
     ]
     usage_items = AllUsage(
         usage_list=usage_list,
-        start_date="2024-04-01",
-        end_date="2024-04-03",
+        start_date="2024-04-02",
+        end_date="2024-04-02",
     )
     await post_usage(usage_items, {"mock": "authentication"})
 
-    # check that some usage data was left alone and some was replaced
+    # check that the uploaded usage data replaced the existing ones
     all_usage = await get_usage()
-    assert all_usage == usage_list
+    assert set(all_usage) == {
+        Usage(
+            id=str(UUID(int=0)),
+            subscription_id=sub1,
+            date="2024-04-01",
+            total_cost=1.0,
+            invoice_section="-",
+        ),
+        Usage(
+            id=str(UUID(int=3)),
+            subscription_id=sub1,
+            date="2024-04-02",
+            total_cost=4.0,
+            invoice_section="-",
+        ),
+        Usage(
+            id=str(UUID(int=2)),
+            subscription_id=sub1,
+            date="2024-04-03",
+            total_cost=4.0,
+            invoice_section="-",
+        ),
+    }
 
 
 @pytest.mark.asyncio
