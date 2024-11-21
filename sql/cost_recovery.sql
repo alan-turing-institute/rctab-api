@@ -4,6 +4,7 @@
 
 -- Export Query 1
 -- Get all cost_recovery rows with the latest subscription names
+-- Outputs sheet cost-recovery_YY-YY_qN
 select cr."id", finance_id, "month", finance_code, sd.display_name, cr.subscription_id, amount
 from accounting.cost_recovery cr
 join (
@@ -14,16 +15,18 @@ join (
     on latest_names.subscription_id = cr.subscription_id
 join accounting.subscription_details sd
     on sd.id = latest_names.max_id
-where cr.month >= '2022-04-00'; -- the first day of the recovery period
+where cr.month >= '2024-04-00' -- the first day of the recovery period
+and cr.month < '2024-07-00'; -- one day after the recovery-period end date, typically three months after the start
 
 
 -- Export Query 2
 -- Get a breakdown of each subscription's usage
+-- Outputs sheet usage_YY-YY_qN
 select
 	u.subscription_id,
 	display_name,
 	--product,
-	date_trunc('month', u."date") as the_date,
+	date(date_trunc('month', u."date")) as date_trunc,
 	sum(total_cost) as total_cost,
 	sum(amortised_cost) as amortised_cost,
 	sum(cost) as cost
@@ -37,8 +40,8 @@ join (
     on latest_names.subscription_id = u.subscription_id
 join accounting.subscription_details sd
     on sd.id = latest_names.max_id
-where "date" >= '2022-10-00'  -- the recovery-period start date
-and "date" < '2023-01-00'  -- one day after the recovery-period end date
+where "date" >= '2024-04-00'  -- the first day of the recovery period
+and "date" < '2024-07-00'  -- one day after the recovery-period end date, typically three months after the start
 and u.subscription_id in (
     select distinct subscription_id
     from accounting.cost_recovery
@@ -52,6 +55,7 @@ group by
 
 -- Export Query 3
 -- Include the finance rows
+-- Outputs sheet max-recoverable_YY-YY_qN
 select sd.display_name,
        f.id,
   	   f.subscription_id,
@@ -70,8 +74,8 @@ join (
     on latest_names.subscription_id = f.subscription_id
 join accounting.subscription_details sd
     on sd.id = latest_names.max_id
-where f.date_to >= '2022-10-00'  -- the recovery-period start date
-and f.date_from < '2023-01-00';  -- one day after the recovery-period end date
+where f.date_to >= '2024-04-00'  -- the first day of the recovery period
+and f.date_from < '2024-07-00';  -- one day after the recovery-period end date, typically three months after the start
 
 
 -- Data Integrity Query 1
