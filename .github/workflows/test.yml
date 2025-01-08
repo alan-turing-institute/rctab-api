@@ -42,10 +42,10 @@ jobs:
           python-version: ${{ matrix.python_version }}
 
       - name: Install poetry
-        uses: abatilo/actions-poetry@v3
+        uses: abatilo/actions-poetry@v4
 
       - name: Install dependencies
-        run: poetry install
+        run: poetry install --all-extras
 
       - name: Run main tests
         shell: bash
