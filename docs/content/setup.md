@@ -157,9 +157,13 @@ TESTING=true pytest tests/
 
 The `TESTING=true` env var is important so that database commits are rolled back between each unit test.
 
+**Note:** Visual Studio Code will try to import your .env file into your environment, which will cause a number of tests to fail.
+To prevent this, we recommend changing the `python.envFile` setting to point to a non-existent file.
+See <https://code.visualstudio.com/docs/python/environments#_environment-variable-definitions-file> for more.
+
 **Note:** This will remove the contents of any [postgreSQL containers](#postgresql-container) you have running. If you don't want to lose them use [the helper script](#with-the-helper-script).
 
-The tests for background tasks require Redis
+The tests for background tasks require Redis.
 Once you have a [Redis server](https://redis.io/docs/install/install-redis/) running (or a [Redis Docker](https://hub.docker.com/_/redis) container running), you can run the unit tests, including the background task tests, with:
 
 ```bash
