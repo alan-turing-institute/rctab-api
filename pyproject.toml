@@ -1,11 +1,12 @@
-[tool.poetry]
+[project]
 name = "RCTab"
 version = "1.5.0"
 description = "The RCTab API. Manage Azure budgets and usage"
 authors = []
+dynamic = [ "dependencies" ]
+requires-python = ">=3.10 <3.12"
 
 [tool.poetry.dependencies]
-python = ">=3.10 <3.12"
 alembic = "^1.13.2"
 anyio = "^4.4.0"  # only pinned to satisfy safety warning on <=4.3.0
 asyncpg = "^0.27.0"
@@ -59,7 +60,7 @@ pytest-mock = "^3.6.1"
 safety = "^3.1.0"
 types-requests = "^2.32.0.20240602"
 
-[tool.poetry.extras]
+[project.optional-dependencies]
 docs = ["sphinx-rtd-theme", "sphinxcontrib-napoleon", "myst-parser"]
 
 [tool.isort]
