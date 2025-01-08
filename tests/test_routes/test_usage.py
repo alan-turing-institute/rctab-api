@@ -13,20 +13,24 @@ from databases import Database
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from pytest_mock import MockerFixture
-
-from rctab.constants import ADMIN_OID, EMAIL_TYPE_USAGE_ALERT
-from rctab.crud.accounting_models import usage_view
-from rctab.crud.models import database
-from rctab.crud.schema import (
+from rctab_models.models import (
     AllCMUsage,
     AllUsage,
     BillingStatus,
     CMUsage,
     SubscriptionDetails,
+    Usage,
 )
-from rctab.routers.accounting.usage import post_usage
+
+from rctab.constants import ADMIN_OID, EMAIL_TYPE_USAGE_ALERT
+from rctab.crud.accounting_models import usage_view
+from rctab.crud.models import database
+from rctab.routers.accounting.usage import get_usage, post_monthly_usage, post_usage
 from tests.test_routes import api_calls, constants
-from tests.test_routes.test_routes import test_db  # pylint: disable=unused-import
+from tests.test_routes.test_routes import (  # pylint: disable=unused-import
+    create_subscription,
+    test_db,
+)
 from tests.utils import print_list_diff
 
 date_from = datetime.date.today()
@@ -53,7 +57,7 @@ def test_post_usage(
 
         resp = client.post(
             "usage/all-usage",
-            content=post_data.json(),
+            content=post_data.model_dump_json().encode("utf-8"),
             headers={"authorization": "Bearer " + token},
         )
 
@@ -221,7 +225,7 @@ def _post_costmanagement(
     post_client = client.post(
         "/usage/all-cm-usage",
         headers={"authorization": "Bearer " + token},
-        content=all_usage.json(),
+        content=all_usage.model_dump_json().encode("utf-8"),
     )  # type: ignore
     return post_client  # type: ignore
 
@@ -279,18 +283,15 @@ def test_post_monthly_usage(
     mocker: pytest_mock.MockerFixture,
 ) -> None:
     auth_app, token = app_with_signed_billing_token
+
     example_1_file = Path("tests/data/example-monthly-wrong.json")
     example_1_data = json.loads(example_1_file.read_text(encoding="utf-8"))
 
-    example_2_file = Path("tests/data/example-monthly-wrong2.json")
+    example_2_file = Path("tests/data/example-monthly-correct.json")
     example_2_data = json.loads(example_2_file.read_text(encoding="utf-8"))
-
-    example_3_file = Path("tests/data/example-monthly-correct.json")
-    example_3_data = json.loads(example_3_file.read_text(encoding="utf-8"))
 
     post_example_1_data = AllUsage(usage_list=example_1_data)
     post_example_2_data = AllUsage(usage_list=example_2_data)
-    post_example_3_data = AllUsage(usage_list=example_3_data)
 
     with TestClient(auth_app) as client:
         mock_refresh = AsyncMock()
@@ -298,36 +299,32 @@ def test_post_monthly_usage(
             "rctab.routers.accounting.usage.refresh_desired_states", mock_refresh
         )
 
+        # Should error if there is no data.
         resp = client.post(
             "usage/monthly-usage",
-            content=post_example_1_data.json(),
+            content=AllUsage(usage_list=[]).model_dump_json().encode("utf-8"),
             headers={"authorization": "Bearer " + token},
         )
 
         assert resp.status_code == 400
+        assert "must have at least one record" in resp.text
 
         resp = client.post(
             "usage/monthly-usage",
-            content=post_example_2_data.json(),
+            content=post_example_1_data.model_dump_json().encode("utf-8"),
             headers={"authorization": "Bearer " + token},
         )
 
         assert resp.status_code == 400
+        assert "data must have the monthly_upload column" in resp.text
 
         resp = client.post(
             "usage/monthly-usage",
-            content=post_example_3_data.json(),
+            content=post_example_2_data.model_dump_json().encode("utf-8"),
             headers={"authorization": "Bearer " + token},
         )
 
         assert resp.status_code == 200
-
-        # Posting the usage data should have the side effect of
-        # refreshing the desired states
-        mock_refresh.assert_called_once_with(
-            UUID(ADMIN_OID),
-            list({x.subscription_id for x in post_example_3_data.usage_list}),
-        )
 
         get_resp = client.get(
             "usage/all-usage",
@@ -339,8 +336,95 @@ def test_post_monthly_usage(
         resp_data = get_resp.json()
         assert np.isclose(
             sum(i["total_cost"] for i in resp_data),
-            sum(i.total_cost for i in post_example_3_data.usage_list),
+            sum(i.total_cost for i in post_example_2_data.usage_list),
         )
+
+
+@pytest.mark.asyncio
+async def test_monthly_usage_2(
+    test_db: Database,  # pylint: disable=redefined-outer-name
+) -> None:
+    sub1 = await create_subscription(test_db)
+    sub2 = await create_subscription(test_db)
+
+    await post_usage(
+        AllUsage(
+            usage_list=[
+                Usage(
+                    id=str(UUID(int=0)),
+                    subscription_id=sub1,
+                    date="2024-04-01",
+                    total_cost=1.0,
+                    invoice_section="-",
+                ),
+                Usage(
+                    id=str(UUID(int=1)),
+                    subscription_id=sub2,
+                    date="2024-04-02",
+                    total_cost=2.0,
+                    invoice_section="-",
+                ),
+                Usage(
+                    id=str(UUID(int=2)),
+                    subscription_id=sub1,
+                    date="2024-04-03",
+                    total_cost=4.0,
+                    invoice_section="-",
+                ),
+            ]
+        ),
+        {"mock": "authentication"},
+    )
+
+    await post_monthly_usage(
+        AllUsage(
+            usage_list=[
+                Usage(
+                    id=str(UUID(int=3)),
+                    subscription_id=sub1,
+                    date="2024-04-01",
+                    total_cost=10.0,
+                    invoice_section="-",
+                    monthly_upload=datetime.date.today(),
+                ),
+                Usage(
+                    id=str(UUID(int=4)),
+                    subscription_id=sub1,
+                    date="2024-04-02",
+                    total_cost=0.5,
+                    invoice_section="-",
+                    monthly_upload=datetime.date.today(),
+                ),
+            ]
+        ),
+        {"mock": "authentication"},
+    )
+    all_usage = await get_usage()
+    assert all_usage == [
+        Usage(
+            id=str(UUID(int=2)),
+            subscription_id=sub1,
+            date="2024-04-03",
+            total_cost=4.0,
+            invoice_section="-",
+        ),
+        Usage(
+            id=str(UUID(int=3)),
+            subscription_id=sub1,
+            date="2024-04-01",
+            total_cost=10.0,
+            invoice_section="-",
+            monthly_upload=datetime.date.today(),
+        ),
+        Usage(
+            id=str(UUID(int=4)),
+            subscription_id=sub1,
+            date="2024-04-02",
+            total_cost=0.5,
+            invoice_section="-",
+            monthly_upload=datetime.date.today(),
+        ),
+    ]
 
 
 @pytest.mark.asyncio
@@ -383,7 +467,7 @@ def test_post_usage_emails(
 
         resp = client.post(
             "usage/all-usage",
-            content=post_data.json(),
+            content=post_data.model_dump_json().encode("utf-8"),
             headers={"authorization": "Bearer " + token},
         )
         assert resp.status_code == 200

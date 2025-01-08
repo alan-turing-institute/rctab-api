@@ -10,6 +10,7 @@ from uuid import UUID
 
 from databases import Database
 from jinja2 import Environment, PackageLoader, exceptions
+from rctab_models.models import SubscriptionState, SubscriptionStatus
 from sendgrid import Mail, SendGridAPIClient
 from sqlalchemy import asc, desc, func, insert, or_, select
 from sqlalchemy.sql import Select
@@ -30,7 +31,6 @@ from rctab.crud.accounting_models import (
     subscription,
     subscription_details,
 )
-from rctab.crud.schema import SubscriptionState, SubscriptionStatus
 from rctab.routers.accounting.routes import (
     get_subscription_details,
     get_subscriptions,

@@ -3,9 +3,9 @@ from unittest.mock import AsyncMock
 import pytest_mock
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from rctab_models.models import SubscriptionDetails
 
 from rctab.crud.models import database
-from rctab.crud.schema import SubscriptionDetails
 from tests.test_routes import api_calls, constants
 
 

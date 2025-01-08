@@ -5,8 +5,7 @@ from uuid import UUID, uuid4
 from devtools import debug
 from fastapi.testclient import TestClient
 from httpx import Response
-
-from rctab.crud.schema import (
+from rctab_models.models import (
     AllSubscriptionStatus,
     AllUsage,
     RoleAssignment,
@@ -15,6 +14,7 @@ from rctab.crud.schema import (
     SubscriptionStatus,
     Usage,
 )
+
 from rctab.routers.accounting.routes import PREFIX
 
 # pylint: disable=too-many-arguments
@@ -71,7 +71,7 @@ def create_subscription_detail(
                     role_assignments=role_assignments,
                 )
             ]
-        ).json(),
+        ).model_dump_json(),
         headers={"authorization": "Bearer " + token},
     )
 
@@ -177,6 +177,6 @@ def create_usage(
 
     return client.post(
         "usage/all-usage",
-        content=post_data.json(),
+        content=post_data.model_dump_json(),
         headers={"authorization": "Bearer " + token},
     )

@@ -5,12 +5,12 @@ from uuid import UUID
 
 from fastapi import Depends
 from pydantic import BaseModel
+from rctab_models.models import UserRBAC
 from sqlalchemy import insert
 
 from rctab.crud import accounting_models
 from rctab.crud.auth import token_admin_verified
 from rctab.crud.models import database
-from rctab.crud.schema import UserRBAC
 from rctab.routers.accounting import send_emails
 from rctab.routers.accounting.routes import router
 

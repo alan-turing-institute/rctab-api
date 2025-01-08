@@ -11,6 +11,7 @@ from asyncpg import Record
 from databases import Database
 from jinja2 import Environment, PackageLoader, StrictUndefined
 from pytest_mock import MockerFixture
+from rctab_models.models import AllUsage, RoleAssignment, SubscriptionState, Usage
 from sqlalchemy import insert, select
 from sqlalchemy.sql import Select
 
@@ -33,7 +34,6 @@ from rctab.crud.accounting_models import (
     usage,
     usage_view,
 )
-from rctab.crud.schema import AllUsage, RoleAssignment, SubscriptionState, Usage
 from rctab.routers.accounting import send_emails
 from rctab.routers.accounting.send_emails import (
     MissingEmailParamsError,

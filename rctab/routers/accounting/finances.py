@@ -6,13 +6,13 @@ from typing import Any, List
 
 from asyncpg import ForeignKeyViolationError
 from fastapi import Depends, HTTPException
+from rctab_models.models import Finance, FinanceWithID, UserRBAC
 from sqlalchemy import delete, desc, insert, select, update
 
 from rctab.crud import accounting_models
 from rctab.crud.accounting_models import cost_recovery, cost_recovery_log, finance
 from rctab.crud.auth import token_admin_verified
 from rctab.crud.models import database
-from rctab.crud.schema import Finance, FinanceWithID, UserRBAC
 from rctab.routers.accounting.routes import SubscriptionItem, router
 
 

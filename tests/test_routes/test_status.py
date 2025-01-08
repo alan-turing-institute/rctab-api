@@ -11,17 +11,17 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from hypothesis import given, settings
 from hypothesis import strategies as st
-from sqlalchemy import select
-
-from rctab.constants import ADMIN_OID
-from rctab.crud.accounting_models import subscription_details
-from rctab.crud.schema import (
+from rctab_models.models import (
     AllSubscriptionStatus,
     Approval,
     RoleAssignment,
     SubscriptionState,
     SubscriptionStatus,
 )
+from sqlalchemy import select
+
+from rctab.constants import ADMIN_OID
+from rctab.crud.accounting_models import subscription_details
 from rctab.routers.accounting import status
 from rctab.routers.accounting.approvals import post_approval
 from rctab.routers.accounting.routes import get_subscriptions_summary
@@ -58,7 +58,7 @@ def test_post_status(
 
         resp = client.post(
             "accounting/all-status",
-            content=all_status.json(),
+            content=all_status.model_dump_json().encode("utf-8"),
             headers={"authorization": "Bearer " + token},
         )
         assert resp.status_code == 200
@@ -72,7 +72,7 @@ def test_post_status(
         # Check that we can POST the same status again without issue (idempotency).
         resp = client.post(
             "accounting/all-status",
-            content=all_status.json(),
+            content=all_status.model_dump_json(),
             headers={"authorization": "Bearer " + token},
         )
         assert resp.status_code == 200
