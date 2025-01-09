@@ -126,7 +126,7 @@ async def test_cost_recovery_simple(
                 total_cost=1,
                 invoice_section="",
                 date=date(2001, 1, 1),
-            ).dict(),
+            ).model_dump(),
         )
 
     new_finance = Finance(
@@ -139,7 +139,7 @@ async def test_cost_recovery_simple(
         priority=1,
     )
     await test_db.execute(
-        insert(accounting_models.finance), {**ADMIN_DICT, **new_finance.dict()}
+        insert(accounting_models.finance), {**ADMIN_DICT, **new_finance.model_dump()}
     )
     cost_recovery_period = CostRecoveryMonth(first_day=date(year=2001, month=1, day=1))
     await calc_cost_recovery(
@@ -175,7 +175,7 @@ async def test_cost_recovery_two_finances(
             total_cost=3,
             invoice_section="",
             date=date(2001, 1, 1),
-        ).dict(),
+        ).model_dump(),
     )
 
     # Two finances in our period of interest and one outside
@@ -190,7 +190,8 @@ async def test_cost_recovery_two_finances(
             priority=1,
         )
         await test_db.execute(
-            insert(accounting_models.finance), {**ADMIN_DICT, **new_finance.dict()}
+            insert(accounting_models.finance),
+            {**ADMIN_DICT, **new_finance.model_dump()},
         )
 
     cost_recovery_period = CostRecoveryMonth(first_day=date(year=2001, month=1, day=1))
@@ -226,7 +227,7 @@ async def test_cost_recovery_second_month(
             total_cost=1,
             invoice_section="",
             date=date(2001, 1, 1),
-        ).dict(),
+        ).model_dump(),
     )
 
     # Feb
@@ -238,7 +239,7 @@ async def test_cost_recovery_second_month(
             total_cost=2,
             invoice_section="",
             date=date(2001, 2, 1),
-        ).dict(),
+        ).model_dump(),
     )
 
     # Jan - Feb
@@ -252,7 +253,7 @@ async def test_cost_recovery_second_month(
         priority=1,
     )
     await test_db.execute(
-        insert(accounting_models.finance), {**ADMIN_DICT, **new_finance.dict()}
+        insert(accounting_models.finance), {**ADMIN_DICT, **new_finance.model_dump()}
     )
 
     cost_recovery_period = CostRecoveryMonth(first_day=date(year=2001, month=1, day=1))
@@ -300,7 +301,7 @@ async def test_cost_recovery_two_subscriptions(
             total_cost=1,
             invoice_section="",
             date=date(2001, 1, 1),
-        ).dict(),
+        ).model_dump(),
     )
 
     # Jan
@@ -312,7 +313,7 @@ async def test_cost_recovery_two_subscriptions(
             total_cost=2,
             invoice_section="",
             date=date(2001, 1, 1),
-        ).dict(),
+        ).model_dump(),
     )
 
     # Jan - Feb
@@ -326,7 +327,7 @@ async def test_cost_recovery_two_subscriptions(
         priority=1,
     )
     await test_db.execute(
-        insert(accounting_models.finance), {**ADMIN_DICT, **new_finance.dict()}
+        insert(accounting_models.finance), {**ADMIN_DICT, **new_finance.model_dump()}
     )
 
     cost_recovery_period = CostRecoveryMonth(first_day=date(year=2001, month=1, day=1))
@@ -365,7 +366,7 @@ async def test_cost_recovery_priority_one_month(
             total_cost=3,
             invoice_section="",
             date=date(2001, 1, 1),
-        ).dict(),
+        ).model_dump(),
     )
 
     # Two finances in our period of interest and one outside
@@ -380,7 +381,8 @@ async def test_cost_recovery_priority_one_month(
             priority=priority,
         )
         await test_db.execute(
-            insert(accounting_models.finance), {**ADMIN_DICT, **new_finance.dict()}
+            insert(accounting_models.finance),
+            {**ADMIN_DICT, **new_finance.model_dump()},
         )
 
     cost_recovery_period = CostRecoveryMonth(first_day=date(year=2001, month=1, day=1))
@@ -421,7 +423,7 @@ async def test_cost_recovery_priority_two_months(
             total_cost=3,
             invoice_section="",
             date=date(2001, 1, 1),
-        ).dict(),
+        ).model_dump(),
     )
 
     # Two finances in our period of interest and one outside
@@ -436,7 +438,8 @@ async def test_cost_recovery_priority_two_months(
             priority=priority,
         )
         await test_db.execute(
-            insert(accounting_models.finance), {**ADMIN_DICT, **new_finance.dict()}
+            insert(accounting_models.finance),
+            {**ADMIN_DICT, **new_finance.model_dump()},
         )
 
     cost_recovery_period = CostRecoveryMonth(first_day=date(year=2001, month=1, day=1))
@@ -515,7 +518,7 @@ async def test_cost_recovery_commit_param(
             total_cost=1,
             invoice_section="",
             date=date(2001, 1, 1),
-        ).dict(),
+        ).model_dump(),
     )
 
     # Jan - Feb
@@ -529,7 +532,7 @@ async def test_cost_recovery_commit_param(
         priority=1,
     )
     new_finance_id = await no_rollback_test_db.execute(
-        insert(accounting_models.finance), {**ADMIN_DICT, **new_finance.dict()}
+        insert(accounting_models.finance), {**ADMIN_DICT, **new_finance.model_dump()}
     )
 
     cost_recovery_period = CostRecoveryMonth(first_day=date(year=2001, month=1, day=1))
@@ -594,7 +597,7 @@ async def test_cost_recovery_rollsback(
             total_cost=1,
             invoice_section="",
             date=date(2001, 1, 1),
-        ).dict(),
+        ).model_dump(),
     )
 
     # Jan - Feb
@@ -608,7 +611,7 @@ async def test_cost_recovery_rollsback(
         priority=1,
     )
     await no_rollback_test_db.execute(
-        insert(accounting_models.finance), {**ADMIN_DICT, **new_finance.dict()}
+        insert(accounting_models.finance), {**ADMIN_DICT, **new_finance.model_dump()}
     )
 
     cost_recovery_period = CostRecoveryMonth(first_day=date(year=2001, month=1, day=1))

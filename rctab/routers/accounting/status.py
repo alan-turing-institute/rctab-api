@@ -110,12 +110,14 @@ async def post_status(
             # If there is no prior status or the status has changed at all, we want to insert a new row.
             if old_status != new_status:
                 status_insert = insert(subscription_details)
-                await database.execute(query=status_insert, values=new_status.dict())
+                await database.execute(
+                    query=status_insert, values=new_status.model_dump()
+                )
 
                 if previous_welcome_email:
                     # We want to ignore some roles when deciding whether to
                     # send a status change email.
-                    filtered_new_status = SubscriptionStatus(**new_status.dict())
+                    filtered_new_status = SubscriptionStatus(**new_status.model_dump())
                     filtered_new_status.role_assignments = tuple(
                         x
                         for x in filtered_new_status.role_assignments
@@ -123,7 +125,9 @@ async def post_status(
                     )
 
                     if old_status:
-                        filtered_old_status = SubscriptionStatus(**old_status.dict())
+                        filtered_old_status = SubscriptionStatus(
+                            **old_status.model_dump()
+                        )
                         filtered_old_status.role_assignments = tuple(
                             x
                             for x in filtered_old_status.role_assignments

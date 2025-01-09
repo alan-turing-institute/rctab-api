@@ -222,7 +222,7 @@ async def test_allocation_emails_render(
 
     template_data = Allocation(
         sub_id=subscription_id, ticket="C2022-999", amount=300
-    ).dict()
+    ).model_dump()
     template_data["summary"] = subscription_summary
     template_data["rctab_url"] = None
 
@@ -253,7 +253,7 @@ async def test_approval_emails_render(
         ticket="Ticket C1",
         date_from=date.today(),
         date_to=date.today() + timedelta(days=20),
-    ).dict()
+    ).model_dump()
     template_data["summary"] = dict(subscription_summary)  # type: ignore
     template_data["rctab_url"] = None
     template = jinja2_environment.get_template(template_name)
@@ -393,7 +393,7 @@ def test_render_finance_email(jinja2_environment: Environment) -> None:
         date_to=date(2022, 8, 31),
         finance_code="test_finance",
         priority=1,
-    ).dict()
+    ).model_dump()
 
     template_name = "new_finance.html"
 
@@ -485,7 +485,7 @@ async def test_send_summary_email_render(test_db: Database) -> None:
         role_name="Billing Reader",
         principal_id="some-principal-id",
         display_name="SomePrincipal Display Name",
-    ).dict()
+    ).model_dump()
 
     await test_db.execute(
         accounting_models.subscription_details.insert().values(),

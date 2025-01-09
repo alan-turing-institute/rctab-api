@@ -212,7 +212,7 @@ def test_successful_approval(auth_app: FastAPI, mocker: MockerFixture) -> None:
                 date_to=date_to,
                 sub_id=constants.TEST_SUB_UUID,
                 ticket="T001-12",
-            ).dict(),
+            ).model_dump(),
         )
 
 
