@@ -1,5 +1,4 @@
 import random
-from pathlib import Path
 from unittest.mock import AsyncMock
 from uuid import UUID
 
@@ -12,7 +11,6 @@ from jinja2 import Environment, PackageLoader, StrictUndefined, select_autoescap
 from pytest_mock import MockerFixture
 from rctab_models.models import RoleAssignment, SubscriptionState, UserRBAC
 
-import rctab
 from rctab.crud.accounting_models import subscription, subscription_details
 from rctab.routers.frontend import check_user_on_subscription, home
 from rctab.routers.frontend import subscription_details as subscription_details_page
@@ -69,7 +67,7 @@ async def test_no_username_no_subscriptions(
                     # Note the missing email address, which does sometimes happen
                     mail=None,
                     scope="some/scope/string",
-                ).dict()
+                ).model_dump()
             ],
         ),
     )
@@ -164,7 +162,7 @@ async def test_render_home_page(mocker: MockerFixture, test_db: Database) -> Non
                     # Note the missing email address, which does sometimes happen
                     mail=None,
                     scope="some/scope/string",
-                ).dict()
+                ).model_dump()
             ],
         ),
     )
@@ -195,10 +193,11 @@ async def test_render_details_page(mocker: MockerFixture, test_db: Database) -> 
     mocker.patch(
         "rctab.routers.frontend.templates",
         Jinja2Templates(
-            (
-                Path(rctab.routers.frontend.__file__).parent.parent / "templates"
-            ).absolute(),
-            undefined=StrictUndefined,
+            env=Environment(
+                loader=PackageLoader("rctab"),
+                autoescape=select_autoescape(),
+                undefined=StrictUndefined,
+            )
         ),
     )
     subscription_id = UUID(int=random.randint(0, (2**32) - 1))
@@ -226,7 +225,7 @@ async def test_render_details_page(mocker: MockerFixture, test_db: Database) -> 
                     # Note the missing email address, which does sometimes happen
                     mail=None,
                     scope="some/scope/string",
-                ).dict()
+                ).model_dump()
             ],
         ),
     )

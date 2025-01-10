@@ -42,7 +42,7 @@ async def post_persistency_status(
         "persistence_change.html",
         "Persistence change for your Azure subscription:",
         "subscription persistence",
-        persistence.dict(),
+        persistence.model_dump(),
     )
 
     return {

@@ -77,7 +77,8 @@ async def post_finance(
 
     async with database.transaction():
         new_primary_key = await database.execute(
-            insert(accounting_models.finance), {"admin": user.oid, **new_finance.dict()}
+            insert(accounting_models.finance),
+            {"admin": user.oid, **new_finance.model_dump()},
         )
         new_row = await database.fetch_one(
             select([finance]).where(finance.c.id == new_primary_key)
@@ -151,7 +152,7 @@ async def update_finance(
             update(finance)
             .where(finance.c.id == finance_id)
             .where(finance.c.subscription_id == new_finance.subscription_id)
-            .values({**new_finance.dict(), **{"admin": user.oid}})
+            .values({**new_finance.model_dump(), **{"admin": user.oid}})
         )
 
     return {"status": "success", "detail": "finance updated"}

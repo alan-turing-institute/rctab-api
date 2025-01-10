@@ -296,8 +296,7 @@ async def test_post_status_sends_status_change_roles(
         ),
         {"fake": "authentication"},
     )
-    template_data: Dict[str, Any] = {}
-    template_data = {
+    template_data: Dict[str, Any] = {
         "removed_from_rbac": [],
         "added_to_rbac": [
             {
@@ -453,7 +452,7 @@ async def test_post_status_sends_looming(
     if sub_summary:
         approval_data["summary"] = dict(sub_summary)
     approval_data = {
-        **new_approval.dict(),
+        **new_approval.model_dump(),
         **approval_data,
         "rctab_url": "https://rctab-t1-teststack.azurewebsites.net/",
     }
@@ -547,7 +546,9 @@ async def test_post_status_filters_roles(
         ),
     )
     await status.post_status(
-        AllSubscriptionStatus(status_list=[SubscriptionStatus(**old_status.dict())]),
+        AllSubscriptionStatus(
+            status_list=[SubscriptionStatus(**old_status.model_dump())]
+        ),
         {"fake": "authentication"},
     )
 
@@ -602,7 +603,9 @@ async def test_post_status_filters_roles(
     )
 
     await status.post_status(
-        AllSubscriptionStatus(status_list=[SubscriptionStatus(**newer_status.dict())]),
+        AllSubscriptionStatus(
+            status_list=[SubscriptionStatus(**newer_status.model_dump())]
+        ),
         {"fake": "authentication"},
     )
     # No new emails expected
@@ -648,7 +651,9 @@ async def test_post_status_filters_roles(
     )
 
     await status.post_status(
-        AllSubscriptionStatus(status_list=[SubscriptionStatus(**newest_status.dict())]),
+        AllSubscriptionStatus(
+            status_list=[SubscriptionStatus(**newest_status.model_dump())]
+        ),
         {"fake": "authentication"},
     )
 

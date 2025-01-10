@@ -90,7 +90,7 @@ async def insert_usage(all_usage: AllUsage) -> None:
     await executemany(
         database,
         on_duplicate_key_stmt,
-        values=[i.dict() for i in all_usage.usage_list],
+        values=[i.model_dump() for i in all_usage.usage_list],
     )
     logger.info("Inserting usage data took %s", datetime.datetime.now() - insert_start)
     refresh_start = datetime.datetime.now()
@@ -232,7 +232,7 @@ async def post_cm_usage(
         await executemany(
             database,
             on_duplicate_key_stmt,
-            values=[i.dict() for i in all_cm_usage.cm_usage_list],
+            values=[i.model_dump() for i in all_cm_usage.cm_usage_list],
         )
 
     return TmpReturnStatus(

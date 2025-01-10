@@ -77,6 +77,16 @@ async def post_status(
         await insert_subscriptions_if_not_exists(unique_subscriptions)
 
         for new_status in all_status.status_list:
+            temp = new_status.model_dump_json().encode("utf-8")
+            if b"\\u0000" in temp:
+                logger.warning(
+                    "Subscription Status contained unexpected unicode NULL codepoint: %s",
+                    new_status,
+                )
+                new_status = SubscriptionStatus.model_validate_json(
+                    temp.replace(b"\\u0000", b"NUL").decode("utf-8")
+                )
+
             # We want the most recent status for this subscription.
             status_select = (
                 subscription_details.select()
@@ -100,12 +110,14 @@ async def post_status(
             # If there is no prior status or the status has changed at all, we want to insert a new row.
             if old_status != new_status:
                 status_insert = insert(subscription_details)
-                await database.execute(query=status_insert, values=new_status.dict())
+                await database.execute(
+                    query=status_insert, values=new_status.model_dump()
+                )
 
                 if previous_welcome_email:
                     # We want to ignore some roles when deciding whether to
                     # send a status change email.
-                    filtered_new_status = SubscriptionStatus(**new_status.dict())
+                    filtered_new_status = SubscriptionStatus(**new_status.model_dump())
                     filtered_new_status.role_assignments = tuple(
                         x
                         for x in filtered_new_status.role_assignments
@@ -113,7 +125,9 @@ async def post_status(
                     )
 
                     if old_status:
-                        filtered_old_status = SubscriptionStatus(**old_status.dict())
+                        filtered_old_status = SubscriptionStatus(
+                            **old_status.model_dump()
+                        )
                         filtered_old_status.role_assignments = tuple(
                             x
                             for x in filtered_old_status.role_assignments

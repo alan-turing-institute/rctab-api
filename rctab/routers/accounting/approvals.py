@@ -196,7 +196,7 @@ async def post_approval(
         "new_approval.html",
         "New approval for your Azure subscription:",
         EMAIL_TYPE_SUB_APPROVAL,
-        approval.dict(),
+        approval.model_dump(),
     )
 
     await refresh_desired_states(user.oid, [approval.sub_id])
