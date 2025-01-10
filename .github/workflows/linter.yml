@@ -27,7 +27,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install poetry
-        uses: abatilo/actions-poetry@v4
+        uses: abatilo/actions-poetry@v3
 
       - name: Configure poetry
         shell: bash
