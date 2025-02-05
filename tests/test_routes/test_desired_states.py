@@ -57,7 +57,7 @@ async def test_desired_states_budget_adjustment_applied(
 
     await refresh_desired_states(constants.ADMIN_UUID, [expired_sub_id])
 
-    desired_state_rows = await test_db.fetch_all(select([status_table]))
+    desired_state_rows = await test_db.fetch_all(select(status_table))
     row_dicts = [dict(row) for row in desired_state_rows]
 
     # The subscription expired today
@@ -98,7 +98,7 @@ async def test_desired_states_budget_adjustment_approved_ignored(
 
     await refresh_desired_states(constants.ADMIN_UUID, [expired_sub_id])
 
-    desired_state_rows = await test_db.fetch_all(select([status_table]))
+    desired_state_rows = await test_db.fetch_all(select(status_table))
     row_dicts = [dict(row) for row in desired_state_rows]
 
     # The subscription expired today
@@ -138,7 +138,7 @@ async def test_desired_states_budget_adjustment_ignored(
 
     await refresh_desired_states(constants.ADMIN_UUID, [expired_sub_id])
 
-    desired_state_rows = await test_db.fetch_all(select([status_table]))
+    desired_state_rows = await test_db.fetch_all(select(status_table))
     row_dicts = [dict(row) for row in desired_state_rows]
 
     # The subscription expired today
@@ -372,7 +372,7 @@ async def test_refresh_reason_changes(test_db: Database, mocker: MockerFixture) 
     )
     assert mock_send_emails.call_count == 1
 
-    desired_state_rows = await test_db.fetch_all(select([status_table]))
+    desired_state_rows = await test_db.fetch_all(select(status_table))
     row_dicts = [dict(row) for row in desired_state_rows]
 
     # The subscription expired today
@@ -399,7 +399,7 @@ async def test_refresh_reason_changes(test_db: Database, mocker: MockerFixture) 
     row_dicts = [
         dict(row)
         for row in await test_db.fetch_all(
-            select([status_table]).order_by(status_table.c.time_created)
+            select(status_table).order_by(status_table.c.time_created)
         )
     ]
 
@@ -430,7 +430,7 @@ async def test_refresh_reason_stays_the_same(
 
     await refresh_desired_states(constants.ADMIN_UUID, [expired_sub_id])
 
-    desired_state_rows = await test_db.fetch_all(select([status_table]))
+    desired_state_rows = await test_db.fetch_all(select(status_table))
     row_dicts = [dict(row) for row in desired_state_rows]
     assert len(row_dicts) == 1
     assert row_dicts[0]["reason"] == BillingStatus.EXPIRED
@@ -438,7 +438,7 @@ async def test_refresh_reason_stays_the_same(
     await refresh_desired_states(constants.ADMIN_UUID, [expired_sub_id])
 
     desired_state_rows = await test_db.fetch_all(
-        select([status_table]).order_by(status_table.c.time_created)
+        select(status_table).order_by(status_table.c.time_created)
     )
     row_dicts = [dict(row) for row in desired_state_rows]
     assert len(row_dicts) == 1
@@ -465,7 +465,7 @@ async def test_small_tolerance(test_db: Database, mocker: MockerFixture) -> None
     await refresh_desired_states(constants.ADMIN_UUID, [close_to_budget_sub_id])
 
     desired_state_rows = await test_db.fetch_all(
-        select([status_table]).where(status_table.c.reason == None)
+        select(status_table).where(status_table.c.reason == None)
     )
     row_dicts = [dict(row) for row in desired_state_rows]
     assert len(row_dicts) == 1

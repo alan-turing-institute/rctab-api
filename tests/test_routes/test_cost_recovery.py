@@ -148,7 +148,7 @@ async def test_cost_recovery_simple(
 
     results = [
         dict(row)
-        for row in await test_db.fetch_all(select([accounting_models.cost_recovery]))
+        for row in await test_db.fetch_all(select(accounting_models.cost_recovery))
     ]
 
     assert len(results) == 1
@@ -201,7 +201,7 @@ async def test_cost_recovery_two_finances(
 
     results = [
         dict(row)
-        for row in await test_db.fetch_all(select([accounting_models.cost_recovery]))
+        for row in await test_db.fetch_all(select(accounting_models.cost_recovery))
     ]
 
     assert len(results) == 2
@@ -269,7 +269,7 @@ async def test_cost_recovery_second_month(
     results = [
         dict(row)
         for row in await test_db.fetch_all(
-            select([accounting_models.cost_recovery]).order_by(
+            select(accounting_models.cost_recovery).order_by(
                 accounting_models.cost_recovery.c.id
             )
         )
@@ -338,7 +338,7 @@ async def test_cost_recovery_two_subscriptions(
     results = [
         dict(row)
         for row in await test_db.fetch_all(
-            select([accounting_models.cost_recovery]).order_by(
+            select(accounting_models.cost_recovery).order_by(
                 accounting_models.cost_recovery.c.id
             )
         )
@@ -393,7 +393,7 @@ async def test_cost_recovery_priority_one_month(
     results = [
         dict(row)
         for row in await test_db.fetch_all(
-            select([accounting_models.cost_recovery]).order_by(
+            select(accounting_models.cost_recovery).order_by(
                 accounting_models.cost_recovery.c.finance_code
             )
         )
@@ -450,7 +450,7 @@ async def test_cost_recovery_priority_two_months(
     results = [
         dict(row)
         for row in await test_db.fetch_all(
-            select([accounting_models.cost_recovery]).order_by(
+            select(accounting_models.cost_recovery).order_by(
                 accounting_models.cost_recovery.c.finance_code
             )
         )
@@ -557,7 +557,7 @@ async def test_cost_recovery_commit_param(
     results = [
         dict(row)
         for row in await no_rollback_test_db.fetch_all(
-            select([accounting_models.cost_recovery])
+            select(accounting_models.cost_recovery)
         )
     ]
 
@@ -567,7 +567,7 @@ async def test_cost_recovery_commit_param(
     results = [
         dict(row)
         for row in await no_rollback_test_db.fetch_all(
-            select([accounting_models.cost_recovery_log])
+            select(accounting_models.cost_recovery_log)
         )
     ]
 
@@ -633,7 +633,7 @@ async def test_cost_recovery_rollsback(
     results = [
         dict(row)
         for row in await no_rollback_test_db.fetch_all(
-            select([accounting_models.cost_recovery])
+            select(accounting_models.cost_recovery)
         )
     ]
 

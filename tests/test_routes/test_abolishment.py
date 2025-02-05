@@ -79,9 +79,7 @@ async def test_abolishment(
     assert adjustments[0]["approval"] == 10.0
 
     sub_query = get_subscriptions_summary(execute=False).alias()
-    summary_qr = select([sub_query]).where(
-        sub_query.c.subscription_id == expired_sub_id
-    )
+    summary_qr = select(sub_query).where(sub_query.c.subscription_id == expired_sub_id)
     summary = await test_db.fetch_all(summary_qr)
 
     assert summary
@@ -95,9 +93,7 @@ async def test_abolishment(
     await set_abolished_flag(inactive_subs)
 
     sub_query = get_subscriptions_summary(execute=False).alias()
-    summary_qr = select([sub_query]).where(
-        sub_query.c.subscription_id == expired_sub_id
-    )
+    summary_qr = select(sub_query).where(sub_query.c.subscription_id == expired_sub_id)
     summary = await test_db.fetch_all(summary_qr)
 
     assert summary

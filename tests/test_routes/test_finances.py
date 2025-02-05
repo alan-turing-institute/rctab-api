@@ -416,7 +416,7 @@ async def test_finance_history_delete(
     )
     assert actual == []
 
-    rows = await test_db.fetch_all(select([finance_history]))
+    rows = await test_db.fetch_all(select(finance_history))
     dicts = [dict(x) for x in rows]
 
     assert len(dicts) == 1
@@ -458,7 +458,7 @@ async def test_finance_history_update(
     )
     assert len(actual) == 1
 
-    rows = await test_db.fetch_all(select([finance_history]))
+    rows = await test_db.fetch_all(select(finance_history))
     dicts = [dict(x) for x in rows]
 
     assert len(dicts) == 1
@@ -746,7 +746,7 @@ async def test_check_update_finance_admin(
     mock_rbac.oid = updater_oid
     await update_finance(f_b.id, f_b, mock_rbac)
 
-    rows = await test_db.fetch_all(select([finance]))
+    rows = await test_db.fetch_all(select(finance))
     updated_finances = [dict(row) for row in rows]
     assert len(updated_finances) == 1
     assert updated_finances[0]["admin"] == updater_oid

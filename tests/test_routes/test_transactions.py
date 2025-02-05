@@ -26,6 +26,6 @@ async def test_databases_rollback(
     # Should remove the subscription
     await transaction.rollback()
 
-    results = await no_rollback_test_db.fetch_all(select([subscription]))
+    results = await no_rollback_test_db.fetch_all(select(subscription))
 
     assert len(results) == 0

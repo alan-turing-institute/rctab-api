@@ -32,10 +32,8 @@ async def get_inactive_subs() -> Optional[List[UUID]]:
     # The most recent time_created for each subscription's subscription_detail
     query_1 = (
         select(
-            [
-                subscription_details.c.subscription_id,
-                func.max(subscription_details.c.time_created).label("time_created"),
-            ]
+            subscription_details.c.subscription_id,
+            func.max(subscription_details.c.time_created).label("time_created"),
         ).group_by(subscription_details.c.subscription_id)
     ).alias()
 
@@ -54,7 +52,7 @@ async def get_inactive_subs() -> Optional[List[UUID]]:
     # subscriptions that have been inactive for more than 90 days
     # and have not been abolished yet
     query_2_result = await database.fetch_all(
-        select([subscription_details.c.subscription_id])
+        select(subscription_details.c.subscription_id)
         .select_from(query_2)
         .where(
             and_(
@@ -78,7 +76,7 @@ async def adjust_budgets_to_zero(admin_oid: UUID, sub_ids: List[UUID]) -> List[d
     sub_query = get_subscriptions_summary(execute=False).alias()
 
     summaries = (
-        select([sub_query])
+        select(sub_query)
         .where(sub_query.c.subscription_id.in_([str(sub_id) for sub_id in sub_ids]))
         .alias()
     )
