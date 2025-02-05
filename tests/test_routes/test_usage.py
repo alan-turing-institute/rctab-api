@@ -214,8 +214,8 @@ def test_write_usage(
         cost=75.34,
         amortised_cost=0.0,
         total_cost=75.34,
-        first_usage=datetime.date.today(),
-        latest_usage=datetime.date.today(),
+        first_usage=datetime.datetime(2024, 2, 2),
+        latest_usage=datetime.datetime(2024, 2, 4),
         remaining=130.0 - 75.34,
         desired_status_info=None,
         abolished=False,
@@ -248,21 +248,33 @@ def test_write_usage(
 
         assert (
             api_calls.create_usage(
-                client, token, constants.TEST_SUB_UUID, cost=50.0
+                client,
+                token,
+                constants.TEST_SUB_UUID,
+                cost=50.0,
+                date=datetime.datetime(2024, 2, 2),
             ).status_code
             == 200
         )
 
         assert (
             api_calls.create_usage(
-                client, token, constants.TEST_SUB_UUID, cost=20.0
+                client,
+                token,
+                constants.TEST_SUB_UUID,
+                cost=20.00,
+                date=datetime.datetime(2024, 2, 3),
             ).status_code
             == 200
         )
 
         assert (
             api_calls.create_usage(
-                client, token, constants.TEST_SUB_UUID, cost=5.34
+                client,
+                token,
+                constants.TEST_SUB_UUID,
+                cost=5.340,
+                date=datetime.datetime(2024, 2, 4),
             ).status_code
             == 200
         )
@@ -285,8 +297,8 @@ def test_greater_budget(
         amortised_cost=0.0,
         total_cost=150.0,
         remaining=130.0 - 150.0,
-        first_usage=datetime.date.today(),
-        latest_usage=datetime.date.today(),
+        first_usage=datetime.datetime(2024, 2, 2),
+        latest_usage=datetime.datetime(2024, 2, 3),
         desired_status_info=BillingStatus.OVER_BUDGET,
         abolished=False,
     )
@@ -318,14 +330,22 @@ def test_greater_budget(
 
         assert (
             api_calls.create_usage(
-                client, token, constants.TEST_SUB_UUID, cost=100.0
+                client,
+                token,
+                constants.TEST_SUB_UUID,
+                cost=100.0,
+                date=datetime.datetime(2024, 2, 2),
             ).status_code
             == 200
         )
 
         assert (
             api_calls.create_usage(
-                client, token, constants.TEST_SUB_UUID, cost=50.0
+                client,
+                token,
+                constants.TEST_SUB_UUID,
+                cost=50.0,
+                date=datetime.datetime(2024, 2, 3),
             ).status_code
             == 200
         )
