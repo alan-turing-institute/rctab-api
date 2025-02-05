@@ -126,6 +126,7 @@ async def test_usage_emails(
         allocated_amount=100.0,
         approved=(100.0, date.today() + timedelta(days=10)),
         spent=(20.0, 0),
+        spent_date=date.today(),
     )
 
     ninety_percent = await create_subscription(
@@ -135,6 +136,7 @@ async def test_usage_emails(
         allocated_amount=100.0,
         approved=(100.0, date.today() + timedelta(days=10)),
         spent=(80.0, 0),
+        spent_date=date.today(),
     )
 
     ninety_five_percent = await create_subscription(
@@ -144,6 +146,7 @@ async def test_usage_emails(
         allocated_amount=100.0,
         approved=(100.0, date.today() + timedelta(days=10)),
         spent=(85.0, 0),
+        spent_date=date.today(),
     )
 
     ninety_percent_usage = USAGE_DICT.copy()
@@ -169,7 +172,9 @@ async def test_usage_emails(
             Usage(**ninety_percent_usage),
             Usage(**thirty_percent_usage),
             Usage(**ninety_five_percent_usage),
-        ]
+        ],
+        start_date=date.today() - timedelta(1),
+        end_date=date.today() + timedelta(1),
     )
 
     mock_send = AsyncMock()
