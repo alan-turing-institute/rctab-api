@@ -93,14 +93,14 @@ async def test_get_correct_finance(
         finance_code="test_finance",
         priority=1,
     )
-    await test_db.execute(finance.insert().values(), {**ADMIN_DICT, **f_a.dict()})
-    await test_db.execute(finance.insert().values(), {**ADMIN_DICT, **f_b.dict()})
+    await test_db.execute(finance.insert().values(), {**ADMIN_DICT, **f_a.model_dump()})
+    await test_db.execute(finance.insert().values(), {**ADMIN_DICT, **f_b.model_dump()})
 
     actual = await get_subscription_finances(
         SubscriptionItem(sub_id=sub_id_a), "my token"  # type: ignore
     )
     # We strip the new Finance ID before comparison
-    assert [Finance(**x.dict()) for x in actual] == [f_a]
+    assert [Finance(**x.model_dump()) for x in actual] == [f_a]
 
 
 def test_finances_route(auth_app: FastAPI) -> None:
@@ -146,7 +146,7 @@ async def test_post_finance(
     mock_rbac.oid = constants.ADMIN_UUID
     result = await post_finance(f_a, mock_rbac)  # type: ignore
 
-    assert Finance(**result.dict()) == f_a
+    assert Finance(**result.model_dump()) == f_a
 
 
 def test_get_start_month() -> None:
@@ -260,7 +260,7 @@ async def test_check_finance_raise_exception_already_recovered(
     # no exception expected if no cost recovery record found
     await check_create_finance(f_a)
     f_a_id = await test_db.execute(
-        finance.insert().values(), {**ADMIN_DICT, **f_a.dict()}
+        finance.insert().values(), {**ADMIN_DICT, **f_a.model_dump()}
     )
 
     # no exception expected if no cost recovery record found for this subscription id
@@ -275,7 +275,7 @@ async def test_check_finance_raise_exception_already_recovered(
         priority=1,
     )
     f_b_id = await test_db.execute(
-        finance.insert().values(), {**ADMIN_DICT, **f_b.dict()}
+        finance.insert().values(), {**ADMIN_DICT, **f_b.model_dump()}
     )
     values = dict(
         finance_id=f_b_id,
@@ -368,7 +368,7 @@ def test_finance_post_get_put_delete(auth_app: FastAPI) -> None:
         )
         result = client.post(PREFIX + "/finances", content=f_a.model_dump_json())
         assert result.status_code == 201
-        f_a_returned = FinanceWithID.parse_raw(result.content)
+        f_a_returned = FinanceWithID.model_validate_json(result.content)
 
         f_a_returned.amount = 10.0
         result = client.put(
@@ -379,7 +379,7 @@ def test_finance_post_get_put_delete(auth_app: FastAPI) -> None:
 
         result = client.get(PREFIX + f"/finances/{f_a_returned.id}")
         assert result.status_code == 200
-        assert FinanceWithID.parse_raw(result.content) == f_a_returned
+        assert FinanceWithID.model_validate_json(result.content) == f_a_returned
 
         result = client.request(
             "DELETE",
@@ -447,7 +447,7 @@ async def test_finance_history_update(
     mock_rbac.oid = constants.ADMIN_UUID
     f_b = await post_finance(f_a, mock_rbac)  # type: ignore
 
-    f_c = FinanceWithID(**f_b.dict())
+    f_c = FinanceWithID(**f_b.model_dump())
     f_c.amount = 100
 
     await update_finance(f_c.id, f_c, mock_rbac)
@@ -550,7 +550,7 @@ def test_finance_can_update(auth_app: FastAPI) -> None:
         )
         result = client.post(PREFIX + "/finances", content=f_a.model_dump_json())
         assert result.status_code == 201
-        f_a_returned = FinanceWithID.parse_raw(result.content)
+        f_a_returned = FinanceWithID.model_validate_json(result.content)
 
         result = client.post(
             PREFIX + "/cli-cost-recovery",
@@ -618,7 +618,7 @@ async def test_check_update_finance(
     # f_b is the same as f_a but has an ID
     f_b = await post_finance(f_a, mock_rbac)  # type: ignore
 
-    f_c = FinanceWithID(**f_b.dict())
+    f_c = FinanceWithID(**f_b.model_dump())
 
     # Subscription IDs should match
     f_c.subscription_id = UUID(int=101)
@@ -630,7 +630,7 @@ async def test_check_update_finance(
     assert exception_info.value.detail == "Subscription IDs should match"
 
     # date_to should come after date_from
-    f_d = FinanceWithID(**f_b.dict())
+    f_d = FinanceWithID(**f_b.model_dump())
     f_d.date_to = f_d.date_from
 
     with pytest.raises(HTTPException) as exception_info:
@@ -640,7 +640,7 @@ async def test_check_update_finance(
     assert exception_info.value.detail == "date_to <= date_from"
 
     # Amount should be >= 0
-    f_e = FinanceWithID(**f_b.dict())
+    f_e = FinanceWithID(**f_b.model_dump())
     f_e.amount = -0.1
 
     with pytest.raises(HTTPException) as exception_info:
@@ -654,7 +654,7 @@ async def test_check_update_finance(
         insert(cost_recovery_log),
         {"month": date.fromisoformat("1999-12-01"), "admin": constants.ADMIN_UUID},
     )
-    f_f = FinanceWithID(**{**f_b.dict(), **{"date_from": "1999-11-01"}})
+    f_f = FinanceWithID(**{**f_b.model_dump(), **{"date_from": "1999-11-01"}})
 
     with pytest.raises(HTTPException) as exception_info:
         await check_update_finance(f_f)
@@ -667,7 +667,7 @@ async def test_check_update_finance(
         insert(cost_recovery_log),
         {"month": date.fromisoformat("2000-04-01"), "admin": constants.ADMIN_UUID},
     )
-    f_g = FinanceWithID(**{**f_b.dict(), **{"date_from": "2000-02-01"}})
+    f_g = FinanceWithID(**{**f_b.model_dump(), **{"date_from": "2000-02-01"}})
 
     with pytest.raises(HTTPException) as exception_info:
         await check_update_finance(f_g)
@@ -676,7 +676,7 @@ async def test_check_update_finance(
     assert exception_info.value.detail == "old.date_from has been recovered"
 
     # Can't change new.date_to if that month has been recovered
-    f_h = FinanceWithID(**{**f_b.dict(), **{"date_to": "2000-03-31"}})
+    f_h = FinanceWithID(**{**f_b.model_dump(), **{"date_to": "2000-03-31"}})
 
     with pytest.raises(HTTPException) as exception_info:
         await check_update_finance(f_h)
@@ -689,7 +689,7 @@ async def test_check_update_finance(
         insert(cost_recovery_log),
         {"month": date.fromisoformat("2000-07-01"), "admin": constants.ADMIN_UUID},
     )
-    f_i = FinanceWithID(**{**f_b.dict(), **{"date_to": "2000-08-30"}})
+    f_i = FinanceWithID(**{**f_b.model_dump(), **{"date_to": "2000-08-30"}})
 
     with pytest.raises(HTTPException) as exception_info:
         await check_update_finance(f_i)

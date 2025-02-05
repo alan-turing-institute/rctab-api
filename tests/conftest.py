@@ -87,7 +87,7 @@ def get_public_key_and_token(app_name: str) -> Tuple[str, str]:
     token_claims: Dict[str, Any] = {"sub": app_name}
     access_token_expires = datetime.timedelta(minutes=10)
 
-    expire = datetime.datetime.utcnow() + access_token_expires
+    expire = datetime.datetime.now(datetime.UTC) + access_token_expires
     token_claims.update({"exp": expire})
 
     private_key = rsa.generate_private_key(
@@ -135,7 +135,7 @@ def app_with_signed_billing_token(
     token_claims: Dict[str, Any] = {"sub": "usage-app"}
     access_token_expires = datetime.timedelta(minutes=10)
 
-    expire = datetime.datetime.utcnow() + access_token_expires
+    expire = datetime.datetime.now(datetime.UTC) + access_token_expires
     token_claims.update({"exp": expire})
 
     token = jwt.encode(token_claims, private_key_bytes, algorithm="RS256")  # type: ignore

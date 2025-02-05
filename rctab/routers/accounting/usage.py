@@ -81,13 +81,18 @@ async def insert_usage(all_usage: AllUsage) -> None:
         all_usage: Usage data to insert.
     """
     usage_query = insert(accounting_models.usage)
+    update_dict = {c.name: c for c in usage_query.excluded if not c.primary_key}
+    on_duplicate_key_stmt = usage_query.on_conflict_do_update(
+        index_elements=inspect(accounting_models.usage).primary_key,
+        set_=update_dict,
+    )
 
     logger.info("Inserting usage data")
     insert_start = datetime.datetime.now()
 
     await executemany(
         database,
-        usage_query,
+        on_duplicate_key_stmt,
         values=[i.model_dump() for i in all_usage.usage_list],
     )
     logger.info("Inserting usage data took %s", datetime.datetime.now() - insert_start)
@@ -254,7 +259,7 @@ async def post_cm_usage(
         await executemany(
             database,
             on_duplicate_key_stmt,
-            values=[i.dict() for i in all_cm_usage.cm_usage_list],
+            values=[i.model_dump() for i in all_cm_usage.cm_usage_list],
         )
 
     return TmpReturnStatus(

@@ -94,7 +94,7 @@ async def post_subscription_allocation(
         "new_allocation.html",
         "New allocation for your Azure subscription:",
         "subscription allocation",
-        allocation.dict(),
+        allocation.model_dump(),
     )
 
     await refresh_desired_states(user.oid, [allocation.sub_id])

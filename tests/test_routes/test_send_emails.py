@@ -303,7 +303,7 @@ async def test_get_sub_email_recipients(
         display_name="John Doe",
         principal_id="1",
         role_definition_id="some_role_def_id",
-    ).dict()
+    ).model_dump()
     contributor_a = RoleAssignment(
         mail="janedoe@myorg",
         scope=f"/subscriptions/{subscription_id}",
@@ -311,7 +311,7 @@ async def test_get_sub_email_recipients(
         display_name="Jane Doe",
         principal_id="2",
         role_definition_id="some_other_role_def_id",
-    ).dict()
+    ).model_dump()
     group_contributor = RoleAssignment(
         mail=None,
         scope=f"/subscriptions/{subscription_id}",
@@ -319,7 +319,7 @@ async def test_get_sub_email_recipients(
         display_name="The_Does",
         principal_id="3",
         role_definition_id="some_other_role_def_id",
-    ).dict()
+    ).model_dump()
     reader = RoleAssignment(
         mail="jimdoe@myorg",
         scope=f"/subscriptions/{subscription_id}",
@@ -327,7 +327,7 @@ async def test_get_sub_email_recipients(
         display_name="Jim Doe",
         principal_id="4",
         role_definition_id="some_other_role_def_id",
-    ).dict()
+    ).model_dump()
     contributor_b = RoleAssignment(
         mail="joedoe@myorg",
         scope="/",
@@ -335,7 +335,7 @@ async def test_get_sub_email_recipients(
         display_name="Joe Doe",
         principal_id="5",
         role_definition_id="some_other_role_def_id",
-    ).dict()
+    ).model_dump()
 
     mock_get_settings = mocker.Mock()
     mock_get_settings.return_value.notifiable_roles = ["Reader", "Contributor"]

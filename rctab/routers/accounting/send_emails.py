@@ -603,8 +603,8 @@ def prepare_roles_email(
     needed, in which case return an empty dictionary.
     """
     # Convert to Dicts so we can remove items
-    old_rbac = [x.dict() for x in old_status.role_assignments]
-    new_rbac = [x.dict() for x in new_status.role_assignments]
+    old_rbac = [x.model_dump() for x in old_status.role_assignments]
+    new_rbac = [x.model_dump() for x in new_status.role_assignments]
 
     # We don't need to display these in emails
     for rbac_list in (old_rbac, new_rbac):

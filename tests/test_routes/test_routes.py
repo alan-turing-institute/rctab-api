@@ -98,7 +98,7 @@ async def create_subscription(
                         display_name="SomePrincipal Display Name",
                     ),
                 ),
-            ).dict(),
+            ).model_dump(),
         )
 
     if allocated_amount is not None:
@@ -136,7 +136,7 @@ async def create_subscription(
                 total_cost=sum(spent),
                 invoice_section="",
                 date=spent_date if spent_date else date.today(),
-            ).dict(),
+            ).model_dump(),
         )
         await refresh_materialised_view(db, usage_view)
 

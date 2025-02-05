@@ -30,6 +30,7 @@ jobs:
         uses: abatilo/actions-poetry@v3
 
       - name: Configure poetry
+        shell: bash
         run: poetry config virtualenvs.in-project true
 
       - name: Set up cache
@@ -44,7 +45,12 @@ jobs:
         run: poetry check --lock
 
       - name: Install dependencies
+        shell: bash
         run: poetry install --all-extras
+
+      - name: Ready the MyPy Cache
+        shell: bash
+        run: mkdir .mypy_cache
 
       - uses: pre-commit/action@v3.0.1
         env:
