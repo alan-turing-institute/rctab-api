@@ -3810,8 +3810,10 @@ develop = false
 pydantic = "^2.8.2"
 
 [package.source]
-type = "directory"
-url = "../rctab-models"
+type = "git"
+url = "https://github.com/alan-turing-institute/rctab-models"
+reference = "0.2.0"
+resolved_reference = "e93f131328707a7a4276f5aa731010749d87e885"
 
 [[package]]
 name = "redis"
@@ -5066,4 +5068,4 @@ docs = ["myst-parser", "sphinx-rtd-theme", "sphinxcontrib-napoleon"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10 <3.12"
-content-hash = "372b559f0b5fb24c1923274279c3301b4122974c191b7b55d88b9d7c874af029"
+content-hash = "5becc3604de3223de95d65e17a56bcf58380134b592ba08f76b5b98dce602c1c"
