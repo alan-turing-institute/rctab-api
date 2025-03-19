@@ -25,7 +25,12 @@ from rctab_models.models import (
 from rctab.constants import ADMIN_OID, EMAIL_TYPE_USAGE_ALERT
 from rctab.crud.accounting_models import usage_view
 from rctab.crud.models import database
-from rctab.routers.accounting.usage import get_usage, post_monthly_usage, post_usage
+from rctab.routers.accounting.usage import (
+    delete_usage,
+    get_usage,
+    post_monthly_usage,
+    post_usage,
+)
 from tests.test_routes import api_calls, constants
 from tests.test_routes.test_routes import (  # pylint: disable=unused-import
     create_subscription,
@@ -649,3 +654,24 @@ def test_post_usage_emails(
             raise e
 
         mock_refresh.assert_called_once_with(UUID(ADMIN_OID), unique_subs)
+
+
+@pytest.mark.asyncio
+async def test_delete_usage(
+    test_db: Database,  # pylint: disable=redefined-outer-name
+) -> None:
+    """Check that we can delete usage rows."""
+
+    all_usage = await get_usage()
+    assert len(all_usage) == 0
+    await create_subscription(
+        test_db,
+        spent=(1.0, 1.0),
+        spent_date=datetime.date(2024, 4, 1),
+    )
+    all_usage = await get_usage()
+    assert len(all_usage) == 1
+    # Note that the end date is also deleted.
+    await delete_usage(datetime.date(2000, 1, 1), datetime.date(2024, 4, 1))
+    all_usage = await get_usage()
+    assert len(all_usage) == 0

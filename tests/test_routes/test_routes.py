@@ -60,6 +60,7 @@ async def create_subscription(
     allocated_amount: if None then no row in allocations
     (approved_amount, approved_to): if None then no row in approvals
     (normal_cost, amortised_cost): the amount spent thus far
+    spent_date: the date the costs were incurred
     """
     # pylint: disable=too-many-arguments, invalid-name
 
