@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from rctab_models.models import AllCMUsage, AllUsage, CMUsage, Usage, UserRBAC
 from sqlalchemy import delete, select
 
-# require the postgre specific insert rather than the generic sqlachemy for;
+# require the postgres specific insert rather than the generic sqlachemy for
 # `post_cm_usage` fn where "excluded" and "on_conflict_do_update" are used.
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.inspection import inspect
