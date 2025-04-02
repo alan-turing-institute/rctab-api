@@ -18,7 +18,7 @@ async def load_cache(oid: str) -> msal.SerializableTokenCache:
     """Load a user's token cache from the database."""
     cache = msal.SerializableTokenCache()
     value = await database.fetch_val(
-        select([user_cache.c.cache]).where(user_cache.c.oid == oid)
+        select(user_cache.c.cache).where(user_cache.c.oid == oid)
     )
     if value:
         cache.deserialize(value)
@@ -56,12 +56,10 @@ async def check_user_access(
         raise_http_exception: Raise an exception if the user isn't found.
     """
     statement = select(
-        [
-            user_rbac.c.oid,
-            user_rbac.c.username,
-            user_rbac.c.has_access,
-            user_rbac.c.is_admin,
-        ]
+        user_rbac.c.oid,
+        user_rbac.c.username,
+        user_rbac.c.has_access,
+        user_rbac.c.is_admin,
     ).where(user_rbac.c.oid == oid)
 
     user_status = await database.fetch_one(statement)

@@ -15,27 +15,24 @@ def pytest_configure(config: Any) -> None:  # pylint: disable=unused-argument
     This hook is called for every plugin and initial conftest
     file after command line options have been parsed."""
 
-    conn = engine.connect()
-
-    conn.execute(
-        insert(user_rbac).values(
-            (str(constants.ADMIN_UUID), constants.ADMIN_NAME, True, True)
+    with engine.begin() as conn:
+        conn.execute(
+            insert(user_rbac).values(
+                (str(constants.ADMIN_UUID), constants.ADMIN_NAME, True, True)
+            )
         )
-    )
-
-    conn.close()
 
 
 def pytest_unconfigure(config: Any) -> None:  # pylint: disable=unused-argument
     """Called before test process is exited."""
 
-    conn = engine.connect()
+    with engine.begin() as conn:
 
-    clean_up(conn)
+        clean_up(conn)
 
-    conn.execute(delete(user_rbac).where(user_rbac.c.oid == str(constants.ADMIN_UUID)))
-
-    conn.close()
+        conn.execute(
+            delete(user_rbac).where(user_rbac.c.oid == str(constants.ADMIN_UUID))
+        )
 
 
 def clean_up(conn: Connection) -> None:

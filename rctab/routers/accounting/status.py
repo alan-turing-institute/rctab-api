@@ -99,7 +99,7 @@ async def post_status(
             old_status = SubscriptionStatus(**dict(status_row)) if status_row else None
 
             previous_welcome_email = await database.fetch_one(
-                select([emails]).where(
+                select(emails).where(
                     and_(
                         emails.c.subscription_id == new_status.subscription_id,
                         emails.c.type == EMAIL_TYPE_SUB_WELCOME,
