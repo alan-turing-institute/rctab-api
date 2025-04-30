@@ -42,7 +42,7 @@ black = "^24.3.0"
 devtools = { extras = ["pygments"], version = "^0.8.0" }
 flake8 = "^3.8.4"
 genbadge = "^1.1.1"
-httpie = "3.2.1"  # upgrade once the 3.2.2 safety issue is resolved
+httpie = "^3.2.3"
 httpie-jwt-auth = "^0.4.0"
 hypothesis = "^6.82.6"
 ipykernel = "^6.19.4"
