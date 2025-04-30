@@ -1257,7 +1257,7 @@ uvicorn = {version = "^0.34.2", extras = ["standard"]}
 type = "git"
 url = "https://github.com/alan-turing-institute/fastapimsal"
 reference = "0.8.0"
-resolved_reference = "ff60ee9d61315a6548a0fd1b5d93f65c43d671f3"
+resolved_reference = "6eb1fec214f74979db541364ec06da785397362a"
 
 [[package]]
 name = "filelock"
@@ -5313,4 +5313,4 @@ docs = ["myst-parser", "sphinx-rtd-theme", "sphinxcontrib-napoleon"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10 <3.12"
-content-hash = "42843b747256ad177f7c7fa409fb0a517c3339fcfd957ea9baf04f2867f246e9"
+content-hash = "3d024a586685b34ed2c1ab0a4d9677067647f42109cc72ab9167b5076a26be29"
