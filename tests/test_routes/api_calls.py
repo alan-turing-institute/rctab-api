@@ -173,7 +173,7 @@ def create_usage(
         monthly_upload=None,
     )
 
-    post_data = AllUsage(usage_list=[usage])
+    post_data = AllUsage(usage_list=[usage], start_date=date, end_date=date)
 
     return client.post(
         "usage/all-usage",
