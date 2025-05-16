@@ -445,7 +445,7 @@ async def test_send_generic_emails(
         mock_get_recipients.return_value,
     )
 
-    email_query = select([accounting_models.emails]).where(
+    email_query = select(accounting_models.emails).where(
         accounting_models.emails.c.type == EMAIL_TYPE_SUB_APPROVAL
     )
     email_results = await test_db.fetch_all(email_query)
@@ -755,7 +755,7 @@ async def test_get_most_recent_emails(
         approved=(100.0, date.today() + timedelta(days=7)),
         spent=(70.0, 0),
     )
-    the_sub = await fetch_one_or_fail(select([accounting_models.subscription]))
+    the_sub = await fetch_one_or_fail(select(accounting_models.subscription))
     sub_time = the_sub["time_created"]
 
     insert_statement = insert(accounting_models.emails)
@@ -1195,7 +1195,7 @@ async def test_catches_params_missing(
     )
 
     # check the last row added is as expected
-    last_row_query = select([accounting_models.failed_emails]).order_by(
+    last_row_query = select(accounting_models.failed_emails).order_by(
         accounting_models.failed_emails.c.id.desc()
     )
     last_row_result = await test_db.fetch_one(last_row_query)

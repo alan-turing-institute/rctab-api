@@ -611,7 +611,7 @@ async def test_post_status_filters_roles(
     # No new emails expected
     mock_send_email.assert_has_calls([welcome_call])
 
-    results = await test_db.fetch_all(select([subscription_details]))
+    results = await test_db.fetch_all(select(subscription_details))
     actual = [SubscriptionStatus(**dict(result)) for result in results]
 
     expected = [old_status, newer_status]
@@ -706,7 +706,7 @@ async def test_post_status_filters_roles(
     )
 
     results = await test_db.fetch_all(
-        select([subscription_details]).order_by(subscription_details.c.id)
+        select(subscription_details).order_by(subscription_details.c.id)
     )
     actual = [SubscriptionStatus(**dict(result)) for result in results]
 

@@ -318,13 +318,13 @@ def sub_time_based_emails() -> Select:
         SELECT statement for database query.
     """
     most_recent = (
-        select([func.max_(emails.c.id).label("max_id")])
+        select(func.max_(emails.c.id).label("max_id"))
         .where(emails.c.type == EMAIL_TYPE_TIMEBASED)
         .group_by(emails.c.subscription_id)
         .alias()
     )
 
-    return select([emails]).select_from(
+    return select(emails).select_from(
         emails.join(most_recent, emails.c.id == most_recent.c.max_id)
     )
 
@@ -335,7 +335,7 @@ def sub_usage_emails() -> Select:
     Warning emails include over-budget, usage alert and expiry-looming emails.
     """
     most_recent = (
-        select([func.max_(emails.c.id).label("max_id")])
+        select(func.max_(emails.c.id).label("max_id"))
         .where(
             or_(
                 emails.c.type == EMAIL_TYPE_OVERBUDGET,
@@ -347,7 +347,7 @@ def sub_usage_emails() -> Select:
         .alias()
     )
 
-    return select([emails]).select_from(
+    return select(emails).select_from(
         emails.join(most_recent, emails.c.id == most_recent.c.max_id)
     )
 
@@ -411,7 +411,7 @@ async def check_for_subs_nearing_expiry(database: Database) -> None:
 
     # We don't _have_ to filter on approved_to, but it might make things slightly quicker
     expiry_query = (
-        select([summary.c.subscription_id, summary.c.approved_to, summary.c.status])
+        select(summary.c.subscription_id, summary.c.approved_to, summary.c.status)
         .where(summary.c.approved_to <= date.today() + timedelta(days=30))
         .order_by(summary.c.approved_to)
     )
@@ -435,7 +435,7 @@ async def check_for_overbudget_subs(database: Database) -> None:
     summary = get_subscriptions_summary(execute=False).alias()
 
     overbudget_query = (
-        select([summary.c.subscription_id, summary.c.allocated, summary.c.total_cost])
+        select(summary.c.subscription_id, summary.c.allocated, summary.c.total_cost)
         .where(summary.c.total_cost > summary.c.allocated)
         .where(
             or_(
@@ -665,7 +665,7 @@ async def get_new_subscriptions_since(
     database: Database, since_this_datetime: datetime
 ) -> List:
     """Returns a list of all the subscriptions created since the provided datetime."""
-    subscription_query = select([subscription]).where(
+    subscription_query = select(subscription).where(
         subscription.c.time_created > since_this_datetime
     )
     rows = await database.fetch_all(subscription_query)
@@ -689,7 +689,7 @@ async def get_subscription_details_since(
     """
     logger.info("Looking for subscription details since %s", since_this_datetime)
     status_query = (
-        select([subscription_details])
+        select(subscription_details)
         .where(subscription_details.c.subscription_id == subscription_id)
         .where(subscription_details.c.time_created > since_this_datetime)
         .order_by(asc(subscription_details.c.id))
@@ -716,7 +716,7 @@ async def get_emails_sent_since(
         was sent since the specified datetime.
     """
     emails_query = (
-        select([emails])
+        select(emails)
         .where(emails.c.type != EMAIL_TYPE_SUMMARY)
         .where(emails.c.time_created > since_this_datetime)
     )
@@ -726,7 +726,7 @@ async def get_emails_sent_since(
     emails_by_subscription = []
     for key, value in groupby(all_emails_sent, extract_sub_id):
         name_query = (
-            select([subscription_details.c.display_name.label("name")])
+            select(subscription_details.c.display_name.label("name"))
             .where(subscription_details.c.subscription_id == key)
             .order_by(desc(subscription_details.c.time_created))
             .limit(1)
@@ -763,15 +763,13 @@ async def get_finance_entries_since(
         Each element of the list is a subscription with one or more finance
         items.
     """
-    finance_query = select([finance]).where(
-        finance.c.time_created > since_this_datetime
-    )
+    finance_query = select(finance).where(finance.c.time_created > since_this_datetime)
     rows = await database.fetch_all(finance_query)
     all_new_entries = [{**row._mapping} for row in rows]
     entries_by_subscription = []
     for key, value in groupby(all_new_entries, extract_sub_id):
         name_query = (
-            select([subscription_details.c.display_name.label("name")])
+            select(subscription_details.c.display_name.label("name"))
             .where(subscription_details.c.subscription_id == key)
             .order_by(desc(subscription_details.c.time_created))
             .limit(1)
@@ -905,7 +903,7 @@ async def get_allocations_since(
         A list with all allocations for the given subscription id since the provided datetime.
     """
     query = (
-        select([allocations.c.amount])
+        select(allocations.c.amount)
         .where(allocations.c.subscription_id == subscription_id)
         .where(allocations.c.time_created > since_this_datetime)
     )
@@ -928,7 +926,7 @@ async def get_approvals_since(
         A list with all approvals for the given subscription id since the provided datetime.
     """
     query = (
-        select([approvals.c.amount])
+        select(approvals.c.amount)
         .where(approvals.c.subscription_id == subscription_id)
         .where(approvals.c.time_created > since_this_datetime)
     )

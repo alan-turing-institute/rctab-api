@@ -67,7 +67,7 @@ async def calc_cost_recovery(
     but not for this month.
     """
     last_recovered_day = await database.fetch_one(
-        select([cost_recovery_log]).order_by(desc(cost_recovery_log.c.month))
+        select(cost_recovery_log).order_by(desc(cost_recovery_log.c.month))
     )
     last_recovered_month = (
         CostRecoveryMonth(first_day=last_recovered_day["month"])
@@ -86,9 +86,7 @@ async def calc_cost_recovery(
         subscription_ids = [
             r["sub_id"]
             for r in await database.fetch_all(
-                select(
-                    [func.distinct(finance.c.subscription_id).label("sub_id")]
-                ).where(
+                select(func.distinct(finance.c.subscription_id).label("sub_id")).where(
                     between(
                         recovery_month.first_day, finance.c.date_from, finance.c.date_to
                     )
@@ -99,7 +97,7 @@ async def calc_cost_recovery(
         for subscription_id in subscription_ids:
 
             usage_row = await database.fetch_one(
-                select([func.sum(usage.c.total_cost).label("the_sum")])
+                select(func.sum(usage.c.total_cost).label("the_sum"))
                 .where(
                     func.date_trunc(
                         "month", sqlalchemy.cast(usage.c.date, sqlalchemy.Date)
@@ -118,7 +116,7 @@ async def calc_cost_recovery(
 
             # The lower the value of priority, the higher importance
             finance_periods = await database.fetch_all(
-                select([finance])
+                select(finance)
                 .where(
                     and_(
                         between(
@@ -136,7 +134,7 @@ async def calc_cost_recovery(
             for finance_period in finance_periods:
 
                 cost_recovery_row = await database.fetch_one(
-                    select([func.sum(cost_recovery.c.amount).label("the_sum")]).where(
+                    select(func.sum(cost_recovery.c.amount).label("the_sum")).where(
                         cost_recovery.c.finance_id == finance_period["id"]
                     )
                 )
@@ -160,21 +158,21 @@ async def calc_cost_recovery(
                 cost_recovery_id = await database.execute(
                     insert(
                         cost_recovery,
-                        {
-                            "subscription_id": finance_period["subscription_id"],
-                            "month": recovery_month.first_day,
-                            "finance_code": finance_period["finance_code"],
-                            "amount": recoverable_amount,
-                            "date_recovered": None,
-                            "finance_id": finance_period["id"],
-                            "admin": admin,
-                        },
-                    )
+                    ),
+                    {
+                        "subscription_id": finance_period["subscription_id"],
+                        "month": recovery_month.first_day,
+                        "finance_code": finance_period["finance_code"],
+                        "amount": recoverable_amount,
+                        "date_recovered": None,
+                        "finance_id": finance_period["id"],
+                        "admin": admin,
+                    },
                 )
                 cost_recovery_ids.append(cost_recovery_id)
 
         inserted_rows = await database.fetch_all(
-            select([cost_recovery]).where(cost_recovery.c.id.in_(cost_recovery_ids))
+            select(cost_recovery).where(cost_recovery.c.id.in_(cost_recovery_ids))
         )
 
         # Note that we patch CostRecovery as a unit testing hack
@@ -182,10 +180,8 @@ async def calc_cost_recovery(
 
         if commit_transaction:
             await database.execute(
-                insert(
-                    cost_recovery_log,
-                    {"month": recovery_month.first_day, "admin": admin},
-                )
+                insert(cost_recovery_log),
+                {"month": recovery_month.first_day, "admin": admin},
             )
             await transaction.commit()
         else:

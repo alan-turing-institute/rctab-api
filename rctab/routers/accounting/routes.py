@@ -53,7 +53,7 @@ class SubscriptionSummary(BaseModel):
 @db_select
 def get_subscriptions() -> Select:
     """Returns all subscriptions."""
-    return select([subscription.c.subscription_id, subscription.c.abolished])
+    return select(subscription.c.subscription_id, subscription.c.abolished)
 
 
 @db_select
@@ -64,11 +64,9 @@ def get_subscription_details(sub_id: Optional[UUID] = None) -> Select:
 
     lateral = (
         select(
-            [
-                subscription_details.c.display_name.label("name"),
-                subscription_details.c.role_assignments,
-                subscription_details.c.state.label("status"),
-            ]
+            subscription_details.c.display_name.label("name"),
+            subscription_details.c.role_assignments,
+            subscription_details.c.state.label("status"),
         )
         .where(subscription_details.c.subscription_id == all_subs_sq.c.subscription_id)
         .order_by(subscription_details.c.id.desc())
@@ -76,7 +74,7 @@ def get_subscription_details(sub_id: Optional[UUID] = None) -> Select:
         .lateral("o2")
     )
 
-    query = select([all_subs_sq.c.subscription_id, lateral]).select_from(
+    query = select(all_subs_sq.c.subscription_id, lateral).select_from(
         all_subs_sq.join(lateral, true(), isouter=True)
     )
 
@@ -96,10 +94,8 @@ def get_sub_allocations_summary(sub_id: Optional[UUID] = None) -> Select:
     all_subs_sq = get_subscriptions(execute=False).alias()
 
     query = select(
-        [
-            all_subs_sq.c.subscription_id,
-            func.coalesce(func.sum(allocations.c.amount), 0.0).label("allocated"),
-        ]
+        all_subs_sq.c.subscription_id,
+        func.coalesce(func.sum(allocations.c.amount), 0.0).label("allocated"),
     ).select_from(
         all_subs_sq.join(
             allocations,
@@ -131,12 +127,10 @@ def get_sub_approvals_summary(sub_id: Optional[UUID] = None) -> Select:
     all_subs_sq = get_subscriptions(execute=False).alias()
 
     query = select(
-        [
-            all_subs_sq.c.subscription_id,
-            func.min(approvals.c.date_from).label("approved_from"),
-            func.max(approvals.c.date_to).label("approved_to"),
-            func.coalesce(func.sum(approvals.c.amount), 0.0).label("approved"),
-        ]
+        all_subs_sq.c.subscription_id,
+        func.min(approvals.c.date_from).label("approved_from"),
+        func.max(approvals.c.date_to).label("approved_to"),
+        func.coalesce(func.sum(approvals.c.amount), 0.0).label("approved"),
     ).select_from(
         all_subs_sq.join(
             approvals,
@@ -166,14 +160,12 @@ def get_sub_usage_summary(
     all_subs_sq = get_subscriptions(execute=False).alias()
 
     query = select(
-        [
-            all_subs_sq.c.subscription_id,
-            usage_view.c.first_usage,
-            usage_view.c.latest_usage,
-            func.coalesce(usage_view.c.total_cost, 0.0).label("total_cost"),
-            func.coalesce(usage_view.c.amortised_cost, 0.0).label("amortised_cost"),
-            func.coalesce(usage_view.c.cost, 0.0).label("cost"),
-        ]
+        all_subs_sq.c.subscription_id,
+        usage_view.c.first_usage,
+        usage_view.c.latest_usage,
+        func.coalesce(usage_view.c.total_cost, 0.0).label("total_cost"),
+        func.coalesce(usage_view.c.amortised_cost, 0.0).label("amortised_cost"),
+        func.coalesce(usage_view.c.cost, 0.0).label("cost"),
     ).select_from(
         all_subs_sq.join(
             usage_view,
@@ -195,14 +187,14 @@ def sub_persistency_status(sub_id: Optional[UUID] = None) -> Select:
     all_subs_sq = get_subscriptions(execute=False).alias()
 
     lateral = (
-        select([persistence.c.always_on])
+        select(persistence.c.always_on)
         .where(persistence.c.subscription_id == all_subs_sq.c.subscription_id)
         .order_by(persistence.c.id.desc())
         .limit(1)
         .lateral("o2")
     )
 
-    query = select([all_subs_sq.c.subscription_id, lateral]).select_from(
+    query = select(all_subs_sq.c.subscription_id, lateral).select_from(
         all_subs_sq.join(lateral, true(), isouter=True)
     )
 
@@ -220,10 +212,8 @@ def get_desired_status(sub_id: Optional[Union[UUID, List[UUID]]] = None) -> Sele
 
     lateral = (
         select(
-            [
-                status.c.active.label("desired_status"),
-                status.c.reason.label("desired_status_info"),
-            ]
+            status.c.active.label("desired_status"),
+            status.c.reason.label("desired_status_info"),
         )
         .where(status.c.subscription_id == all_subs_sq.c.subscription_id)
         .order_by(status.c.id.desc())
@@ -231,7 +221,7 @@ def get_desired_status(sub_id: Optional[Union[UUID, List[UUID]]] = None) -> Sele
         .lateral("o2")
     )
 
-    query = select([all_subs_sq.c.subscription_id, lateral]).select_from(
+    query = select(all_subs_sq.c.subscription_id, lateral).select_from(
         all_subs_sq.join(lateral, true(), isouter=True)
     )
 
@@ -277,25 +267,23 @@ def get_subscriptions_summary(
     all_persistence_sq = sub_persistency_status(execute=False).alias()
 
     query = select(
-        [
-            all_subs_sq.c.subscription_id,
-            all_subs_sq.c.abolished,
-            all_details_sq.c.name,
-            all_details_sq.c.role_assignments,
-            all_details_sq.c.status,
-            all_approvals_sq.c.approved_from,
-            all_approvals_sq.c.approved_to,
-            all_approvals_sq.c.approved,
-            all_allocations_sq.c.allocated,
-            all_usage_sq.c.cost,
-            all_usage_sq.c.amortised_cost,
-            all_usage_sq.c.total_cost,
-            all_usage_sq.c.first_usage,
-            all_usage_sq.c.latest_usage,
-            all_persistence_sq.c.always_on,
-            all_desired_status_sq.c.desired_status,
-            all_desired_status_sq.c.desired_status_info,
-        ]
+        all_subs_sq.c.subscription_id,
+        all_subs_sq.c.abolished,
+        all_details_sq.c.name,
+        all_details_sq.c.role_assignments,
+        all_details_sq.c.status,
+        all_approvals_sq.c.approved_from,
+        all_approvals_sq.c.approved_to,
+        all_approvals_sq.c.approved,
+        all_allocations_sq.c.allocated,
+        all_usage_sq.c.cost,
+        all_usage_sq.c.amortised_cost,
+        all_usage_sq.c.total_cost,
+        all_usage_sq.c.first_usage,
+        all_usage_sq.c.latest_usage,
+        all_persistence_sq.c.always_on,
+        all_desired_status_sq.c.desired_status,
+        all_desired_status_sq.c.desired_status_info,
     ).select_from(
         all_subs_sq.join(
             all_details_sq,
@@ -346,13 +334,10 @@ def get_subscriptions_with_disable(
     ).alias()
 
     return select(
-        [
-            subscription_summary_sq,
-            (
-                subscription_summary_sq.c.allocated
-                - subscription_summary_sq.c.total_cost
-            ).label("remaining"),
-        ]
+        subscription_summary_sq,
+        (
+            subscription_summary_sq.c.allocated - subscription_summary_sq.c.total_cost
+        ).label("remaining"),
     )
 
 
@@ -370,13 +355,11 @@ def get_total_usage(
         Select: [description]
     """
     query = select(
-        [
-            func.min(usage_view.c.first_usage).label("first_usage"),
-            func.max(usage_view.c.latest_usage).label("latest_usage"),
-            func.sum(usage_view.c.cost).label("cost"),
-            func.sum(usage_view.c.amortised_cost).label("amortised_cost"),
-            func.sum(usage_view.c.total_cost).label("total_cost"),
-        ]
+        func.min(usage_view.c.first_usage).label("first_usage"),
+        func.max(usage_view.c.latest_usage).label("latest_usage"),
+        func.sum(usage_view.c.cost).label("cost"),
+        func.sum(usage_view.c.amortised_cost).label("amortised_cost"),
+        func.sum(usage_view.c.total_cost).label("total_cost"),
     )
 
     if start_date:
@@ -393,12 +376,10 @@ def get_allocations(sub_id: UUID) -> Select:
     """Get all allocations for a subscription."""
     return (
         select(
-            [
-                allocations.c.ticket,
-                allocations.c.amount,
-                allocations.c.currency,
-                allocations.c.time_created,
-            ]
+            allocations.c.ticket,
+            allocations.c.amount,
+            allocations.c.currency,
+            allocations.c.time_created,
         )
         .where(allocations.c.subscription_id == sub_id)
         .order_by(desc(allocations.c.time_created))
@@ -410,14 +391,12 @@ def get_approvals(sub_id: UUID) -> Select:
     """Get all approvals for a subscription."""
     return (
         select(
-            [
-                approvals.c.ticket,
-                approvals.c.amount,
-                approvals.c.currency,
-                approvals.c.date_from,
-                approvals.c.date_to,
-                approvals.c.time_created,
-            ]
+            approvals.c.ticket,
+            approvals.c.amount,
+            approvals.c.currency,
+            approvals.c.date_from,
+            approvals.c.date_to,
+            approvals.c.time_created,
         )
         .where(approvals.c.subscription_id == sub_id)
         .order_by(desc(approvals.c.date_to))
@@ -429,15 +408,13 @@ def get_finance(sub_id: UUID) -> Select:
     """Get all finance items for a subscription."""
     return (
         select(
-            [
-                finance.c.ticket,
-                finance.c.amount,
-                finance.c.priority,
-                finance.c.finance_code,
-                finance.c.date_from,
-                finance.c.date_to,
-                finance.c.time_created,
-            ]
+            finance.c.ticket,
+            finance.c.amount,
+            finance.c.priority,
+            finance.c.finance_code,
+            finance.c.date_from,
+            finance.c.date_to,
+            finance.c.time_created,
         )
         .where(finance.c.subscription_id == sub_id)
         .order_by(desc(finance.c.date_to))
@@ -449,14 +426,12 @@ def get_costrecovery(sub_id: UUID) -> Select:
     """Get all cost recovery items for a subscription."""
     return (
         select(
-            [
-                cost_recovery.c.subscription_id,
-                cost_recovery.c.finance_id,
-                cost_recovery.c.month,
-                cost_recovery.c.finance_code,
-                cost_recovery.c.amount,
-                cost_recovery.c.date_recovered,
-            ]
+            cost_recovery.c.subscription_id,
+            cost_recovery.c.finance_id,
+            cost_recovery.c.month,
+            cost_recovery.c.finance_code,
+            cost_recovery.c.amount,
+            cost_recovery.c.date_recovered,
         )
         .where(cost_recovery.c.subscription_id == sub_id)
         .order_by(desc(cost_recovery.c.month))
@@ -468,55 +443,53 @@ def get_usage(sub_id: UUID, target_date: datetime.datetime) -> Select:
     """Get all usage items for a subscription."""
     return (
         select(
-            [
-                usage.c.id,
-                usage.c.name,
-                usage.c.type,
-                usage.c.tags,
-                usage.c.billing_account_id,
-                usage.c.billing_account_name,
-                usage.c.billing_period_start_date,
-                usage.c.billing_period_end_date,
-                usage.c.billing_profile_id,
-                usage.c.billing_profile_name,
-                usage.c.account_owner_id,
-                usage.c.account_name,
-                usage.c.subscription_id,
-                usage.c.subscription_name,
-                usage.c.date,
-                usage.c.product,
-                usage.c.part_number,
-                usage.c.meter_id,
-                usage.c.quantity,
-                usage.c.effective_price,
-                usage.c.cost,
-                usage.c.amortised_cost,
-                usage.c.total_cost,
-                usage.c.unit_price,
-                usage.c.billing_currency,
-                usage.c.resource_location,
-                usage.c.consumed_service,
-                usage.c.resource_id,
-                usage.c.resource_name,
-                usage.c.service_info1,
-                usage.c.service_info2,
-                usage.c.additional_info,
-                usage.c.invoice_section,
-                usage.c.cost_center,
-                usage.c.resource_group,
-                usage.c.reservation_id,
-                usage.c.reservation_name,
-                usage.c.product_order_id,
-                usage.c.offer_id,
-                usage.c.is_azure_credit_eligible,
-                usage.c.term,
-                usage.c.publisher_name,
-                usage.c.publisher_type,
-                usage.c.plan_name,
-                usage.c.charge_type,
-                usage.c.frequency,
-                usage.c.monthly_upload,
-            ]
+            usage.c.id,
+            usage.c.name,
+            usage.c.type,
+            usage.c.tags,
+            usage.c.billing_account_id,
+            usage.c.billing_account_name,
+            usage.c.billing_period_start_date,
+            usage.c.billing_period_end_date,
+            usage.c.billing_profile_id,
+            usage.c.billing_profile_name,
+            usage.c.account_owner_id,
+            usage.c.account_name,
+            usage.c.subscription_id,
+            usage.c.subscription_name,
+            usage.c.date,
+            usage.c.product,
+            usage.c.part_number,
+            usage.c.meter_id,
+            usage.c.quantity,
+            usage.c.effective_price,
+            usage.c.cost,
+            usage.c.amortised_cost,
+            usage.c.total_cost,
+            usage.c.unit_price,
+            usage.c.billing_currency,
+            usage.c.resource_location,
+            usage.c.consumed_service,
+            usage.c.resource_id,
+            usage.c.resource_name,
+            usage.c.service_info1,
+            usage.c.service_info2,
+            usage.c.additional_info,
+            usage.c.invoice_section,
+            usage.c.cost_center,
+            usage.c.resource_group,
+            usage.c.reservation_id,
+            usage.c.reservation_name,
+            usage.c.product_order_id,
+            usage.c.offer_id,
+            usage.c.is_azure_credit_eligible,
+            usage.c.term,
+            usage.c.publisher_name,
+            usage.c.publisher_type,
+            usage.c.plan_name,
+            usage.c.charge_type,
+            usage.c.frequency,
+            usage.c.monthly_upload,
         )
         .where((usage.c.subscription_id == sub_id) & (usage.c.date >= target_date))
         .order_by(
@@ -535,6 +508,6 @@ def get_subscription_name(sub_id: Optional[UUID] = None) -> Select:
     Returns:
         A SELECT query for all current and former names of the subscription.
     """
-    return select([subscription_details.c.display_name.label("name")]).where(
+    return select(subscription_details.c.display_name.label("name")).where(
         subscription_details.c.subscription_id == sub_id
     )

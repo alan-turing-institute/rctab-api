@@ -94,7 +94,7 @@ async def get_timestamp_last_summary_email() -> Optional[datetime]:
         The timestamp of the last summary email sent.
     """
     query = (
-        select([emails])
+        select(emails)
         .where(emails.c.type == EMAIL_TYPE_SUMMARY)
         .order_by(desc(emails.c.id))
     )

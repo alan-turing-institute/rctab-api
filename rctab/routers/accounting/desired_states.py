@@ -85,20 +85,16 @@ async def get_desired_states(
     summaries = get_subscriptions_summary(execute=False).alias()
 
     to_be_changed = select(
-        [
-            summaries.c.subscription_id,
-            case(
-                [
-                    # If the desired status is False, we want to disable it
-                    (
-                        summaries.c.desired_status == False,
-                        SubscriptionState("Disabled"),
-                    ),
-                    # If the desired status is True, we want to enable it
-                    (summaries.c.desired_status == True, SubscriptionState("Enabled")),
-                ]
-            ).label("desired_state"),
-        ]
+        summaries.c.subscription_id,
+        case(
+            # If the desired status is False, we want to disable it
+            (
+                summaries.c.desired_status == False,
+                SubscriptionState("Disabled"),
+            ),
+            # If the desired status is True, we want to enable it
+            (summaries.c.desired_status == True, SubscriptionState("Enabled")),
+        ).label("desired_state"),
     ).where(
         or_(
             and_(
@@ -151,7 +147,7 @@ async def refresh_desired_states(
 
     if subscription_ids:
         summaries = (
-            select([sub_query])
+            select(sub_query)
             .where(
                 sub_query.c.subscription_id.in_(
                     [str(sub_id) for sub_id in subscription_ids]
@@ -165,7 +161,7 @@ async def refresh_desired_states(
     # Subscriptions without an approved_to date or whose approved_to
     # date is in the past, that currently have a desired_status of True
     over_time = (
-        select([summaries]).where(
+        select(summaries).where(
             and_(
                 or_(
                     summaries.c.approved_to == None,
@@ -206,7 +202,7 @@ async def refresh_desired_states(
     # Subscriptions with more usage than allocated budget
     # that currently have a desired_status of True
     over_budget = (
-        select([summaries])
+        select(summaries)
         .where(
             and_(
                 # To gracelessly sidestep rounding errors, allow a tolerance
@@ -222,25 +218,21 @@ async def refresh_desired_states(
 
     over_time_or_over_budget = (
         select(
-            [
-                literal_column("1").label("reason_enum"),
-                over_time.c.subscription_id,
-                literal_column("uuid('" + str(admin_oid) + "')").label("admin_oid"),
-                literal_column("False").label("active"),
-                over_time.c.desired_status,
-                over_time.c.desired_status_info,
-            ]
+            literal_column("1").label("reason_enum"),
+            over_time.c.subscription_id,
+            literal_column("uuid('" + str(admin_oid) + "')").label("admin_oid"),
+            literal_column("False").label("active"),
+            over_time.c.desired_status,
+            over_time.c.desired_status_info,
         )
         .union(
             select(
-                [
-                    literal_column("2").label("reason_enum"),
-                    over_budget.c.subscription_id,
-                    literal_column("uuid('" + str(admin_oid) + "')").label("admin_oid"),
-                    literal_column("False").label("active"),
-                    over_budget.c.desired_status,
-                    over_budget.c.desired_status_info,
-                ]
+                literal_column("2").label("reason_enum"),
+                over_budget.c.subscription_id,
+                literal_column("uuid('" + str(admin_oid) + "')").label("admin_oid"),
+                literal_column("False").label("active"),
+                over_budget.c.desired_status,
+                over_budget.c.desired_status_info,
             )
         )
         .alias()
@@ -248,32 +240,28 @@ async def refresh_desired_states(
 
     over_time_or_over_budget_reason = (
         select(
-            [
-                over_time_or_over_budget.c.subscription_id,
-                over_time_or_over_budget.c.admin_oid,
-                over_time_or_over_budget.c.active,
-                case(
-                    [
-                        (
-                            func.sum(over_time_or_over_budget.c.reason_enum) == 1,
-                            cast(BillingStatus.EXPIRED, Enum(BillingStatus)),
-                        ),
-                        (
-                            func.sum(over_time_or_over_budget.c.reason_enum) == 2,
-                            cast(BillingStatus.OVER_BUDGET, Enum(BillingStatus)),
-                        ),
-                        (
-                            func.sum(over_time_or_over_budget.c.reason_enum) == 3,
-                            cast(
-                                BillingStatus.OVER_BUDGET_AND_EXPIRED,
-                                Enum(BillingStatus),
-                            ),
-                        ),
-                    ],
-                ).label("reason"),
-                over_time_or_over_budget.c.desired_status_info.label("old_reason"),
-                over_time_or_over_budget.c.desired_status.label("old_desired_status"),
-            ]
+            over_time_or_over_budget.c.subscription_id,
+            over_time_or_over_budget.c.admin_oid,
+            over_time_or_over_budget.c.active,
+            case(
+                (
+                    func.sum(over_time_or_over_budget.c.reason_enum) == 1,
+                    cast(BillingStatus.EXPIRED, Enum(BillingStatus)),
+                ),
+                (
+                    func.sum(over_time_or_over_budget.c.reason_enum) == 2,
+                    cast(BillingStatus.OVER_BUDGET, Enum(BillingStatus)),
+                ),
+                (
+                    func.sum(over_time_or_over_budget.c.reason_enum) == 3,
+                    cast(
+                        BillingStatus.OVER_BUDGET_AND_EXPIRED,
+                        Enum(BillingStatus),
+                    ),
+                ),
+            ).label("reason"),
+            over_time_or_over_budget.c.desired_status_info.label("old_reason"),
+            over_time_or_over_budget.c.desired_status.label("old_desired_status"),
         )
         .group_by(
             over_time_or_over_budget.c.subscription_id,
@@ -289,13 +277,11 @@ async def refresh_desired_states(
     # desired status or has the wrong reason or a missing reason
     over_time_or_over_budget_desired_on = (
         select(
-            [
-                over_time_or_over_budget_reason.c.subscription_id,
-                over_time_or_over_budget_reason.c.admin_oid,
-                over_time_or_over_budget_reason.c.active,
-                over_time_or_over_budget_reason.c.reason,
-                over_time_or_over_budget_reason.c.old_reason,
-            ]
+            over_time_or_over_budget_reason.c.subscription_id,
+            over_time_or_over_budget_reason.c.admin_oid,
+            over_time_or_over_budget_reason.c.active,
+            over_time_or_over_budget_reason.c.reason,
+            over_time_or_over_budget_reason.c.old_reason,
         )
         .where(
             or_(
@@ -319,12 +305,10 @@ async def refresh_desired_states(
             status_table.c.reason,
         ],
         select(
-            [
-                over_time_or_over_budget_desired_on.c.subscription_id,
-                over_time_or_over_budget_desired_on.c.admin_oid,
-                over_time_or_over_budget_desired_on.c.active,
-                over_time_or_over_budget_desired_on.c.reason,
-            ]
+            over_time_or_over_budget_desired_on.c.subscription_id,
+            over_time_or_over_budget_desired_on.c.admin_oid,
+            over_time_or_over_budget_desired_on.c.active,
+            over_time_or_over_budget_desired_on.c.reason,
         ),
     )
 
@@ -353,17 +337,15 @@ async def refresh_desired_states(
     # but aren't currently. These are all of our subscriptions
     # that are disabled but aren't over time or budget.
     should_be_enabled_but_are_not = select(
-        [
-            summaries.c.subscription_id,
-            literal_column("uuid('" + str(admin_oid) + "')"),
-            literal_column("True"),
-            literal_column("NULL"),
-        ]
+        summaries.c.subscription_id,
+        literal_column("uuid('" + str(admin_oid) + "')"),
+        literal_column("True"),
+        literal_column("NULL"),
     ).where(
         and_(
             not_(
                 summaries.c.subscription_id.in_(
-                    select([over_time_or_over_budget.c.subscription_id])
+                    select(over_time_or_over_budget.c.subscription_id)
                 )
             ),
             or_(

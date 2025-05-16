@@ -209,7 +209,7 @@ async def test_refresh_desired_states_disable(
         ],
     )
 
-    rows = await test_db.fetch_all(select([status]).order_by(status.c.subscription_id))
+    rows = await test_db.fetch_all(select(status).order_by(status.c.subscription_id))
     disabled_subscriptions = [
         (row["subscription_id"], row["reason"])
         for row in rows
@@ -282,7 +282,7 @@ async def test_refresh_desired_states_enable(
         [always_on_sub_id, no_allocation_sub_id, currently_disabled_sub_id],
     )
 
-    rows = await test_db.fetch_all(select([status]).order_by(status.c.subscription_id))
+    rows = await test_db.fetch_all(select(status).order_by(status.c.subscription_id))
 
     enabled_subscriptions = [
         row["subscription_id"] for row in rows if row["active"] is True
@@ -350,12 +350,12 @@ async def test_refresh_desired_states_doesnt_duplicate(
     )
 
     latest_status_id = (
-        select([status.c.subscription_id, func.max(status.c.id).label("max_id")])
+        select(status.c.subscription_id, func.max(status.c.id).label("max_id"))
         .group_by(status.c.subscription_id)
         .alias()
     )
 
-    latest_status = select([status.c.subscription_id, status.c.active]).select_from(
+    latest_status = select(status.c.subscription_id, status.c.active).select_from(
         status.join(
             latest_status_id,
             and_(

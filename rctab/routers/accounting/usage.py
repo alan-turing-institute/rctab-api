@@ -222,7 +222,7 @@ async def post_usage(
 @router.get("/all-usage", response_model=List[Usage])
 async def get_usage(_: UserRBAC = Depends(token_admin_verified)) -> List[Usage]:
     """Get all usage data."""
-    usage_query = select([accounting_models.usage])
+    usage_query = select(accounting_models.usage)
     rows = [dict(x) for x in await database.fetch_all(usage_query)]
     result = [Usage(**x) for x in rows]
 
@@ -263,7 +263,7 @@ async def post_cm_usage(
 @router.get("/all-cm-usage", response_model=List[CMUsage])
 async def get_cm_usage(_: UserRBAC = Depends(token_admin_verified)) -> List[CMUsage]:
     """Get all cost-management data."""
-    cm_query = select([accounting_models.costmanagement])
+    cm_query = select(accounting_models.costmanagement)
     rows = [dict(x) for x in await database.fetch_all(cm_query)]
     result = [CMUsage(**x) for x in rows]
     return result

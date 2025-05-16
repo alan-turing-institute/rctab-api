@@ -36,7 +36,7 @@ async def check_create_finance(
         )
 
     query = (
-        select([cost_recovery])
+        select(cost_recovery)
         .where(cost_recovery.c.subscription_id == new_finance.subscription_id)
         .order_by(desc(cost_recovery.c.id))
     )
@@ -63,7 +63,7 @@ async def get_subscription_finances(
     return [
         FinanceWithID(**dict(x))
         for x in await database.fetch_all(
-            select([finance]).where(finance.c.subscription_id == subscription.sub_id)
+            select(finance).where(finance.c.subscription_id == subscription.sub_id)
         )
     ]
 
@@ -81,7 +81,7 @@ async def post_finance(
             {"admin": user.oid, **new_finance.model_dump()},
         )
         new_row = await database.fetch_one(
-            select([finance]).where(finance.c.id == new_primary_key)
+            select(finance).where(finance.c.id == new_primary_key)
         )
         assert new_row
         newly_created_finance = FinanceWithID(**dict(new_row))
@@ -98,7 +98,7 @@ async def check_update_finance(new_finance: FinanceWithID) -> None:
         raise HTTPException(status_code=400, detail="amount < 0")
 
     old_finance_row = await database.fetch_one(
-        select([finance]).where(finance.c.id == new_finance.id)
+        select(finance).where(finance.c.id == new_finance.id)
     )
     assert old_finance_row
     old_finance = FinanceWithID(**dict(old_finance_row))
@@ -106,7 +106,7 @@ async def check_update_finance(new_finance: FinanceWithID) -> None:
     if old_finance.subscription_id != new_finance.subscription_id:
         raise HTTPException(status_code=400, detail="Subscription IDs should match")
 
-    query = select([cost_recovery_log]).order_by(desc(cost_recovery_log.c.month))
+    query = select(cost_recovery_log).order_by(desc(cost_recovery_log.c.month))
     last_cost_recovery = await database.fetch_one(query)
     if last_cost_recovery:
         last_cost_recovery_dict = {**dict(last_cost_recovery)}
@@ -163,7 +163,7 @@ async def get_finance(
     finance_id: int, _: UserRBAC = Depends(token_admin_verified)
 ) -> FinanceWithID:
     """Returns a Finance if given a finance table ID."""
-    row = await database.fetch_one(select([finance]).where(finance.c.id == finance_id))
+    row = await database.fetch_one(select(finance).where(finance.c.id == finance_id))
     if not row:
         raise HTTPException(status_code=404, detail="Finance not found")
     return FinanceWithID(**dict(row))
@@ -177,7 +177,7 @@ async def delete_finance(
 ) -> FinanceWithID:
     """Deletes a Finance record."""
     finance_row = await database.fetch_one(
-        select([finance]).where(finance.c.id == finance_id)
+        select(finance).where(finance.c.id == finance_id)
     )
 
     # Check that we recognise this finance row
