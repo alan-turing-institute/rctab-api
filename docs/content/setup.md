@@ -24,7 +24,7 @@ Start by setting up the environment:
 poetry env use python3
 ```
 
-Now spawn a poetry shell, this will create a virtual environment for the project.
+Now spawn a Poetry shell, this will create a virtual environment for the project.
 **Keep this virtual environment activated for the remaining steps.**
 
 ```bash
@@ -74,14 +74,15 @@ cp example.env .env
 If you end up using a PostgreSQL port other than `5432` or a password other than `password` in the [PostgreSQL Container](#postgresql-container) section then you should edit `.env` to specify `DB_PORT` and/or `DB_PASSWORD`.
 For the full range of settings, see the ``settings.py`` module.
 
-Create a minimal `.auth.env` file for [Microsoft Authentication Library (MSAL)](https://learn.microsoft.com/en-us/azure/active-directory/develop/msal-overview) by copying the example:
+Create a minimal `.auth.env` file for [Microsoft Authentication Library (MSAL)](https://learn.microsoft.com/en-us/azure/active-directory/develop/msal-overview) by copying the example and adding a random `SESSION_SECRET`:
 
 ```bash
 cp example.auth.env .auth.env
+echo "SESSION_SECRET=$(openssl rand -hex 32)" >> .auth.env
 ```
 
 Note that these are only suitable for getting a development environment up and running.
-Never add  `.env` nor `.auth.env` to version control and do not use the default password or session secret in a real deployment.
+Never add  `.env` nor `.auth.env` to version control and do not use the default credentials in a real deployment.
 For the full explanation of the auth settings, see [Application Registration](#application-registration).
 
 [//]: # (If you wish to send email notifications, set up a SendGrid account and then replace `{YOUR_SENDGRID_KEY} with a SendGrid API key.)
