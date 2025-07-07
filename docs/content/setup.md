@@ -143,7 +143,7 @@ You can stop it at any time with `docker stop rctab_db`.
 Before you start the API we must create the database schema:
 
 ```bash
-scripts/prestart.sh
+alembic upgrade head
 ```
 
 #### Running Tests
