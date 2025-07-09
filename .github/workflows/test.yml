@@ -10,6 +10,10 @@ on:
     branches:
       - main
 
+env:
+  # FastAPI session secret.
+  SESSION_SECRET: some_secret
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -49,11 +53,14 @@ jobs:
 
       - name: Run main tests
         shell: bash
-        run: CELERY_RESULT_BACKEND="redis://localhost:6379/0" scripts/runtests.sh -d -c main
+        run: |
+          export CELERY_RESULT_BACKEND="redis://localhost:6379/0"
+          scripts/runtests.sh -d -c main
 
       - name: Run route tests
         shell: bash
-        run: scripts/runtests.sh -d -c routes
+        run: |
+          scripts/runtests.sh -d -c routes
 
       - name: Check DB downgrade
         shell: bash
