@@ -29,13 +29,14 @@ RUN ~/.local/share/pypoetry/venv/bin/poetry config virtualenvs.create false
 
 WORKDIR /app
 
+COPY pyproject.toml poetry.lock ./
+
+RUN ~/.local/share/pypoetry/venv/bin/poetry install --only main
+
 COPY rctab ./rctab
 COPY alembic ./alembic
 COPY scripts/prestart.sh ./
 COPY alembic.ini ./
-COPY pyproject.toml poetry.lock ./
 COPY redis.conf ./
-
-RUN ~/.local/share/pypoetry/venv/bin/poetry install --only main
 
 ENV APP_MODULE="rctab:app"
