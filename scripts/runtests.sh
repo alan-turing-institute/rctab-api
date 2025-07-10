@@ -38,10 +38,6 @@ while getopts "hpc:e:d" option; do
 done
 shift $((OPTIND-1))
 
-POSTGRES_CONTAINER=docker.io/postgres:14
-CONTAINER_NAME=unittests
-POSTGRES_PORT=5001
-
 function setup {
     set +x
     if [ "$SKIP_DATABASE" = true ]; then
@@ -51,12 +47,7 @@ function setup {
 
     echo -e "\nStarting up postgres container"
     set -x
-    $CONTAINER_ENGINE pull $POSTGRES_CONTAINER
-    $CONTAINER_ENGINE run --detach \
-        --name $CONTAINER_NAME \
-        --env POSTGRES_PASSWORD=password \
-        --publish $POSTGRES_PORT:5432 \
-        $POSTGRES_CONTAINER
+    $CONTAINER_ENGINE compose -f compose/docker-compose-local-unittests.yaml up -d
     sleep 3
 }
 
@@ -69,8 +60,7 @@ function cleanup {
 
     echo -e "\nCleaning up postgres container"
     set -x
-    $CONTAINER_ENGINE stop $CONTAINER_NAME
-    $CONTAINER_ENGINE container rm $CONTAINER_NAME
+    docker compose -f compose/docker-compose-local-unittests.yaml down
 }
 
 # Call cleanup if this script is cancelled with Ctrl-C
