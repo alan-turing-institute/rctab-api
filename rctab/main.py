@@ -116,9 +116,9 @@ async def unicorn_exception_handler(
 async def custom_404_handler(request: Request, __: HTTPException) -> _TemplateResponse:
     """Provide a more useful 404 page."""
     return templates.TemplateResponse(
-        "404.html",
-        {
-            "request": request,
+        request=request,
+        name="404.html",
+        context={
             "version": __version__,
         },
         status_code=404,
