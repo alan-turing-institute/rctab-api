@@ -1,6 +1,6 @@
 [project]
 name = "RCTab"
-version = "1.7.0"
+version = "1.8.0"
 description = "The RCTab API. Manage Azure budgets and usage"
 authors = []
 dynamic = [ "dependencies" ]
@@ -13,7 +13,7 @@ asyncpg = "^0.27.0"
 azure-identity = "^1.21.0"
 celery = "^5.5.2"
 databases = { version = "^0.7.0", extras = ["postgresql"] }
-fastapimsal = { git = "https://github.com/alan-turing-institute/fastapimsal", tag = "0.8.0" }
+fastapimsal = { git = "https://github.com/alan-turing-institute/fastapimsal", tag = "0.9.0" }
 Jinja2 = "^3.1.6"
 myst-parser = {version = "^3.0.1", optional = true}
 numpy = "<2.0.0"
@@ -23,7 +23,7 @@ plotly = "^5.14.1"
 psycopg2-binary = "^2.9.3"
 pydantic = { extras = ["email"], version = "^2.11.5" }
 pydantic-settings = "^2.9.1"
-PyJWT = { extras = ["crypto"], version = "^2.4.0" }
+PyJWT = { extras = ["crypto"], version = "^2.10.1" }
 python-dotenv = "^1.0.1"
 redis = {extras = ["hiredis"], version = "^5.0.1"}
 requests = "^2.32.3"
