@@ -1261,13 +1261,14 @@ itsdangerous = "^1.1.0"
 msal = "^1.31.1"
 pydantic = "^2.7.1"
 pydantic-settings = "^2.3.4"
-python-jose = {version = "^3.3.0", extras = ["cryptography"]}
+python-jose = {version = "^3.4.0", extras = ["cryptography"]}
+uvicorn = {version = "^0.34.2", extras = ["standard"]}
 
 [package.source]
 type = "git"
 url = "https://github.com/alan-turing-institute/fastapimsal"
 reference = "0.9.0"
-resolved_reference = "3dc4bf33558f306e1139380ee897f8e5d36aa65a"
+resolved_reference = "1e3e1d629568238980642cfb71cfef780d9a6ec5"
 
 [[package]]
 name = "filelock"
