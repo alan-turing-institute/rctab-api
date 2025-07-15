@@ -8,6 +8,7 @@ from uuid import UUID
 from fastapi import APIRouter
 from pydantic import BaseModel
 from sqlalchemy import desc, func, select, true
+from sqlalchemy.engine.cursor import CursorResult
 from sqlalchemy.sql import Select
 
 from rctab.crud.accounting_models import (
@@ -22,6 +23,7 @@ from rctab.crud.accounting_models import (
     usage,
     usage_view,
 )
+from rctab.db import AsyncConnection
 from rctab.utils import db_select
 
 router = APIRouter()
@@ -60,7 +62,7 @@ def get_subscriptions() -> Select:
 def get_subscription_details(sub_id: Optional[UUID] = None) -> Select:
     """Returns latest information from subscription details."""
     # pylint: disable=unexpected-keyword-arg
-    all_subs_sq = get_subscriptions(execute=False).alias()
+    all_subs_sq = get_subscriptions().alias()
 
     lateral = (
         select(
@@ -91,7 +93,7 @@ def get_sub_allocations_summary(sub_id: Optional[UUID] = None) -> Select:
     Can filter by sub_id.
     """
     # pylint: disable=unexpected-keyword-arg
-    all_subs_sq = get_subscriptions(execute=False).alias()
+    all_subs_sq = get_subscriptions().alias()
 
     query = select(
         all_subs_sq.c.subscription_id,
@@ -124,7 +126,7 @@ def get_sub_approvals_summary(sub_id: Optional[UUID] = None) -> Select:
         period for each subscription.
     """
     # pylint: disable=unexpected-keyword-arg
-    all_subs_sq = get_subscriptions(execute=False).alias()
+    all_subs_sq = get_subscriptions().alias()
 
     query = select(
         all_subs_sq.c.subscription_id,
@@ -157,7 +159,7 @@ def get_sub_usage_summary(
         sub_id: Filter by sub_id. Defaults to None.
     """
     # pylint: disable=unexpected-keyword-arg
-    all_subs_sq = get_subscriptions(execute=False).alias()
+    all_subs_sq = get_subscriptions().alias()
 
     query = select(
         all_subs_sq.c.subscription_id,
@@ -184,7 +186,7 @@ def get_sub_usage_summary(
 def sub_persistency_status(sub_id: Optional[UUID] = None) -> Select:
     """Returns the latest value of the always_on record for a subscription."""
     # pylint: disable=unexpected-keyword-arg
-    all_subs_sq = get_subscriptions(execute=False).alias()
+    all_subs_sq = get_subscriptions().alias()
 
     lateral = (
         select(persistence.c.always_on)
@@ -208,7 +210,7 @@ def sub_persistency_status(sub_id: Optional[UUID] = None) -> Select:
 def get_desired_status(sub_id: Optional[Union[UUID, List[UUID]]] = None) -> Select:
     """Returns the latest value of the desired status record for a subscription."""
     # pylint: disable=unexpected-keyword-arg
-    all_subs_sq = get_subscriptions(execute=False).alias()
+    all_subs_sq = get_subscriptions().alias()
 
     lateral = (
         select(
@@ -247,24 +249,24 @@ def get_subscriptions_summary(
 ) -> Select:
     """Returns a summary of one or all subscriptions."""
     # Get all subscriptions
-    all_subs_sq = get_subscriptions(execute=False).alias()
+    all_subs_sq = get_subscriptions().alias()
 
     # Get all subscription details
-    all_details_sq = get_subscription_details(execute=False).alias()
+    all_details_sq = get_subscription_details().alias()
 
     # Get desired subscription status
-    all_desired_status_sq = get_desired_status(execute=False).alias()
+    all_desired_status_sq = get_desired_status().alias()
 
     # Get all usage
-    all_usage_sq = get_sub_usage_summary(execute=False).alias()
+    all_usage_sq = get_sub_usage_summary().alias()
 
     # Get all approval summary
-    all_approvals_sq = get_sub_approvals_summary(execute=False).alias()
+    all_approvals_sq = get_sub_approvals_summary().alias()
 
     # Get all allocations
-    all_allocations_sq = get_sub_allocations_summary(execute=False).alias()
+    all_allocations_sq = get_sub_allocations_summary().alias()
 
-    all_persistence_sq = sub_persistency_status(execute=False).alias()
+    all_persistence_sq = sub_persistency_status().alias()
 
     query = select(
         all_subs_sq.c.subscription_id,
@@ -323,21 +325,22 @@ def get_subscriptions_summary(
     return query
 
 
-@db_select
-def get_subscriptions_with_disable(
+async def get_subscriptions_with_disable(
+    conn: AsyncConnection,
     sub_id: Optional[UUID] = None,
-) -> Select:
+) -> CursorResult:
     """Get a query summarising the subscription and its remaining budget."""
     # pylint: disable unexpected-keyword-arg
-    subscription_summary_sq = get_subscriptions_summary(
-        sub_id=sub_id, execute=False
-    ).alias()
+    subscription_summary_sq = get_subscriptions_summary(sub_id=sub_id).alias()
 
-    return select(
-        subscription_summary_sq,
-        (
-            subscription_summary_sq.c.allocated - subscription_summary_sq.c.total_cost
-        ).label("remaining"),
+    return await conn.execute(
+        select(
+            subscription_summary_sq,
+            (
+                subscription_summary_sq.c.allocated
+                - subscription_summary_sq.c.total_cost
+            ).label("remaining"),
+        )
     )
 
 

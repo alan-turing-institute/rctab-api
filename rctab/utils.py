@@ -8,8 +8,6 @@ from typing import Any, Callable, Coroutine, Generator, List
 from asyncpg import Record
 from fastapi import HTTPException
 
-from rctab.crud.models import database
-
 logger = logging.getLogger(__name__)
 
 
@@ -18,6 +16,7 @@ def db_select(func: Callable) -> Callable:
 
     Optionally, execute the function and raise a 404 if no data is returned.
     """
+    return func
 
     @contextmanager
     def wrapping_logic(statement: Any) -> Generator:

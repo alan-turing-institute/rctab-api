@@ -68,6 +68,7 @@ def get_token_verified_override() -> Callable:
 def auth_app(
     get_oauth_settings_override: Callable, get_token_verified_override: Callable
 ) -> FastAPI:
+    # todo roll back database changes after each test
 
     # pylint: disable=import-outside-toplevel
     from rctab import app
