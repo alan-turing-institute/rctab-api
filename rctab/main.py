@@ -27,11 +27,11 @@ from rctab.crud.auth import (
     token_verified,
     user_authenticated,
 )
-from rctab.crud.models import database
 from rctab.logutils import set_log_handler
 from rctab.routers import accounting, frontend
 from rctab.routers.accounting import routes
 from rctab.settings import get_settings
+from rctab.db import ENGINE
 
 templates = Jinja2Templates(directory=Path("rctab/templates"))
 
@@ -39,7 +39,6 @@ templates = Jinja2Templates(directory=Path("rctab/templates"))
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     """Handle setup and teardown."""
-    await database.connect()
     settings = get_settings()
     logging.basicConfig(level=settings.log_level)
     set_log_handler()
@@ -55,7 +54,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     logger.warning("Shutting down server...")
 
     logger.info("Disconnecting from database")
-    await database.disconnect()
+    await ENGINE.dispose()
 
 
 app = FastAPI(

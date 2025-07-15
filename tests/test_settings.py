@@ -45,7 +45,7 @@ def test_settings_raises() -> None:
             db_user="my_db_user",
             db_password="my_db_password",
             db_host="my_db_host",
-            postgres_dsn="postgresql://user:password@0.0.0.0:6000/mypostgresdb",
+            postgres_dsn="postgresql+asyncpg://user:password@0.0.0.0:6000/mypostgresdb",
             # To stop any local .env files influencing the test
             _env_file=None,
         )
@@ -79,5 +79,5 @@ def test_maximal_settings() -> None:
 
     assert (
         str(settings.postgres_dsn)
-        == "postgresql://my_db_user:my_db_password@my_db_host:5432/my_db_name"
+        == "postgresql+asyncpg://my_db_user:my_db_password@my_db_host:5432/my_db_name"
     )

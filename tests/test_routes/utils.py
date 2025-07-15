@@ -1,27 +1,28 @@
 from typing import AsyncGenerator
 
 import pytest
-from databases import Database
+from sqlalchemy.ext.asyncio.engine import AsyncConnection
+
+from rctab.db import get_async_connection
 
 from rctab.settings import get_settings
 
 
 @pytest.fixture(scope="function")
-async def no_rollback_test_db() -> AsyncGenerator[Database, None]:
+async def no_rollback_test_db() -> AsyncGenerator[AsyncConnection, None]:
     """Connect before & disconnect after each test."""
 
     # For a small number of tests, we want to ensure the same
     # rollback behaviour as on the live db as we are specifically
     # testing that transactions and rollbacks are handled well.
-    database = Database(str(get_settings().postgres_dsn), force_rollback=False)
+    # database = Database(str(get_settings().postgres_dsn), force_rollback=False)
 
-    await database.connect()
-    yield database
-    await clean_up(database)
-    await database.disconnect()
+    # await database.connect()
+    conn = await next(get_async_connection())
+    await clean_up(conn)
 
 
-async def clean_up(conn: Database) -> None:
+async def clean_up(conn: AsyncConnection) -> None:
     """Deletes data from all accounting tables."""
 
     for table_name in (

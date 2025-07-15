@@ -88,7 +88,7 @@ class Settings(BaseSettings):
         ssl_str = "?sslmode=require" if ssl else ""
 
         self["postgres_dsn"] = (
-            f"postgresql://{user}:{password}@{host}:{port}/{db_name}{ssl_str}"
+        f"postgresql+asyncpg://{user}:{password}@{host}:{port}/{db_name}{ssl_str}"
         )
 
         return self
