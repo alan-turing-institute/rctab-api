@@ -1,17 +1,7 @@
 """SQLAlchemy models for the default schema."""
 
-from typing import List, Mapping, Sequence, Tuple
-
-import asyncpg
 import sqlalchemy
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.sql import ClauseElement
-
-from rctab.settings import get_settings
-
-# DATABASE_URL = get_settings().postgres_dsn
-
-# database = databases.Database(str(DATABASE_URL), force_rollback=get_settings().testing)
 
 metadata = sqlalchemy.MetaData()
 

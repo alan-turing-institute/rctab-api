@@ -19,23 +19,27 @@ async def load_cache(oid: str, conn: AsyncConnection) -> msal.SerializableTokenC
     """Load a user's token cache from the database."""
     cache = msal.SerializableTokenCache()
     # todo : handle case where cache is empty
-    value = await conn.scalar(
-        select(user_cache.c.cache).where(user_cache.c.oid == oid)
-    )
+    value = await conn.scalar(select(user_cache.c.cache).where(user_cache.c.oid == oid))
     if value:
         cache.deserialize(value)
         return cache
 
 
-async def save_cache(oid: str, cache: msal.SerializableTokenCache, conn: AsyncConnection) -> None:
+async def save_cache(
+    oid: str, cache: msal.SerializableTokenCache, conn: AsyncConnection
+) -> None:
     """Save a user's token cache to the database."""
     if cache.has_state_changed:
         values = {"oid": oid, "cache": cache.serialize()}
 
-        query = insert(user_cache).on_conflict_do_update(
-            index_elements=[user_cache.c.oid],
-            set_=values,
-        ).values(values)
+        query = (
+            insert(user_cache)
+            .on_conflict_do_update(
+                index_elements=[user_cache.c.oid],
+                set_=values,
+            )
+            .values(values)
+        )
         await conn.execute(query)
 
 
@@ -46,7 +50,10 @@ async def remove_cache(oid: str, conn: AsyncConnection) -> None:
 
 
 async def check_user_access(
-    conn: AsyncConnection, oid: str, username: Optional[str] = None, raise_http_exception: bool = True
+    conn: AsyncConnection,
+    oid: str,
+    username: Optional[str] = None,
+    raise_http_exception: bool = True,
 ) -> UserRBAC:
     """Check if a user has access rights.
 
@@ -115,7 +122,10 @@ async def add_user(oid: str, username: str) -> None:
 token_verified = fastapimsal.backend.TokenVerifier(auto_error=True)
 
 
-async def token_user_verified(conn: AsyncConnection = Depends(get_async_connection), token: Dict = Depends(token_verified)) -> UserRBAC:
+async def token_user_verified(
+    conn: AsyncConnection = Depends(get_async_connection),
+    token: Dict = Depends(token_verified),
+) -> UserRBAC:
     """Get user RBAC information from database.
 
     Raise a 401 if the user is not authorised.
