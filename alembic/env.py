@@ -18,7 +18,7 @@ settings = Settings()
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
-config.set_main_option("sqlalchemy.url", str(settings.postgres_dsn))
+config.set_main_option("sqlalchemy.url", str(settings.sync_postgres_dsn))
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
 assert config.config_file_name is not None
@@ -87,8 +87,10 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
+    configuration = config.get_section(config.config_ini_section)
+    assert configuration is not None, "Configuration section not found"
     connectable = engine_from_config(
-        config.get_section(config.config_ini_section),
+        configuration,
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )

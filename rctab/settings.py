@@ -53,8 +53,9 @@ class Settings(BaseSettings):
     status_func_public_key: Optional[str] = None
     controller_func_public_key: Optional[str] = None
 
-    # postgres_dsn is calculated so do not provide it explicitly
+    # postgres_dsns are calculated so do not provide them explicitly
     postgres_dsn: PostgresDsn
+    sync_postgres_dsn: PostgresDsn
 
     # Settings for the settings class itself.
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
@@ -67,6 +68,8 @@ class Settings(BaseSettings):
         # We want to build the Data Source Name ourselves so none should be provided
         if self.get("postgres_dsn") is not None:
             raise ValueError("postgres_dsn should not be provided")
+        if self.get("sync_postgres_dsn") is not None:
+            raise ValueError("sync_postgres_dsn should not be provided")
 
         user = self["db_user"]
 
@@ -88,7 +91,10 @@ class Settings(BaseSettings):
         ssl_str = "?sslmode=require" if ssl else ""
 
         self["postgres_dsn"] = (
-        f"postgresql+asyncpg://{user}:{password}@{host}:{port}/{db_name}{ssl_str}"
+            f"postgresql+asyncpg://{user}:{password}@{host}:{port}/{db_name}{ssl_str}"
+        )
+        self["sync_postgres_dsn"] = (
+            f"postgresql://{user}:{password}@{host}:{port}/{db_name}{ssl_str}"
         )
 
         return self
