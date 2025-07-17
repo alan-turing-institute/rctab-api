@@ -4,7 +4,6 @@ import pytest
 from sqlalchemy.ext.asyncio.engine import AsyncConnection
 
 from rctab.db import get_async_connection
-
 from rctab.settings import get_settings
 
 

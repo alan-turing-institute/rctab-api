@@ -27,11 +27,11 @@ from rctab.crud.auth import (
     token_verified,
     user_authenticated,
 )
+from rctab.db import ENGINE
 from rctab.logutils import set_log_handler
 from rctab.routers import accounting, frontend
 from rctab.routers.accounting import routes
 from rctab.settings import get_settings
-from rctab.db import ENGINE
 
 templates = Jinja2Templates(directory=Path("rctab/templates"))
 
