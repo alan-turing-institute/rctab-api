@@ -68,6 +68,7 @@ def get_token_verified_override() -> Callable:
 def auth_app(
     get_oauth_settings_override: Callable, get_token_verified_override: Callable
 ) -> FastAPI:
+    # todo roll back database changes after each test
 
     # pylint: disable=import-outside-toplevel
     from rctab import app
@@ -180,13 +181,13 @@ def app_with_signed_status_and_controller_tokens(
             ignore_whitelist=True,
         )
 
-    mocker.patch(
-        "rctab.routers.accounting.status.get_settings", side_effect=_get_settings
-    )
-    mocker.patch(
-        "rctab.routers.accounting.desired_states.get_settings",
-        side_effect=_get_settings,
-    )
+    # mocker.patch(
+    #     "rctab.routers.accounting.status.get_settings", side_effect=_get_settings
+    # )
+    # mocker.patch(
+    #     "rctab.routers.accounting.desired_states.get_settings",
+    #     side_effect=_get_settings,
+    # )
 
     # pylint: disable=import-outside-toplevel
     from rctab import app

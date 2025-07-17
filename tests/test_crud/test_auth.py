@@ -1,7 +1,7 @@
 from uuid import UUID
 
 import pytest
-from databases import Database
+from sqlalchemy.ext.asyncio.engine import AsyncConnection
 
 from rctab.crud.auth import check_user_access
 from tests.test_routes.test_routes import test_db  # pylint: disable=unused-import
@@ -11,9 +11,11 @@ from tests.test_routes.test_routes import test_db  # pylint: disable=unused-impo
 
 
 @pytest.mark.asyncio
-async def test_check_user_access(test_db: Database) -> None:
+async def test_check_user_access(test_db: AsyncConnection) -> None:
     """
     Test the check_user_access function in the crud module.
     """
-    result = await check_user_access(str(UUID(int=880)), "me@my.org", False)
+    result = await check_user_access(test_db, str(UUID(int=880)), "me@my.org", False)
     assert result.username == "me@my.org"
+    assert not result.has_access
+    assert not result.is_admin

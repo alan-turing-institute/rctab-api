@@ -1,6 +1,5 @@
 """SQLAlchemy models for the accounting schema."""
 
-from databases import Database
 from sqlalchemy import (
     Boolean,
     Column,
@@ -16,8 +15,10 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import DOUBLE_PRECISION, ENUM, JSONB, UUID
 from sqlalchemy.sql import func
+from sqlalchemy.sql.expression import text
 
 from rctab.crud.models import metadata  # database
+from rctab.db import AsyncConnection
 
 subscription = Table(
     "subscription",
@@ -227,16 +228,18 @@ usage = Table(
 
 
 async def refresh_materialised_view(
-    database: Database, view: Table, concurrently: bool = False
+    connection: AsyncConnection, view: Table, concurrently: bool = False
 ) -> None:
     """Refresh a materialised view."""
-    await database.execute(
-        """
-        REFRESH MATERIALIZED VIEW {concurrently} {schema}.{view};
-        """.format(
-            concurrently="CONCURRENTLY" if concurrently else "",
-            view=view.name,
-            schema=view.schema,
+    await connection.execute(
+        text(
+            """
+            REFRESH MATERIALIZED VIEW {concurrently} {schema}.{view};
+            """.format(
+                concurrently="CONCURRENTLY" if concurrently else "",
+                view=view.name,
+                schema=view.schema,
+            )
         )
     )
 
