@@ -164,7 +164,7 @@ def app_with_signed_billing_token(
 
 @pytest.fixture
 def app_with_signed_status_and_controller_tokens(
-    mocker: Any,
+    # mocker: Any,
     get_oauth_settings_override: Callable,
     get_token_verified_override: Callable,
 ) -> Tuple[FastAPI, str, str]:
@@ -174,12 +174,12 @@ def app_with_signed_status_and_controller_tokens(
         "controller-app"
     )
 
-    def _get_settings() -> Settings:
-        return Settings(
-            controller_func_public_key=controller_public_key_str,
-            status_func_public_key=status_public_key_str,
-            ignore_whitelist=True,
-        )
+    # def _get_settings() -> Settings:
+    #     return Settings(
+    #         controller_func_public_key=controller_public_key_str,
+    #         status_func_public_key=status_public_key_str,
+    #         ignore_whitelist=True,
+    #     )
 
     # mocker.patch(
     #     "rctab.routers.accounting.status.get_settings", side_effect=_get_settings

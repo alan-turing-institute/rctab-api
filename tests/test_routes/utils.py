@@ -3,8 +3,9 @@ from typing import AsyncGenerator
 import pytest
 from sqlalchemy.ext.asyncio.engine import AsyncConnection
 
-from rctab.db import get_async_connection
-from rctab.settings import get_settings
+from rctab.db import ENGINE
+
+# from rctab.settings import get_settings
 
 
 @pytest.fixture(scope="function")
@@ -17,7 +18,8 @@ async def no_rollback_test_db() -> AsyncGenerator[AsyncConnection, None]:
     # database = Database(str(get_settings().postgres_dsn), force_rollback=False)
 
     # await database.connect()
-    conn = await next(get_async_connection())
+    conn = await ENGINE.connect()
+    yield conn
     await clean_up(conn)
 
 

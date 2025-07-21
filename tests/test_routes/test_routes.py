@@ -2,19 +2,16 @@
 import random
 from datetime import date, timedelta
 from typing import Any, AsyncGenerator, Callable, Coroutine, Optional, Tuple
-from unittest.mock import AsyncMock
 from uuid import UUID
 
 import pytest
 from mypy_extensions import KwArg, VarArg
-from pytest_mock import MockerFixture
 from rctab_models.models import (
     RoleAssignment,
     SubscriptionState,
     SubscriptionStatus,
     Usage,
 )
-from sqlalchemy import and_, func, select
 from sqlalchemy.engine import ResultProxy
 from sqlalchemy.engine.base import Engine
 from sqlalchemy.ext.asyncio.engine import AsyncConnection
@@ -24,7 +21,6 @@ from rctab.crud.accounting_models import (
     approvals,
     persistence,
     refresh_materialised_view,
-    status,
     subscription,
     subscription_details,
     usage,
@@ -154,230 +150,3 @@ def make_async_execute(
         return connection.execute(*args, **kwargs)  # type: ignore
 
     return async_execute
-
-
-@pytest.mark.asyncio
-async def test_refresh_desired_states_disable(
-    test_db: AsyncConnection, mocker: MockerFixture
-) -> None:
-    """Check that refresh_desired_states disables when it should."""
-    # pylint: disable=singleton-comparison
-    return
-
-    mock_send_email = AsyncMock()
-    mocker.patch(
-        "rctab.routers.accounting.send_emails.send_generic_email", mock_send_email
-    )
-
-    no_approval_sub_id = await create_subscription(
-        test_db, always_on=False, current_state=SubscriptionState("Enabled")
-    )
-
-    expired_yesterday_sub_id = await create_subscription(
-        test_db,
-        always_on=False,
-        current_state=SubscriptionState("Enabled"),
-        approved=(100.0, date.today() - timedelta(days=1)),
-    )
-
-    over_budget_sub_id = await create_subscription(
-        test_db,
-        always_on=False,
-        current_state=SubscriptionState("Enabled"),
-        approved=(100.0, date.today() + timedelta(days=1)),
-        spent=(101.0, 0),
-    )
-
-    over_time_and_over_budget_sub_id = await create_subscription(
-        test_db,
-        always_on=False,
-        current_state=SubscriptionState("Enabled"),
-        approved=(100.0, date.today() - timedelta(days=1)),
-        spent=(101.0, 0),
-    )
-
-    not_always_on_sub_id = await create_subscription(test_db, always_on=None)
-
-    # await refresh_desired_states(
-    #     constants.ADMIN_UUID,
-    #     [
-    #         no_approval_sub_id,
-    #         expired_yesterday_sub_id,
-    #         over_budget_sub_id,
-    #         not_always_on_sub_id,
-    #         over_time_and_over_budget_sub_id,
-    #     ],
-    # )
-
-    rows = await test_db.fetch_all(select(status).order_by(status.c.subscription_id))
-    disabled_subscriptions = [
-        (row["subscription_id"], row["reason"])
-        for row in rows
-        if row["active"] is False
-    ]
-    disabled_subscriptions_set = set(disabled_subscriptions)
-
-    # The subscription_ids are generated at random so we can't use list comparisons
-    assert len(disabled_subscriptions) == len(disabled_subscriptions_set)
-    assert disabled_subscriptions_set == {
-        (no_approval_sub_id, "EXPIRED"),
-        (expired_yesterday_sub_id, "EXPIRED"),
-        (over_budget_sub_id, "OVER_BUDGET"),
-        (not_always_on_sub_id, "EXPIRED"),
-        (over_time_and_over_budget_sub_id, "OVER_BUDGET_AND_EXPIRED"),
-    }
-
-
-@pytest.mark.asyncio
-async def test_refresh_desired_states_enable(
-    test_db: AsyncConnection, mocker: MockerFixture
-) -> None:
-    """Check that refresh_desired_states enables when it should."""
-    # pylint: disable=singleton-comparison
-    return
-
-    mock_send_email = AsyncMock()
-    mocker.patch(
-        "rctab.routers.accounting.send_emails.send_generic_email", mock_send_email
-    )
-
-    # Allocations default to 0, not NULL, so we don't expect this
-    # sub to be disabled since 0 usage is not > 0 allocated budget
-    no_allocation_sub_id = await create_subscription(
-        test_db,
-        always_on=False,
-        current_state=SubscriptionState("Disabled"),
-        approved=(100.0, date.today() + timedelta(days=1)),
-    )
-
-    always_on_sub_id = await create_subscription(
-        test_db,
-        always_on=True,
-        current_state=SubscriptionState("Disabled"),
-        approved=(100.0, date.today() - timedelta(days=1)),
-        spent=(101.0, 0),
-    )
-
-    # E.g. we have just allocated more budget
-    currently_disabled_sub_id = await create_subscription(
-        test_db,
-        always_on=False,
-        current_state=SubscriptionState("Disabled"),
-        approved=(200.0, date.today() + timedelta(days=1)),
-        allocated_amount=200.0,
-        spent=(101.0, 0),
-    )
-    await test_db.execute(
-        status.insert().values(),
-        dict(
-            subscription_id=str(currently_disabled_sub_id),
-            admin=str(constants.ADMIN_UUID),
-            active=False,
-        ),
-    )
-
-    # Q) Can we presume that status, persistence, approvals and allocations
-    #    are made during subscription creation?
-    # await refresh_desired_states(
-    #     constants.ADMIN_UUID,
-    #     [always_on_sub_id, no_allocation_sub_id, currently_disabled_sub_id],
-    # )
-
-    rows = await test_db.fetch_all(select(status).order_by(status.c.subscription_id))
-
-    enabled_subscriptions = [
-        row["subscription_id"] for row in rows if row["active"] is True
-    ]
-    enabled_subscriptions_set = set(enabled_subscriptions)
-
-    # The subscription_ids are generated at random so we can't use list comparisons
-    assert len(enabled_subscriptions) == len(enabled_subscriptions_set)
-    assert enabled_subscriptions_set == {
-        always_on_sub_id,
-        no_allocation_sub_id,
-        currently_disabled_sub_id,
-    }
-
-
-@pytest.mark.asyncio
-async def test_refresh_desired_states_doesnt_duplicate(
-    test_db: AsyncConnection, mocker: MockerFixture
-) -> None:
-    """Check that refresh_desired_states only inserts when necessary."""
-    # pylint: disable=singleton-comparison
-    return
-
-    always_on_sub_id = await create_subscription(
-        test_db,
-        always_on=True,
-        current_state=SubscriptionState("Disabled"),
-        approved=(100.0, date.today() - timedelta(days=1)),
-        spent=(101.0, 0),
-    )
-    await test_db.execute(
-        status.insert().values(),
-        dict(
-            subscription_id=str(always_on_sub_id),
-            admin=str(constants.ADMIN_UUID),
-            active=True,
-        ),
-    )
-
-    # We want this subscription to stay disabled.
-    over_budget_sub_id = await create_subscription(
-        test_db,
-        always_on=False,
-        current_state=SubscriptionState("Enabled"),
-        approved=(100.0, date.today() + timedelta(days=1)),
-        spent=(101.0, 0),
-    )
-    await test_db.execute(
-        status.insert().values(),
-        dict(
-            subscription_id=str(over_budget_sub_id),
-            admin=str(constants.ADMIN_UUID),
-            active=False,
-        ),
-    )
-
-    mock_send_email = AsyncMock()
-    mocker.patch(
-        "rctab.routers.accounting.send_emails.send_generic_email", mock_send_email
-    )
-
-    # Note: here we check that, by default, refresh_desired_states()
-    # will refresh all subscriptions
-    # await refresh_desired_states(
-    #     constants.ADMIN_UUID,
-    # )
-
-    latest_status_id = (
-        select(status.c.subscription_id, func.max(status.c.id).label("max_id"))
-        .group_by(status.c.subscription_id)
-        .alias()
-    )
-
-    latest_status = select(status.c.subscription_id, status.c.active).select_from(
-        status.join(
-            latest_status_id,
-            and_(
-                status.c.subscription_id == latest_status_id.c.subscription_id,
-                status.c.id == latest_status_id.c.max_id,
-            ),
-        )
-    )
-
-    rows = await test_db.fetch_all(latest_status)
-    enabled_subscriptions = [
-        row["subscription_id"] for row in rows if row["active"] is True
-    ]
-    assert enabled_subscriptions == [
-        always_on_sub_id,
-    ]
-
-    disabled_subscriptions = [
-        row["subscription_id"] for row in rows if row["active"] is False
-    ]
-    assert disabled_subscriptions == [
-        over_budget_sub_id,
-    ]
