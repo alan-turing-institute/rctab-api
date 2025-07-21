@@ -94,15 +94,21 @@ def access_to_span(status: bool) -> str:
     return "<span class='noAccess'>ADMIN: &#10060;</span>"
 
 
-async def check_user_on_subscription(subscription_id: UUID, username: str) -> bool:
+async def check_user_on_subscription(
+    conn: AsyncConnection, subscription_id: UUID, username: str
+) -> bool:
     """Check whether a user has a role assignment on the subscription."""
-    role_assignments = (await get_subscription_details(subscription_id))[0][
-        "role_assignments"
-    ]
-    if role_assignments:
-        for item in role_assignments:
-            if RoleAssignment(**item).mail == username:
-                return True
+    query = get_subscription_details(subscription_id)
+    cursor = await conn.execute(query)
+    row = cursor.first()
+    if row:
+        role_assignments = row._mapping[  # pylint: disable=protected-access
+            "role_assignments"
+        ]
+        if role_assignments:
+            for item in role_assignments:
+                if RoleAssignment(**item).mail == username:
+                    return True
 
     return False
 
@@ -161,7 +167,8 @@ async def home(
     # Get all subscription data
     # pylint: disable=unexpected-keyword-arg
     all_subscription_data = [
-        SubscriptionDetails(**i) for i in await get_subscriptions_with_disable(conn)
+        SubscriptionDetails(**i._mapping)  # pylint: disable=protected-access
+        for i in await get_subscriptions_with_disable(conn)
     ]
 
     # What you see depends on if you are an admin (see everything) or not (see only subscriptions you are on)
@@ -224,40 +231,38 @@ async def subscription_details(
         not access_status.username
         or (
             not await check_user_on_subscription(
-                subscription_id, access_status.username
+                conn, subscription_id, access_status.username
             )
         )
     ):
         raise RequiresLoginException
 
     all_approvals = [
-        ApprovalListItem(**i)
-        for i in await get_approvals(
-            subscription_id
-        )  # pylint: disable=unexpected-keyword-arg
+        ApprovalListItem(**i._mapping)  # pylint: disable=protected-access
+        for i in await conn.execute(get_approvals(subscription_id))
     ]
 
     all_allocations = [
-        AllocationListItem(**i)
-        for i in await get_allocations(
-            subscription_id
-        )  # pylint: disable=unexpected-keyword-arg
+        AllocationListItem(**i._mapping)  # pylint: disable=protected-access
+        for i in await conn.execute(
+            get_allocations(subscription_id)  # pylint: disable=unexpected-keyword-arg
+        )
     ]
     # pylint: disable=line-too-long
 
     all_finance = [
-        FinanceListItem(**i)
-        for i in await get_finance(
-            subscription_id
-        )  # pylint: disable=unexpected-keyword-arg
+        FinanceListItem(**i._mapping)  # pylint: disable=protected-access
+        for i in await conn.execute(
+            get_finance(subscription_id)  # pylint: disable=unexpected-keyword-arg
+        )
     ]
     # pylint: disable=line-too-long
 
     all_costrecovery = [
-        CostRecovery(**i)
-        for i in await get_costrecovery(
-            subscription_id
-        )  # pylint: disable=unexpected-keyword-arg
+        CostRecovery(**i._mapping)  # pylint: disable=protected-access
+        for i in await conn.execute(
+            get_costrecovery(subscription_id)  # pylint: disable=unexpected-keyword-arg
+        )
     ]
 
     cursor = await get_subscriptions_with_disable(conn, subscription_id)
@@ -267,7 +272,11 @@ async def subscription_details(
             status_code=404, detail=f"Subscription {subscription_id} not found"
         )
 
-    role_assignments = subscription_details_info._mapping["role_assignments"]
+    role_assignments = (
+        subscription_details_info._mapping[  # pylint: disable=protected-access
+            "role_assignments"
+        ]
+    )
 
     all_rbac_assignments = (
         [RoleAssignment(**i) for i in role_assignments] if role_assignments else []
@@ -354,7 +363,7 @@ async def subscription_details_1(
         not access_status.username
         or (
             not await check_user_on_subscription(
-                subscription_id, access_status.username
+                conn, subscription_id, access_status.username
             )
         )
     ):
@@ -377,10 +386,12 @@ async def subscription_details_1(
             },
         )
     all_usage = [
-        Usage(**i)
-        for i in await get_usage(
-            subscription_id, timeperiod, raise_404=False
-        )  # pylint: disable=unexpected-keyword-arg
+        Usage(**i._mapping)  # pylint: disable=protected-access
+        for i in await conn.execute(
+            get_usage(
+                subscription_id, timeperiod
+            )  # pylint: disable=unexpected-keyword-arg
+        )
     ]
     # pylint: disable=line-too-long
     if len(all_usage) > 0:
