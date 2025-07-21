@@ -1,5 +1,7 @@
 """SQLAlchemy models for the accounting schema."""
 
+from typing import Any
+
 from sqlalchemy import (
     Boolean,
     Column,
@@ -17,8 +19,18 @@ from sqlalchemy.dialects.postgresql import DOUBLE_PRECISION, ENUM, JSONB, UUID
 from sqlalchemy.sql import func
 from sqlalchemy.sql.expression import text
 
-from rctab.crud.models import metadata  # database
+from rctab.crud.models import metadata
 from rctab.db import AsyncConnection
+
+
+def func_now() -> Any:
+    """Use in place of func.now.
+
+    PyLint thinks that func.now is not callable.
+    MyPy doesn't think its return type is suitable.
+    """
+    return func.now()  # pylint: disable=not-callable
+
 
 subscription = Table(
     "subscription",
@@ -26,8 +38,8 @@ subscription = Table(
     Column("subscription_id", UUID(), primary_key=True),
     Column("admin", UUID, ForeignKey("user_rbac.oid"), nullable=False),
     Column("abolished", Boolean, server_default=false(), nullable=False),
-    Column("time_created", DateTime(timezone=True), server_default=func.now()),
-    Column("time_updated", DateTime(timezone=True), onupdate=func.now()),
+    Column("time_created", DateTime(timezone=True), server_default=func_now()),
+    Column("time_updated", DateTime(timezone=True), onupdate=func_now()),
     schema="accounting",
 )
 
@@ -48,8 +60,8 @@ persistence = Table(
         server_default=false(),
         nullable=False,
     ),
-    Column("time_created", DateTime(timezone=True), server_default=func.now()),
-    Column("time_updated", DateTime(timezone=True), onupdate=func.now()),
+    Column("time_created", DateTime(timezone=True), server_default=func_now()),
+    Column("time_updated", DateTime(timezone=True), onupdate=func_now()),
     schema="accounting",
 )
 
@@ -70,8 +82,8 @@ status = Table(
         server_default=true(),
         nullable=False,
     ),
-    Column("time_created", DateTime(timezone=True), server_default=func.now()),
-    Column("time_updated", DateTime(timezone=True), onupdate=func.now()),
+    Column("time_created", DateTime(timezone=True), server_default=func_now()),
+    Column("time_updated", DateTime(timezone=True), onupdate=func_now()),
     Column(
         "reason",
         ENUM(
@@ -98,8 +110,8 @@ subscription_details = Table(
     Column("display_name", String, nullable=False),
     Column("state", String, nullable=False),
     Column("role_assignments", JSONB),
-    Column("time_created", DateTime(timezone=True), server_default=func.now()),
-    Column("time_updated", DateTime(timezone=True), onupdate=func.now()),
+    Column("time_created", DateTime(timezone=True), server_default=func_now()),
+    Column("time_updated", DateTime(timezone=True), onupdate=func_now()),
     schema="accounting",
 )
 
@@ -127,8 +139,8 @@ approvals = Table(
         Date,
         nullable=False,
     ),
-    Column("time_created", DateTime(timezone=True), server_default=func.now()),
-    Column("time_updated", DateTime(timezone=True), onupdate=func.now()),
+    Column("time_created", DateTime(timezone=True), server_default=func_now()),
+    Column("time_updated", DateTime(timezone=True), onupdate=func_now()),
     schema="accounting",
 )
 
@@ -146,8 +158,8 @@ allocations = Table(
     Column("ticket", String),
     Column("amount", DOUBLE_PRECISION, nullable=False),
     Column("currency", ENUM("GBP", name="currency", create_type=False), nullable=False),
-    Column("time_created", DateTime(timezone=True), server_default=func.now()),
-    Column("time_updated", DateTime(timezone=True), onupdate=func.now()),
+    Column("time_created", DateTime(timezone=True), server_default=func_now()),
+    Column("time_updated", DateTime(timezone=True), onupdate=func_now()),
     schema="accounting",
 )
 
@@ -221,8 +233,8 @@ usage = Table(
     Column("charge_type", String()),
     Column("frequency", String()),
     Column("monthly_upload", Date()),
-    Column("time_created", DateTime(timezone=True), server_default=func.now()),
-    Column("time_updated", DateTime(timezone=True), onupdate=func.now()),
+    Column("time_created", DateTime(timezone=True), server_default=func_now()),
+    Column("time_updated", DateTime(timezone=True), onupdate=func_now()),
     schema="accounting",
 )
 
@@ -292,8 +304,8 @@ emails = Table(
     Column("status", Integer, nullable=False),
     Column("type", String, nullable=False),
     Column("recipients", String, nullable=False),
-    Column("time_created", DateTime(timezone=True), server_default=func.now()),
-    Column("time_updated", DateTime(timezone=True), onupdate=func.now()),
+    Column("time_created", DateTime(timezone=True), server_default=func_now()),
+    Column("time_updated", DateTime(timezone=True), onupdate=func_now()),
     Column("extra_info", String),
     schema="accounting",
 )
@@ -311,8 +323,8 @@ failed_emails = Table(
     Column("subject", String, nullable=False),
     Column("from_email", String, nullable=True),
     Column("recipients", String, nullable=False),
-    Column("time_created", DateTime(timezone=True), server_default=func.now()),
-    Column("time_updated", DateTime(timezone=True), onupdate=func.now()),
+    Column("time_created", DateTime(timezone=True), server_default=func_now()),
+    Column("time_updated", DateTime(timezone=True), onupdate=func_now()),
     Column("message", String, nullable=False),
     schema="accounting",
 )
@@ -333,8 +345,8 @@ finance = Table(
     Column("priority", Integer, nullable=False),
     Column("finance_code", String, nullable=False),
     Column("admin", UUID, ForeignKey("user_rbac.oid"), nullable=False),
-    Column("time_created", DateTime(timezone=True), server_default=func.now()),
-    Column("time_updated", DateTime(timezone=True), onupdate=func.now()),
+    Column("time_created", DateTime(timezone=True), server_default=func_now()),
+    Column("time_updated", DateTime(timezone=True), onupdate=func_now()),
     schema="accounting",
 )
 
@@ -359,7 +371,7 @@ finance_history = Table(
     Column("finance_code", String, nullable=False),
     Column("admin", UUID, ForeignKey("user_rbac.oid"), nullable=False),
     Column("time_created", DateTime(timezone=True)),
-    Column("time_deleted", DateTime(timezone=True), server_default=func.now()),
+    Column("time_deleted", DateTime(timezone=True), server_default=func_now()),
     schema="accounting",
 )
 
@@ -379,8 +391,8 @@ cost_recovery = Table(
     Column("amount", Float, nullable=False),
     Column("date_recovered", DateTime(timezone=True)),
     Column("admin", UUID, ForeignKey("user_rbac.oid"), nullable=False),
-    Column("time_created", DateTime(timezone=True), server_default=func.now()),
-    Column("time_updated", DateTime(timezone=True), onupdate=func.now()),
+    Column("time_created", DateTime(timezone=True), server_default=func_now()),
+    Column("time_updated", DateTime(timezone=True), onupdate=func_now()),
     schema="accounting",
 )
 
@@ -389,7 +401,7 @@ cost_recovery_log = Table(
     metadata,
     Column("month", Date, nullable=False),
     Column("admin", UUID, ForeignKey("user_rbac.oid"), nullable=False),
-    Column("time_created", DateTime(timezone=True), server_default=func.now()),
-    Column("time_updated", DateTime(timezone=True), onupdate=func.now()),
+    Column("time_created", DateTime(timezone=True), server_default=func_now()),
+    Column("time_updated", DateTime(timezone=True), onupdate=func_now()),
     schema="accounting",
 )

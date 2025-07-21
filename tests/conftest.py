@@ -169,10 +169,8 @@ def app_with_signed_status_and_controller_tokens(
     get_token_verified_override: Callable,
 ) -> Tuple[FastAPI, str, str]:
 
-    status_public_key_str, status_token = get_public_key_and_token("status-app")
-    controller_public_key_str, controller_token = get_public_key_and_token(
-        "controller-app"
-    )
+    _, status_token = get_public_key_and_token("status-app")
+    _, controller_token = get_public_key_and_token("controller-app")
 
     # def _get_settings() -> Settings:
     #     return Settings(
