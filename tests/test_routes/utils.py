@@ -2,6 +2,7 @@ from typing import AsyncGenerator
 
 import pytest
 from sqlalchemy.ext.asyncio.engine import AsyncConnection
+from sqlalchemy.sql.expression import text
 
 from rctab.db import ENGINE
 
@@ -39,4 +40,4 @@ async def clean_up(conn: AsyncConnection) -> None:
         "subscription",
         "cost_recovery_log",
     ):
-        await conn.execute(f"delete from accounting.{table_name}")
+        await conn.execute(text(f"delete from accounting.{table_name}"))
