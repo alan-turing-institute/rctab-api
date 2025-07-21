@@ -1,3 +1,4 @@
+# from asyncio import sleep
 from typing import AsyncGenerator
 
 import pytest
@@ -18,10 +19,30 @@ async def no_rollback_test_db() -> AsyncGenerator[AsyncConnection, None]:
     # testing that transactions and rollbacks are handled well.
     # database = Database(str(get_settings().postgres_dsn), force_rollback=False)
 
+    # If you want to use the database fixture, uncomment the line below
+    print("CONNECTING...", flush=True)
+    async with ENGINE.connect() as conn:
+        print("TRANSACTION...", flush=True)
+        # await conn.commit()
+        trans = await conn.begin()
+        try:
+            yield conn
+        finally:
+            print("ROLLBACK...", flush=True)
+            await trans.rollback()
+        print("CLEANUP...", flush=True)
+        await clean_up(conn)
+        await conn.commit()
+    return
     # await database.connect()
-    conn = await ENGINE.connect()
-    yield conn
-    await clean_up(conn)
+    # print("CONNECTING...", flush=True)
+    # conn = await ENGINE.connect()
+    # print("CONNECTED...", flush=True)
+    # yield conn
+    # print("CLEANING UP...", flush=True)
+    # await clean_up(conn)
+    # print("CLEANED UP...", flush=True)
+    # await sleep(1)
 
 
 async def clean_up(conn: AsyncConnection) -> None:
@@ -40,4 +61,5 @@ async def clean_up(conn: AsyncConnection) -> None:
         "subscription",
         "cost_recovery_log",
     ):
+        # print(f"Cleaning up table: {table_name}", flush=True)
         await conn.execute(text(f"delete from accounting.{table_name}"))
