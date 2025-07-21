@@ -12,6 +12,7 @@ from rctab_models.models import RoleAssignment, SubscriptionState, UserRBAC
 from sqlalchemy.ext.asyncio.engine import AsyncConnection
 
 from rctab.crud.accounting_models import subscription, subscription_details
+from rctab.db import ENGINE
 from rctab.routers.frontend import check_user_on_subscription, home
 from rctab.routers.frontend import subscription_details as subscription_details_page
 from tests.test_routes import constants
@@ -31,9 +32,10 @@ async def test_no_email_raises(mocker: MockerFixture) -> None:
     mock_user.token = {
         "access_token": jwt.encode({"unique_name": None, "name": "My Name"}, "my key")
     }
+    async with ENGINE.connect() as conn:
 
-    with pytest.raises(HTTPException):
-        await home(mock_request, mock_user)
+        with pytest.raises(HTTPException):
+            await home(mock_request, mock_user, conn=conn)
 
 
 @pytest.mark.asyncio

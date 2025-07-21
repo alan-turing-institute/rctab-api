@@ -1,5 +1,6 @@
 # from typing import Tuple
 
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -11,7 +12,11 @@ from tests.test_routes import api_calls, constants
 from tests.test_routes.utils import no_rollback_test_db  # pylint: disable=unused-import
 
 
-def test_get_subscription(auth_app: FastAPI) -> None:
+@pytest.mark.asyncio
+def test_get_subscription(
+    auth_app: FastAPI,
+    no_rollback_test_db: AsyncConnection,  # pylint: disable=redefined-outer-name,unused-argument
+) -> None:
     """Getting a subscription that doesn't exist."""
 
     with TestClient(auth_app) as client:
@@ -24,20 +29,23 @@ def test_get_subscription(auth_app: FastAPI) -> None:
     assert result.status_code == 404
 
 
-def test_post_subscription(
+@pytest.mark.asyncio
+async def test_post_subscription(
     auth_app: FastAPI,
-    no_rollback_test_db: AsyncConnection,  # pylint: disable=unused-argument
+    no_rollback_test_db: AsyncConnection,  # pylint: disable=unused-argument,redefined-outer-name
 ) -> None:
     """Register a subscription"""
+    # return
 
     with TestClient(auth_app) as client:
         result = api_calls.create_subscription(client, constants.TEST_SUB_UUID)
         assert result.status_code == 200
 
 
-def test_post_subscription_twice(
+@pytest.mark.asyncio
+async def test_post_subscription_twice(
     auth_app: FastAPI,
-    no_rollback_test_db: AsyncConnection,  # pylint: disable=unused-argument
+    no_rollback_test_db: AsyncConnection,  # pylint: disable=unused-argument,redefined-outer-name
 ) -> None:
     """Can't register it if it already exists"""
 
