@@ -161,8 +161,7 @@ async def home(
     # Get all subscription data
     # pylint: disable=unexpected-keyword-arg
     all_subscription_data = [
-        SubscriptionDetails(**i)
-        for i in await get_subscriptions_with_disable(raise_404=False)
+        SubscriptionDetails(**i) for i in await get_subscriptions_with_disable(conn)
     ]
 
     # What you see depends on if you are an admin (see everything) or not (see only subscriptions you are on)
@@ -201,6 +200,7 @@ async def subscription_details(
     subscription_id: UUID,
     request: Request,
     user: UserIdentityToken = Depends(user_authenticated_no_error),
+    conn: AsyncConnection = Depends(get_async_connection),
 ) -> _TemplateResponse:
     """The subscription details page."""
     if not user:
@@ -211,7 +211,7 @@ async def subscription_details(
 
     # Check the users access status
     access_status = await check_user_access(
-        user.oid, raise_http_exception=False
+        conn, user.oid, raise_http_exception=False
     )  # pylint: disable=unexpected-keyword-arg
 
     # Only users with 'has_access' can access for now (BETA testing).
@@ -260,10 +260,14 @@ async def subscription_details(
         )  # pylint: disable=unexpected-keyword-arg
     ]
 
-    subscription_details_info = (await get_subscriptions_with_disable(subscription_id))[
-        0
-    ]
-    role_assignments = subscription_details_info["role_assignments"]
+    cursor = await get_subscriptions_with_disable(conn, subscription_id)
+    subscription_details_info = cursor.first()
+    if not subscription_details_info:
+        raise HTTPException(
+            status_code=404, detail=f"Subscription {subscription_id} not found"
+        )
+
+    role_assignments = subscription_details_info._mapping["role_assignments"]
 
     all_rbac_assignments = (
         [RoleAssignment(**i) for i in role_assignments] if role_assignments else []
