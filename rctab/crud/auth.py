@@ -60,6 +60,7 @@ async def check_user_access(
     If not try to make an entry for them.
 
     Args:
+        conn: Database connection.
         oid: User's oid.
         username: User's username.
         raise_http_exception: Raise an exception if the user isn't found.
@@ -74,7 +75,9 @@ async def check_user_access(
     result = await conn.execute(statement)
     user_status = result.first()
     if user_status:
+        # pylint: disable=protected-access
         return UserRBAC(**user_status._mapping)
+        # pylint: enable=protected-access
 
     # If we have a username put it in RBAC table
     if username:
@@ -94,7 +97,7 @@ async def check_user_access(
     return UserRBAC(oid=oid, username=username, has_access=False, is_admin=False)
 
 
-async def add_user(oid: str, username: str) -> None:
+async def add_user(conn: AsyncConnection, oid: str, username: str) -> None:
     """Add an admin user.
 
     Does not give them admin permissions which requires admin confirmation.
@@ -110,7 +113,7 @@ async def add_user(oid: str, username: str) -> None:
 
     try:
         await conn.execute(
-            query=query,
+            query,
         )
 
     except UniqueViolationError:

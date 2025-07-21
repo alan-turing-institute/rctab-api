@@ -21,10 +21,12 @@ from rctab_models.models import (
     SubscriptionDetails,
     Usage,
 )
+from sqlalchemy.ext.asyncio.engine import AsyncConnection
 from starlette.templating import Jinja2Templates, _TemplateResponse
 
 from rctab.constants import __version__
 from rctab.crud.auth import check_user_access, user_authenticated_no_error
+from rctab.db import get_async_connection
 from rctab.routers.accounting.routes import (
     get_allocations,
     get_approvals,
@@ -107,7 +109,9 @@ async def check_user_on_subscription(subscription_id: UUID, username: str) -> bo
 
 @router.get("/", include_in_schema=False)
 async def home(
-    request: Request, user: UserIdentityToken = Depends(user_authenticated_no_error)
+    request: Request,
+    user: UserIdentityToken = Depends(user_authenticated_no_error),
+    conn: AsyncConnection = Depends(get_async_connection),
 ) -> _TemplateResponse:
     """The home page."""
     settings = get_settings()
@@ -140,7 +144,7 @@ async def home(
 
     # Check the users access status
     access_status = await check_user_access(
-        user.oid, username=preferred_user_name, raise_http_exception=False
+        conn, user.oid, username=preferred_user_name, raise_http_exception=False
     )
 
     # If we're in Beta release mode, only users with 'has_access' can access
@@ -229,14 +233,14 @@ async def subscription_details(
     all_approvals = [
         ApprovalListItem(**i)
         for i in await get_approvals(
-            subscription_id, raise_404=False
+            subscription_id
         )  # pylint: disable=unexpected-keyword-arg
     ]
 
     all_allocations = [
         AllocationListItem(**i)
         for i in await get_allocations(
-            subscription_id, raise_404=False
+            subscription_id
         )  # pylint: disable=unexpected-keyword-arg
     ]
     # pylint: disable=line-too-long
@@ -244,7 +248,7 @@ async def subscription_details(
     all_finance = [
         FinanceListItem(**i)
         for i in await get_finance(
-            subscription_id, raise_404=False
+            subscription_id
         )  # pylint: disable=unexpected-keyword-arg
     ]
     # pylint: disable=line-too-long
@@ -252,7 +256,7 @@ async def subscription_details(
     all_costrecovery = [
         CostRecovery(**i)
         for i in await get_costrecovery(
-            subscription_id, raise_404=False
+            subscription_id
         )  # pylint: disable=unexpected-keyword-arg
     ]
 
@@ -323,6 +327,7 @@ async def subscription_details_1(
     subscription_id: UUID,
     timeperiodstr: str,
     user: UserIdentityToken = Depends(user_authenticated_no_error),
+    conn: AsyncConnection = Depends(get_async_connection),
 ) -> _TemplateResponse:
     """Get html for the usage tab of the details page."""
     if not user:
@@ -333,7 +338,7 @@ async def subscription_details_1(
 
     # Check the users access status
     access_status = await check_user_access(
-        user.oid, raise_http_exception=False
+        conn, user.oid, raise_http_exception=False
     )  # pylint: disable=unexpected-keyword-arg
 
     # Only users with 'has_access' can access for now (BETA testing). Remove this to let all users with institutional credentials have access
