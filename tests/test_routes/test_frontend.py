@@ -92,7 +92,7 @@ async def test_no_username_no_subscriptions(
     )
     mocker.patch("rctab.routers.frontend.check_user_access", mock_check_access)
 
-    await home(mock_request, mock_user)
+    await home(mock_request, mock_user, conn=test_db)
 
     # Check that no subscriptions are passed to the template
     assert (
@@ -118,7 +118,7 @@ async def test_check_user_on_subscription(
     # Since there is no subscription_detail row,
     # there won't be any role assignments
     user_on_subscription = await check_user_on_subscription(
-        subscription_id, username=""
+        test_db, subscription_id, username=""
     )
 
     assert user_on_subscription is False
@@ -187,7 +187,7 @@ async def test_render_home_page(
     )
     mocker.patch("rctab.routers.frontend.check_user_access", mock_check_access)
 
-    await home(mock_request, mock_user)
+    await home(mock_request, mock_user, test_db)
 
 
 @pytest.mark.asyncio
@@ -252,4 +252,4 @@ async def test_render_details_page(
     )
     mocker.patch("rctab.routers.frontend.check_user_access", mock_check_access)
 
-    await subscription_details_page(subscription_id, mock_request, mock_user)
+    await subscription_details_page(subscription_id, mock_request, mock_user, test_db)
