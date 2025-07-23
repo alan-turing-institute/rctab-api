@@ -47,7 +47,7 @@ function setup {
 
     echo -e "\nStarting up postgres container"
     set -x
-    $CONTAINER_ENGINE compose -f compose/docker-compose-local-unittests.yaml up -d
+    $CONTAINER_ENGINE compose -f compose/docker-compose-local-unittests.yaml up --detach
     sleep 3
 }
 
