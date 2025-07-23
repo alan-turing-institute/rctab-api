@@ -227,16 +227,16 @@ podman build -t rctab:latest .
 
 #### Run
 
-It is easiest to start a database and RCTab API server with the [`docker-compose-local.yaml`](https://github.com/alan-turing-institute/rctab-api/tree/main/compose/docker-compose-local.yaml) file:
+It is easiest to start a database and RCTab API server with the [`docker-compose.yaml`](https://github.com/alan-turing-institute/rctab-api/tree/main/compose/docker-compose.yaml) file:
 
 ```bash
-docker-compose -f compose/docker-compose-local.yaml up -d
+docker compose -f compose/docker-compose.yaml --profile serve up --detach
 ```
 
 and stop it with:
 
 ```bash
-docker-compose -f compose/docker-compose-local.yaml down
+docker compose -f compose/docker-compose.yaml --profile serve down
 ```
 
 Podman also supports Docker Compose since Podman 3.0.0.
@@ -249,10 +249,16 @@ systemctl --user start podman.service
 export DOCKER_HOST="unix://$XDG_RUNTIME_DIR/podman/podman.sock"
 ```
 
-If you do not want Docker Compose to start a database for you (e.g. because you have manually started a separate [PostgreSQL Container](#postgresql-container) or because you are connecting to an external database), you can use the other Compose file:
+If you do not want Docker Compose to start a database for you (e.g. because you have manually started a separate [PostgreSQL Container](#postgresql-container) or because you are connecting to an external database), you can use the other Compose profile (i.e., to start only the RCTab API server):
 
 ```bash
-docker-compose -f compose/docker-compose-external.yaml up -d
+docker compose -f compose/docker-compose.yaml --profile app_only up --detach
+```
+
+and stop it with:
+
+```bash
+docker compose -f compose/docker-compose.yaml --profile app_only down
 ```
 
 **Note** that environment variables declared in the compose file will override those from env files.

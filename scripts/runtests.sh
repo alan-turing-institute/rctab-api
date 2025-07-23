@@ -47,7 +47,7 @@ function setup {
 
     echo -e "\nStarting up postgres container"
     set -x
-    $CONTAINER_ENGINE compose -f compose/docker-compose-local-unittests.yaml up --detach
+    $CONTAINER_ENGINE compose -f compose/docker-compose.yaml --profile db_only up --detach
     sleep 3
 }
 
@@ -60,7 +60,7 @@ function cleanup {
 
     echo -e "\nCleaning up postgres container"
     set -x
-    $CONTAINER_ENGINE compose -f compose/docker-compose-local-unittests.yaml down
+    $CONTAINER_ENGINE compose -f compose/docker-compose.yaml --profile db_only down
 }
 
 # Call cleanup if this script is cancelled with Ctrl-C
