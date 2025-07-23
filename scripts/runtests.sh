@@ -60,7 +60,7 @@ function cleanup {
 
     echo -e "\nCleaning up postgres container"
     set -x
-    docker compose -f compose/docker-compose-local-unittests.yaml down
+    $CONTAINER_ENGINE compose -f compose/docker-compose-local-unittests.yaml down
 }
 
 # Call cleanup if this script is cancelled with Ctrl-C
