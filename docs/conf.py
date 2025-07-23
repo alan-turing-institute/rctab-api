@@ -18,6 +18,7 @@ os.environ["DB_HOST"] = "localhost"
 os.environ["DB_PASSWORD"] = "notarealpassword"
 os.environ["DB_USER"] = "the_username"
 
+# Since there won't be a real database during the docs build.
 with patch("databases.Database"):
     # pylint: disable=wrong-import-position
     import rctab
@@ -29,7 +30,7 @@ with patch("databases.Database"):
 project = "rctab-api"
 author = "The Alan Turing Institute's Research Computing Team"
 # pylint: disable=redefined-builtin
-copyright = f"2023, {author}"
+copyright = f"2025, {author}"
 # pylint: enable=redefined-builtin
 
 version = metadata.version(rctab.__package__)
