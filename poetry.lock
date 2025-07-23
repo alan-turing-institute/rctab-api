@@ -1190,7 +1190,7 @@ uvicorn = {version = "^0.34.2", extras = ["standard"]}
 
 [package.source]
 type = "git"
-url = "ssh://git@github.com/alan-turing-institute/fastapimsal"
+url = "https://git@github.com/alan-turing-institute/fastapimsal"
 reference = "0.9.0"
 resolved_reference = "1e3e1d629568238980642cfb71cfef780d9a6ec5"
 
@@ -3978,7 +3978,7 @@ pydantic = "^2.11.5"
 
 [package.source]
 type = "git"
-url = "ssh://git@github.com/alan-turing-institute/rctab-models.git"
+url = "https://git@github.com/alan-turing-institute/rctab-models"
 reference = "0.2.0"
 resolved_reference = "f22d6261f3ab44d01866abcaf9fa93f1ddacedf8"
 
@@ -5376,4 +5376,4 @@ docs = ["myst-parser", "sphinx-rtd-theme", "sphinxcontrib-napoleon"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.12"
-content-hash = "35f0e8452d623f82a1d6fd849f69cc016c3c8dbf6fecb1b2c1e5d0f4e843d029"
+content-hash = "a263685c54f85060e93876ab6293d0eeb4c623ff46d8625e6dbf1297e16e77a0"
