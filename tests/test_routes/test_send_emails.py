@@ -1,7 +1,7 @@
 # pylint: disable=too-many-lines
 import random
 from datetime import date, datetime, timedelta, timezone
-from typing import Generator
+from typing import Any, Generator
 from unittest.mock import AsyncMock
 from uuid import UUID
 
@@ -53,7 +53,7 @@ from tests.test_routes.test_routes import test_db  # pylint: disable=unused-impo
 from tests.test_routes.test_routes import create_subscription
 from tests.utils import print_list_diff
 
-USAGE_DICT = {
+USAGE_DICT: dict[str, Any] = {
     "additional_properties": {},
     "name": str(UUID(int=random.randint(0, (2**32) - 1))),
     "type": "Usage type",
