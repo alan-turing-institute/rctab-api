@@ -7,7 +7,6 @@ RUN apt-get --yes install curl \
     libffi-dev \
     shared-mime-info \
     libpq-dev \
-    python3-dev \
     git \
     wget \
     unzip
