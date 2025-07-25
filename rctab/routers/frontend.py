@@ -21,10 +21,12 @@ from rctab_models.models import (
     SubscriptionDetails,
     Usage,
 )
+from sqlalchemy.ext.asyncio.engine import AsyncConnection
 from starlette.templating import Jinja2Templates, _TemplateResponse
 
 from rctab.constants import __version__
 from rctab.crud.auth import check_user_access, user_authenticated_no_error
+from rctab.db import get_async_connection
 from rctab.routers.accounting.routes import (
     get_allocations,
     get_approvals,
@@ -92,22 +94,30 @@ def access_to_span(status: bool) -> str:
     return "<span class='noAccess'>ADMIN: &#10060;</span>"
 
 
-async def check_user_on_subscription(subscription_id: UUID, username: str) -> bool:
+async def check_user_on_subscription(
+    conn: AsyncConnection, subscription_id: UUID, username: str
+) -> bool:
     """Check whether a user has a role assignment on the subscription."""
-    role_assignments = (await get_subscription_details(subscription_id))[0][
-        "role_assignments"
-    ]
-    if role_assignments:
-        for item in role_assignments:
-            if RoleAssignment(**item).mail == username:
-                return True
+    query = get_subscription_details(subscription_id)
+    cursor = await conn.execute(query)
+    row = cursor.first()
+    if row:
+        role_assignments = row._mapping[  # pylint: disable=protected-access
+            "role_assignments"
+        ]
+        if role_assignments:
+            for item in role_assignments:
+                if RoleAssignment(**item).mail == username:
+                    return True
 
     return False
 
 
 @router.get("/", include_in_schema=False)
 async def home(
-    request: Request, user: UserIdentityToken = Depends(user_authenticated_no_error)
+    request: Request,
+    user: UserIdentityToken = Depends(user_authenticated_no_error),
+    conn: AsyncConnection = Depends(get_async_connection),
 ) -> _TemplateResponse:
     """The home page."""
     settings = get_settings()
@@ -140,7 +150,7 @@ async def home(
 
     # Check the users access status
     access_status = await check_user_access(
-        user.oid, username=preferred_user_name, raise_http_exception=False
+        conn, user.oid, username=preferred_user_name, raise_http_exception=False
     )
 
     # If we're in Beta release mode, only users with 'has_access' can access
@@ -157,8 +167,8 @@ async def home(
     # Get all subscription data
     # pylint: disable=unexpected-keyword-arg
     all_subscription_data = [
-        SubscriptionDetails(**i)
-        for i in await get_subscriptions_with_disable(raise_404=False)
+        SubscriptionDetails(**i._mapping)  # pylint: disable=protected-access
+        for i in await get_subscriptions_with_disable(conn)
     ]
 
     # What you see depends on if you are an admin (see everything) or not (see only subscriptions you are on)
@@ -197,6 +207,7 @@ async def subscription_details(
     subscription_id: UUID,
     request: Request,
     user: UserIdentityToken = Depends(user_authenticated_no_error),
+    conn: AsyncConnection = Depends(get_async_connection),
 ) -> _TemplateResponse:
     """The subscription details page."""
     if not user:
@@ -207,7 +218,7 @@ async def subscription_details(
 
     # Check the users access status
     access_status = await check_user_access(
-        user.oid, raise_http_exception=False
+        conn, user.oid, raise_http_exception=False
     )  # pylint: disable=unexpected-keyword-arg
 
     # Only users with 'has_access' can access for now (BETA testing).
@@ -220,46 +231,52 @@ async def subscription_details(
         not access_status.username
         or (
             not await check_user_on_subscription(
-                subscription_id, access_status.username
+                conn, subscription_id, access_status.username
             )
         )
     ):
         raise RequiresLoginException
 
     all_approvals = [
-        ApprovalListItem(**i)
-        for i in await get_approvals(
-            subscription_id, raise_404=False
-        )  # pylint: disable=unexpected-keyword-arg
+        ApprovalListItem(**i._mapping)  # pylint: disable=protected-access
+        for i in await conn.execute(get_approvals(subscription_id))
     ]
 
     all_allocations = [
-        AllocationListItem(**i)
-        for i in await get_allocations(
-            subscription_id, raise_404=False
-        )  # pylint: disable=unexpected-keyword-arg
+        AllocationListItem(**i._mapping)  # pylint: disable=protected-access
+        for i in await conn.execute(
+            get_allocations(subscription_id)  # pylint: disable=unexpected-keyword-arg
+        )
     ]
     # pylint: disable=line-too-long
 
     all_finance = [
-        FinanceListItem(**i)
-        for i in await get_finance(
-            subscription_id, raise_404=False
-        )  # pylint: disable=unexpected-keyword-arg
+        FinanceListItem(**i._mapping)  # pylint: disable=protected-access
+        for i in await conn.execute(
+            get_finance(subscription_id)  # pylint: disable=unexpected-keyword-arg
+        )
     ]
     # pylint: disable=line-too-long
 
     all_costrecovery = [
-        CostRecovery(**i)
-        for i in await get_costrecovery(
-            subscription_id, raise_404=False
-        )  # pylint: disable=unexpected-keyword-arg
+        CostRecovery(**i._mapping)  # pylint: disable=protected-access
+        for i in await conn.execute(
+            get_costrecovery(subscription_id)  # pylint: disable=unexpected-keyword-arg
+        )
     ]
 
-    subscription_details_info = (await get_subscriptions_with_disable(subscription_id))[
-        0
-    ]
-    role_assignments = subscription_details_info["role_assignments"]
+    cursor = await get_subscriptions_with_disable(conn, subscription_id)
+    subscription_details_info = cursor.first()
+    if not subscription_details_info:
+        raise HTTPException(
+            status_code=404, detail=f"Subscription {subscription_id} not found"
+        )
+
+    role_assignments = (
+        subscription_details_info._mapping[  # pylint: disable=protected-access
+            "role_assignments"
+        ]
+    )
 
     all_rbac_assignments = (
         [RoleAssignment(**i) for i in role_assignments] if role_assignments else []
@@ -323,6 +340,7 @@ async def subscription_details_1(
     subscription_id: UUID,
     timeperiodstr: str,
     user: UserIdentityToken = Depends(user_authenticated_no_error),
+    conn: AsyncConnection = Depends(get_async_connection),
 ) -> _TemplateResponse:
     """Get html for the usage tab of the details page."""
     if not user:
@@ -333,7 +351,7 @@ async def subscription_details_1(
 
     # Check the users access status
     access_status = await check_user_access(
-        user.oid, raise_http_exception=False
+        conn, user.oid, raise_http_exception=False
     )  # pylint: disable=unexpected-keyword-arg
 
     # Only users with 'has_access' can access for now (BETA testing). Remove this to let all users with institutional credentials have access
@@ -345,7 +363,7 @@ async def subscription_details_1(
         not access_status.username
         or (
             not await check_user_on_subscription(
-                subscription_id, access_status.username
+                conn, subscription_id, access_status.username
             )
         )
     ):
@@ -368,10 +386,12 @@ async def subscription_details_1(
             },
         )
     all_usage = [
-        Usage(**i)
-        for i in await get_usage(
-            subscription_id, timeperiod, raise_404=False
-        )  # pylint: disable=unexpected-keyword-arg
+        Usage(**i._mapping)  # pylint: disable=protected-access
+        for i in await conn.execute(
+            get_usage(
+                subscription_id, timeperiod
+            )  # pylint: disable=unexpected-keyword-arg
+        )
     ]
     # pylint: disable=line-too-long
     if len(all_usage) > 0:

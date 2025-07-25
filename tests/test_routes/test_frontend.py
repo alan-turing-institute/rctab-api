@@ -4,14 +4,15 @@ from uuid import UUID
 
 import jwt
 import pytest
-from databases import Database
 from fastapi import HTTPException
 from fastapi.templating import Jinja2Templates
 from jinja2 import Environment, PackageLoader, StrictUndefined, select_autoescape
 from pytest_mock import MockerFixture
 from rctab_models.models import RoleAssignment, SubscriptionState, UserRBAC
+from sqlalchemy.ext.asyncio.engine import AsyncConnection
 
 from rctab.crud.accounting_models import subscription, subscription_details
+from rctab.db import ENGINE
 from rctab.routers.frontend import check_user_on_subscription, home
 from rctab.routers.frontend import subscription_details as subscription_details_page
 from tests.test_routes import constants
@@ -31,14 +32,15 @@ async def test_no_email_raises(mocker: MockerFixture) -> None:
     mock_user.token = {
         "access_token": jwt.encode({"unique_name": None, "name": "My Name"}, "my key")
     }
+    async with ENGINE.connect() as conn:
 
-    with pytest.raises(HTTPException):
-        await home(mock_request, mock_user)
+        with pytest.raises(HTTPException):
+            await home(mock_request, mock_user, conn=conn)
 
 
 @pytest.mark.asyncio
 async def test_no_username_no_subscriptions(
-    mocker: MockerFixture, test_db: Database
+    mocker: MockerFixture, test_db: AsyncConnection
 ) -> None:
     """Check that users without usernames can't see any subscriptions."""
 
@@ -90,7 +92,7 @@ async def test_no_username_no_subscriptions(
     )
     mocker.patch("rctab.routers.frontend.check_user_access", mock_check_access)
 
-    await home(mock_request, mock_user)
+    await home(mock_request, mock_user, conn=test_db)
 
     # Check that no subscriptions are passed to the template
     assert (
@@ -101,7 +103,7 @@ async def test_no_username_no_subscriptions(
 
 @pytest.mark.asyncio
 async def test_check_user_on_subscription(
-    test_db: Database,  # pylint: disable=redefined-outer-name
+    test_db: AsyncConnection,  # pylint: disable=redefined-outer-name
 ) -> None:
     subscription_id = UUID(int=1)
 
@@ -116,14 +118,16 @@ async def test_check_user_on_subscription(
     # Since there is no subscription_detail row,
     # there won't be any role assignments
     user_on_subscription = await check_user_on_subscription(
-        subscription_id, username=""
+        test_db, subscription_id, username=""
     )
 
     assert user_on_subscription is False
 
 
 @pytest.mark.asyncio
-async def test_render_home_page(mocker: MockerFixture, test_db: Database) -> None:
+async def test_render_home_page(
+    mocker: MockerFixture, test_db: AsyncConnection
+) -> None:
     """Check that we can pick up on undefined variable template issues."""
 
     # Use StrictUndefined while testing
@@ -183,11 +187,13 @@ async def test_render_home_page(mocker: MockerFixture, test_db: Database) -> Non
     )
     mocker.patch("rctab.routers.frontend.check_user_access", mock_check_access)
 
-    await home(mock_request, mock_user)
+    await home(mock_request, mock_user, test_db)
 
 
 @pytest.mark.asyncio
-async def test_render_details_page(mocker: MockerFixture, test_db: Database) -> None:
+async def test_render_details_page(
+    mocker: MockerFixture, test_db: AsyncConnection
+) -> None:
     """Check that we can pick up on undefined variable template issues."""
     # Use StrictUndefined while testing
     mocker.patch(
@@ -246,4 +252,4 @@ async def test_render_details_page(mocker: MockerFixture, test_db: Database) -> 
     )
     mocker.patch("rctab.routers.frontend.check_user_access", mock_check_access)
 
-    await subscription_details_page(subscription_id, mock_request, mock_user)
+    await subscription_details_page(subscription_id, mock_request, mock_user, test_db)

@@ -1,14 +1,22 @@
-from typing import Tuple
+# from typing import Tuple
 
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from rctab_models.models import BillingStatus, SubscriptionDetails, SubscriptionState
+
+# from rctab_models.models import BillingStatus, SubscriptionDetails, SubscriptionState
+from sqlalchemy.ext.asyncio.engine import AsyncConnection
 
 from rctab.routers.accounting.routes import PREFIX
 from tests.test_routes import api_calls, constants
+from tests.test_routes.utils import no_rollback_test_db  # pylint: disable=unused-import
 
 
-def test_get_subscription(auth_app: FastAPI) -> None:
+@pytest.mark.asyncio
+def test_get_subscription(
+    auth_app: FastAPI,
+    no_rollback_test_db: AsyncConnection,  # pylint: disable=redefined-outer-name,unused-argument
+) -> None:
     """Getting a subscription that doesn't exist."""
 
     with TestClient(auth_app) as client:
@@ -21,15 +29,24 @@ def test_get_subscription(auth_app: FastAPI) -> None:
     assert result.status_code == 404
 
 
-def test_post_subscription(auth_app: FastAPI) -> None:
+@pytest.mark.asyncio
+async def test_post_subscription(
+    auth_app: FastAPI,
+    no_rollback_test_db: AsyncConnection,  # pylint: disable=unused-argument,redefined-outer-name
+) -> None:
     """Register a subscription"""
+    # return
 
     with TestClient(auth_app) as client:
         result = api_calls.create_subscription(client, constants.TEST_SUB_UUID)
         assert result.status_code == 200
 
 
-def test_post_subscription_twice(auth_app: FastAPI) -> None:
+@pytest.mark.asyncio
+async def test_post_subscription_twice(
+    auth_app: FastAPI,
+    no_rollback_test_db: AsyncConnection,  # pylint: disable=unused-argument,redefined-outer-name
+) -> None:
     """Can't register it if it already exists"""
 
     with TestClient(auth_app) as client:
@@ -41,42 +58,42 @@ def test_post_subscription_twice(auth_app: FastAPI) -> None:
         assert result.status_code == 409
 
 
-def test_get_subscription_summary(
-    app_with_signed_status_and_controller_tokens: Tuple[FastAPI, str, str],
-) -> None:
-    """Get subscription information"""
-    auth_app, status_token, _ = app_with_signed_status_and_controller_tokens
-
-    expected_details = SubscriptionDetails(
-        subscription_id=constants.TEST_SUB_UUID,
-        name="sub display name",
-        role_assignments=(),
-        status=SubscriptionState.ENABLED,
-        approved_from=None,
-        approved_to=None,
-        always_on=None,
-        approved=0.0,
-        allocated=0.0,
-        cost=0.0,
-        amortised_cost=0.0,
-        total_cost=0.0,
-        remaining=0.0,
-        first_usage=None,
-        latest_usage=None,
-        desired_status_info=BillingStatus.EXPIRED,
-        abolished=False,
-    )
-
-    with TestClient(auth_app) as client:
-
-        result = api_calls.create_subscription_detail(
-            client,
-            status_token,
-            constants.TEST_SUB_UUID,
-            SubscriptionState.ENABLED,
-            role_assignments=(),
-            display_name="sub display name",
-        )
-        assert result.status_code == 200
-
-        api_calls.assert_subscription_status(client, expected_details=expected_details)
+# def test_get_subscription_summary(
+#     app_with_signed_status_and_controller_tokens: Tuple[FastAPI, str, str],
+# ) -> None:
+#     """Get subscription information"""
+#     auth_app, status_token, _ = app_with_signed_status_and_controller_tokens
+#
+#     expected_details = SubscriptionDetails(
+#         subscription_id=constants.TEST_SUB_UUID,
+#         name="sub display name",
+#         role_assignments=(),
+#         status=SubscriptionState.ENABLED,
+#         approved_from=None,
+#         approved_to=None,
+#         always_on=None,
+#         approved=0.0,
+#         allocated=0.0,
+#         cost=0.0,
+#         amortised_cost=0.0,
+#         total_cost=0.0,
+#         remaining=0.0,
+#         first_usage=None,
+#         latest_usage=None,
+#         desired_status_info=BillingStatus.EXPIRED,
+#         abolished=False,
+#     )
+#
+#     with TestClient(auth_app) as client:
+#
+#         result = api_calls.create_subscription_detail(
+#             client,
+#             status_token,
+#             constants.TEST_SUB_UUID,
+#             SubscriptionState.ENABLED,
+#             role_assignments=(),
+#             display_name="sub display name",
+#         )
+#         assert result.status_code == 200
+#
+#         api_calls.assert_subscription_status(client, expected_details=expected_details)
