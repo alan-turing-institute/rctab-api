@@ -19,3 +19,4 @@ per-file-ignores =
     tests/test_routes/test_status.py:F401,F811
     tests/test_routes/test_usage.py:F401,F811
     tests/test_routes/test_subscription.py:F401,F811
+    tests/test_routes/test_locks_integration.py:F401,F811
