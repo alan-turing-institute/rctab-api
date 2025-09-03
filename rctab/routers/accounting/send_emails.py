@@ -12,7 +12,7 @@ from databases import Database
 from jinja2 import Environment, PackageLoader, exceptions
 from rctab_models.models import SubscriptionState, SubscriptionStatus
 from sendgrid import Mail, SendGridAPIClient
-from sqlalchemy import asc, desc, func, insert, or_, select
+from sqlalchemy import and_, asc, desc, func, insert, or_, select
 from sqlalchemy.sql import Select
 
 from rctab.constants import (
@@ -412,7 +412,12 @@ async def check_for_subs_nearing_expiry(database: Database) -> None:
     # We don't _have_ to filter on approved_to, but it might make things slightly quicker
     expiry_query = (
         select(summary.c.subscription_id, summary.c.approved_to, summary.c.status)
-        .where(summary.c.approved_to <= date.today() + timedelta(days=30))
+        .where(
+            and_(
+                summary.c.abolished == False,  # pylint: disable=singleton-comparison
+                summary.c.approved_to <= date.today() + timedelta(days=30),
+            )
+        )
         .order_by(summary.c.approved_to)
     )
     rows = await database.fetch_all(expiry_query)
@@ -436,7 +441,12 @@ async def check_for_overbudget_subs(database: Database) -> None:
 
     overbudget_query = (
         select(summary.c.subscription_id, summary.c.allocated, summary.c.total_cost)
-        .where(summary.c.total_cost > summary.c.allocated)
+        .where(
+            and_(
+                summary.c.abolished == False,  # pylint: disable=singleton-comparison
+                summary.c.total_cost > summary.c.allocated,
+            )
+        )
         .where(
             or_(
                 summary.c.status == SubscriptionState("Enabled"),

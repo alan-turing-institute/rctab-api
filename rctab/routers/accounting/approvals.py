@@ -116,6 +116,12 @@ async def check_approval(approval: Approval) -> None:
 
     current_date = datetime.date.today()
 
+    if subscription_summary.abolished and not approval.force:
+        raise HTTPException(
+            status_code=400,
+            detail="Abolished subscription. Force approve if you are certain that the subscription has not been abolished.",
+        )
+
     if approval.date_to < current_date:
         raise HTTPException(
             status_code=400,

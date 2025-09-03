@@ -48,6 +48,7 @@ class SubscriptionSummary(BaseModel):
     total_cost: float
     first_usage: Optional[datetime.date]
     latest_usage: Optional[datetime.date]
+    abolished: bool
 
 
 @db_select
