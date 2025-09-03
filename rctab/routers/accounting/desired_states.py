@@ -96,20 +96,23 @@ async def get_desired_states(
             (summaries.c.desired_status == True, SubscriptionState("Enabled")),
         ).label("desired_state"),
     ).where(
-        or_(
-            and_(
-                summaries.c.desired_status == False,
-                or_(
-                    summaries.c.status == SubscriptionState("Enabled"),
-                    summaries.c.status == SubscriptionState("PastDue"),
+        and_(
+            summaries.c.abolished == False,
+            or_(
+                and_(
+                    summaries.c.desired_status == False,
+                    or_(
+                        summaries.c.status == SubscriptionState("Enabled"),
+                        summaries.c.status == SubscriptionState("PastDue"),
+                    ),
                 ),
-            ),
-            and_(
-                summaries.c.desired_status == True,
-                or_(
-                    summaries.c.status == SubscriptionState("Disabled"),
-                    summaries.c.status == SubscriptionState("Warned"),
-                    summaries.c.status == SubscriptionState("Expired"),
+                and_(
+                    summaries.c.desired_status == True,
+                    or_(
+                        summaries.c.status == SubscriptionState("Disabled"),
+                        summaries.c.status == SubscriptionState("Warned"),
+                        summaries.c.status == SubscriptionState("Expired"),
+                    ),
                 ),
             ),
         )
