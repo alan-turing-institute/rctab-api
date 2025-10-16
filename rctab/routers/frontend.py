@@ -25,6 +25,7 @@ from starlette.templating import Jinja2Templates, _TemplateResponse
 
 from rctab.constants import __version__
 from rctab.crud.auth import check_user_access, user_authenticated_no_error
+from rctab.exceptions import InsufficientPrivilegesException
 from rctab.routers.accounting.routes import (
     get_allocations,
     get_approvals,
@@ -145,14 +146,15 @@ async def home(
 
     # If we're in Beta release mode, only users with 'has_access' can access
     if BETA_ACCESS and (not access_status.has_access):
-        return templates.TemplateResponse(
-            request=request,
-            name="index.html",
-            context={
-                "version": __version__,
-                "current_year": datetime.date.today().year,
-            },
-        )
+        raise InsufficientPrivilegesException
+        # return templates.TemplateResponse(
+        #     request=request,
+        #     name="index.html",
+        #     context={
+        #         "version": __version__,
+        #         "current_year": datetime.date.today().year,
+        #     },
+        # )
 
     # Get all subscription data
     # pylint: disable=unexpected-keyword-arg
@@ -200,7 +202,11 @@ async def subscription_details(
 ) -> _TemplateResponse:
     """The subscription details page."""
     if not user:
-        return templates.TemplateResponse(request=request, name="index.html")
+        return templates.TemplateResponse(
+            request=request,
+            name="index.html",
+            context={"redirect_url": str(request.url)},
+        )
 
     # Get the username from cached token
     user_name = jwt.get_unverified_claims(user.token["access_token"])["name"]
@@ -213,7 +219,7 @@ async def subscription_details(
     # Only users with 'has_access' can access for now (BETA testing).
     # Remove this to let all users with institutional credentials have access
     if BETA_ACCESS and (not access_status.has_access):
-        raise RequiresLoginException
+        raise InsufficientPrivilegesException
 
     # Check the user has access to this specific subscription (either admin or on RBAC)
     if not access_status.is_admin and (
@@ -224,7 +230,7 @@ async def subscription_details(
             )
         )
     ):
-        raise RequiresLoginException
+        raise InsufficientPrivilegesException
 
     all_approvals = [
         ApprovalListItem(**i)
