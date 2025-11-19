@@ -229,16 +229,26 @@ usage = Table(
 async def refresh_materialised_view(
     database: Database, view: Table, concurrently: bool = False
 ) -> None:
-    """Refresh a materialised view."""
-    await database.execute(
-        """
-        REFRESH MATERIALIZED VIEW {concurrently} {schema}.{view};
-        """.format(
-            concurrently="CONCURRENTLY" if concurrently else "",
-            view=view.name,
-            schema=view.schema,
-        )
+    """Refresh a materialised view with advisory lock protection."""
+    # Import here to avoid circular imports
+    from rctab.crud.locks import (  # pylint: disable=import-outside-toplevel
+        LockNames,
+        advisory_lock,
     )
+
+    # Use advisory lock to prevent concurrent refreshes of the same view
+    lock_name = f"{LockNames.MATERIALIZED_VIEW_REFRESH}_{view.schema}_{view.name}"
+
+    async with advisory_lock(database, lock_name):
+        await database.execute(
+            """
+            REFRESH MATERIALIZED VIEW {concurrently} {schema}.{view};
+            """.format(
+                concurrently="CONCURRENTLY" if concurrently else "",
+                view=view.name,
+                schema=view.schema,
+            )
+        )
 
 
 usage_view = Table(
