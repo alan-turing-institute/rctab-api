@@ -1,6 +1,6 @@
 [project]
 name = "RCTab"
-version = "1.8.1"
+version = "1.8.2"
 description = "The RCTab API. Manage Azure budgets and usage"
 authors = []
 dynamic = [ "dependencies" ]
