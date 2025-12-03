@@ -28,7 +28,6 @@ from rctab.crud.auth import (
     user_authenticated,
 )
 from rctab.crud.models import database
-from rctab.exceptions import InsufficientPrivilegesException
 from rctab.logutils import set_log_handler
 from rctab.routers import accounting, frontend
 from rctab.routers.accounting import routes
@@ -123,22 +122,6 @@ async def custom_404_handler(request: Request, __: HTTPException) -> _TemplateRe
             "version": __version__,
         },
         status_code=404,
-    )
-
-
-# Todo: Register Insufficient Privileges handler
-@app.exception_handler(InsufficientPrivilegesException)
-async def insufficient_privileges_exception_handler(
-    request: Request, _: InsufficientPrivilegesException
-) -> _TemplateResponse:
-    """Handle insufficient privileges to view a page."""
-    return templates.TemplateResponse(
-        "insufficient_privileges.html",
-        {
-            "request": request,
-            "version": __version__,
-        },
-        status_code=403,
     )
 
 

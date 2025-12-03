@@ -18,17 +18,7 @@ def pytest_configure(config: Any) -> None:  # pylint: disable=unused-argument
     with engine.begin() as conn:
         conn.execute(
             insert(user_rbac).values(
-                (str(constants.ADMIN_UUID), constants.ADMIN_NAME, True, True),
-            )
-        )
-        conn.execute(
-            insert(user_rbac).values(
-                (
-                    str(constants.USER_WITHOUT_ACCESS_UUID),
-                    constants.USER_WITHOUT_ACCESS_NAME,
-                    False,
-                    False,
-                )
+                (str(constants.ADMIN_UUID), constants.ADMIN_NAME, True, True)
             )
         )
 
@@ -42,11 +32,6 @@ def pytest_unconfigure(config: Any) -> None:  # pylint: disable=unused-argument
 
         conn.execute(
             delete(user_rbac).where(user_rbac.c.oid == str(constants.ADMIN_UUID))
-        )
-        conn.execute(
-            delete(user_rbac).where(
-                user_rbac.c.oid == str(constants.USER_WITHOUT_ACCESS_UUID)
-            )
         )
 
 

@@ -9,14 +9,12 @@ import pytest
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from fastapi import FastAPI, Request
-from jose.jws import sign
 
 from rctab.crud.auth import (
     token_admin_verified,
     token_user_verified,
     token_verified,
     user_authenticated,
-    user_authenticated_no_error,
 )
 from rctab.settings import Settings
 from tests.test_routes import constants
@@ -30,32 +28,11 @@ def get_oauth_settings_override() -> Callable:
 
         username = "test@domain.com"
 
-        class MyUserClass(dict):
-            """Dummy user class."""
-
-            def __init__(self, token: dict[str, str], oid: UUID) -> None:
-                super().__init__()
-                self.token = token
-                self.oid = oid
-
         class UserLogged:
             """Simple user detail for auth tests"""
 
             async def __call__(self, request: Request) -> Dict[str, str]:
-                user_token = {
-                    "access_token": sign(
-                        {
-                            "name": "dummy_username",
-                            "unique_name": "dummy_username@dummyorg.com",
-                        },
-                        "secret",
-                        algorithm="HS256",
-                    )
-                }
-                user_oid = constants.USER_WITHOUT_ACCESS_UUID
-                user = MyUserClass(user_token, user_oid)
-                user["preferred_username"] = username
-                return user
+                return {"preferred_username": username}
 
         return UserLogged()
 
@@ -98,9 +75,6 @@ def auth_app(
     # Override all authentication for tests
     app.dependency_overrides = {}
     app.dependency_overrides[user_authenticated] = get_oauth_settings_override()
-    app.dependency_overrides[user_authenticated_no_error] = (
-        get_oauth_settings_override()
-    )
     app.dependency_overrides[token_verified] = get_token_verified_override()
     app.dependency_overrides[token_user_verified] = get_token_verified_override()
     app.dependency_overrides[token_admin_verified] = get_token_verified_override()
