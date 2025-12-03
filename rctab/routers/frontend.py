@@ -147,14 +147,6 @@ async def home(
     # If we're in Beta release mode, only users with 'has_access' can access
     if BETA_ACCESS and (not access_status.has_access):
         raise InsufficientPrivilegesException
-        # return templates.TemplateResponse(
-        #     request=request,
-        #     name="index.html",
-        #     context={
-        #         "version": __version__,
-        #         "current_year": datetime.date.today().year,
-        #     },
-        # )
 
     # Get all subscription data
     # pylint: disable=unexpected-keyword-arg
