@@ -269,14 +269,6 @@ async def test_home_page_raises(mocker: MockerFixture, test_db: Database) -> Non
     )
     oid = UUID(int=random.randint(0, (2**32) - 1))
 
-    # await test_db.execute(
-    #     subscription.insert().values(),
-    #     dict(
-    #         admin=str(constants.ADMIN_UUID),
-    #         subscription_id=str(subscription_id),
-    #     ),
-    # )
-
     await test_db.execute(
         user_rbac.insert().values(),
         dict(
@@ -297,14 +289,6 @@ async def test_home_page_raises(mocker: MockerFixture, test_db: Database) -> Non
     }
     mock_user.oid = oid
 
-    # mock_check_access = AsyncMock()
-    # mock_check_access.return_value = UserRBAC(
-    #     oid=UUID(int=111), has_access=True, is_admin=False
-    # )
-    # mocker.patch("rctab.routers.frontend.check_user_access", mock_check_access)
-
-    # with assert_raises(NotPermittedException):
-    #     await home(mock_request, mock_user)
     mocker.patch("rctab.routers.frontend.BETA_ACCESS", True)
     with pytest.raises(InsufficientPrivilegesException):
         await home(mock_request, mock_user)
@@ -328,14 +312,6 @@ async def test_details_page_raises(mocker: MockerFixture, test_db: Database) -> 
     oid = UUID(int=random.randint(0, (2**32) - 1))
     sub_id = UUID(int=random.randint(0, (2**32) - 1))
 
-    # await test_db.execute(
-    #     subscription.insert().values(),
-    #     dict(
-    #         admin=str(constants.ADMIN_UUID),
-    #         subscription_id=str(subscription_id),
-    #     ),
-    # )
-
     await test_db.execute(
         user_rbac.insert().values(),
         dict(
@@ -356,14 +332,6 @@ async def test_details_page_raises(mocker: MockerFixture, test_db: Database) -> 
     }
     mock_user.oid = oid
 
-    # mock_check_access = AsyncMock()
-    # mock_check_access.return_value = UserRBAC(
-    #     oid=UUID(int=111), has_access=True, is_admin=False
-    # )
-    # mocker.patch("rctab.routers.frontend.check_user_access", mock_check_access)
-
-    # with assert_raises(NotPermittedException):
-    #     await home(mock_request, mock_user)
     mocker.patch("rctab.routers.frontend.BETA_ACCESS", True)
     with pytest.raises(InsufficientPrivilegesException):
         await subscription_details_page(sub_id, mock_request, mock_user)
