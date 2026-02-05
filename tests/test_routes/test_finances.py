@@ -46,9 +46,7 @@ def test_finance_route(auth_app: FastAPI) -> None:
         result = client.request(
             "GET",
             PREFIX + "/finance",
-            content=SubscriptionItem(sub_id=UUID(int=33))
-            .model_dump_json()
-            .encode("utf-8"),
+            json=SubscriptionItem(sub_id=UUID(int=33)).model_dump(mode="json"),
         )
 
         assert result.status_code == 200
@@ -119,7 +117,7 @@ def test_finances_route(auth_app: FastAPI) -> None:
             finance_code="test_finance",
             priority=1,
         )
-        result = client.post(PREFIX + "/finances", content=f_a.model_dump_json())
+        result = client.post(PREFIX + "/finances", content=f_a.model_dump(mode="json"))
 
         assert result.status_code == 201
 
@@ -366,14 +364,14 @@ def test_finance_post_get_put_delete(auth_app: FastAPI) -> None:
             finance_code="test_finance",
             priority=1,
         )
-        result = client.post(PREFIX + "/finances", content=f_a.model_dump_json())
+        result = client.post(PREFIX + "/finances", content=f_a.model_dump(mode="json"))
         assert result.status_code == 201
         f_a_returned = FinanceWithID.model_validate_json(result.content)
 
         f_a_returned.amount = 10.0
         result = client.put(
             PREFIX + f"/finances/{f_a_returned.id}",
-            content=f_a_returned.model_dump_json(),
+            content=f_a_returned.model_dump(mode="json"),
         )
         assert result.status_code == 200
 
@@ -384,7 +382,9 @@ def test_finance_post_get_put_delete(auth_app: FastAPI) -> None:
         result = client.request(
             "DELETE",
             PREFIX + f"/finances/{f_a_returned.id}",
-            content=SubscriptionItem(sub_id=constants.TEST_SUB_UUID).model_dump_json(),
+            json=SubscriptionItem(sub_id=constants.TEST_SUB_UUID).model_dump(
+                mode="json"
+            ),
         )
         assert result.status_code == 200
 
@@ -548,20 +548,20 @@ def test_finance_can_update(auth_app: FastAPI) -> None:
             finance_code="test_finance",
             priority=1,
         )
-        result = client.post(PREFIX + "/finances", content=f_a.model_dump_json())
+        result = client.post(PREFIX + "/finances", content=f_a.model_dump(mode="json"))
         assert result.status_code == 201
         f_a_returned = FinanceWithID.model_validate_json(result.content)
 
         result = client.post(
             PREFIX + "/cli-cost-recovery",
-            content=CostRecoveryMonth(first_day="2022-09-01").model_dump_json(),
+            json=CostRecoveryMonth(first_day="2022-09-01").model_dump(mode="json"),
         )
         assert result.status_code == 200
 
         f_a_returned.amount = 10.0
         result = client.put(
             PREFIX + f"/finances/{f_a_returned.id}",
-            content=f_a_returned.model_dump_json(),
+            content=f_a_returned.model_dump(mode="json"),
         )
         assert result.status_code == 200
 
