@@ -3367,14 +3367,14 @@ markers = {main = "platform_python_implementation != \"PyPy\" and implementation
 
 [[package]]
 name = "pydantic"
-version = "2.12.4"
+version = "2.12.5"
 description = "Data validation using Python type hints"
 optional = false
 python-versions = ">=3.9"
 groups = ["main", "dev"]
 files = [
-    {file = "pydantic-2.12.4-py3-none-any.whl", hash = "sha256:92d3d202a745d46f9be6df459ac5a064fdaa3c1c4cd8adcfa332ccf3c05f871e"},
-    {file = "pydantic-2.12.4.tar.gz", hash = "sha256:0f8cb9555000a4b5b617f66bfd2566264c4984b27589d3b845685983e8ea85ac"},
+    {file = "pydantic-2.12.5-py3-none-any.whl", hash = "sha256:e561593fccf61e8a20fc46dfc2dfe075b8be7d0188df33f221ad1f0139180f9d"},
+    {file = "pydantic-2.12.5.tar.gz", hash = "sha256:4d351024c75c0f085a9febbb665ce8c0c6ec5d30e903bdb6394b7ede26aebb49"},
 ]
 
 [package.dependencies]
@@ -4244,22 +4244,22 @@ cffi = {version = "*", markers = "implementation_name == \"pypy\""}
 
 [[package]]
 name = "rctab-models"
-version = "0.2.0"
-description = ""
+version = "0.4.0"
+description = "Pydantic models for the RCTab system."
 optional = false
-python-versions = "^3.9"
+python-versions = "^3.10"
 groups = ["main"]
 files = []
 develop = false
 
 [package.dependencies]
-pydantic = "^2.11.5"
+pydantic = "^2.12.5"
 
 [package.source]
 type = "git"
 url = "https://git@github.com/alan-turing-institute/rctab-models"
-reference = "0.3.0"
-resolved_reference = "f22d6261f3ab44d01866abcaf9fa93f1ddacedf8"
+reference = "0.4.0"
+resolved_reference = "a0173054756866036cae22c105f47168db64911d"
 
 [[package]]
 name = "redis"
@@ -5556,4 +5556,4 @@ docs = ["myst-parser", "sphinx-rtd-theme", "sphinxcontrib-napoleon"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.12"
-content-hash = "fcb8e0421ce17c1057492135458c59b6906382f5de733fe8b81652988da4538b"
+content-hash = "166fbaae7c1b8ecb8863d99210783a39807f3d17c16fa45a09528609baac2718"

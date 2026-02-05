@@ -8,6 +8,9 @@ from httpx import Response
 from rctab_models.models import (
     AllSubscriptionStatus,
     AllUsage,
+    Approval,
+    BaseApproval,
+    NameApproval,
     RoleAssignment,
     SubscriptionDetails,
     SubscriptionState,
@@ -88,7 +91,7 @@ def set_persistence(
 
 def create_approval(
     client: TestClient,
-    subscription_id: UUID,
+    subscription: UUID | str,
     ticket: str,
     amount: float,
     date_from: datetime.date,
@@ -98,19 +101,24 @@ def create_approval(
     force: bool = False,
 ) -> Response:
     """Create an approval for a subscription."""
-    return client.post(
-        PREFIX + "/approve",
-        json={
-            "sub_id": str(subscription_id),
-            "ticket": ticket,
-            "amount": amount,
-            "date_from": date_from.isoformat(),
-            "date_to": date_to.isoformat(),
-            "allocate": allocate,
-            "currency": currency,
-            "force": force,
-        },
+    base_model = BaseApproval(
+        ticket=ticket,
+        amount=amount,
+        date_from=date_from,
+        date_to=date_to,
+        allocate=allocate,
+        currency=currency,
+        force=force,
     )
+    if isinstance(subscription, UUID):
+        model = Approval.model_validate(
+            {**base_model.model_dump(), "sub_id": subscription}
+        )
+    else:
+        model = NameApproval.model_validate(
+            {**base_model.model_dump(), "sub_name": subscription}
+        )
+    return client.post(PREFIX + "/approve", json=model.model_dump(mode="json"))
 
 
 def create_allocation(

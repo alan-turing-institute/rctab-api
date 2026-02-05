@@ -5,7 +5,7 @@ from datetime import timedelta
 from typing import Any, List
 
 from fastapi import Depends, HTTPException
-from rctab_models.models import Approval, ApprovalListItem, UserRBAC
+from rctab_models.models import Approval, ApprovalListItem, NameApproval, UserRBAC
 from sqlalchemy import insert
 
 from rctab.constants import EMAIL_TYPE_SUB_APPROVAL
@@ -18,6 +18,7 @@ from rctab.routers.accounting.routes import (
     SubscriptionItem,
     SubscriptionSummary,
     get_approvals,
+    get_subscription_id,
     get_subscriptions_summary,
     router,
 )
@@ -157,12 +158,29 @@ async def get_subscription_approvals(
 
 @router.post("/approve", status_code=200)
 async def post_approval(
-    approval: Approval, user: UserRBAC = Depends(token_admin_verified)
+    an_approval: Approval | NameApproval, user: UserRBAC = Depends(token_admin_verified)
 ) -> Any:
     """Creates a new approval.
 
     If the allocate flag is on, a corresponding allocation entry is created as well.
     """
+    # If we have been supplied a name, convert it to a UUID.
+    if isinstance(an_approval, NameApproval):
+        results = await get_subscription_id(database, an_approval.sub_name)
+        if len(results) == 0:
+            raise HTTPException(
+                status_code=400, detail="No subscription with that name."
+            )
+        if len(results) > 1:
+            raise HTTPException(
+                status_code=400, detail="More than one subscription with that name."
+            )
+        approval = Approval.model_validate(
+            {**an_approval.model_dump(), "sub_id": results[0]}
+        )
+    else:
+        approval = an_approval
+
     await check_approval(approval)
 
     async with database.transaction():

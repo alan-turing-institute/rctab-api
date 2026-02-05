@@ -1,12 +1,15 @@
 import datetime
 import json
+from typing import Tuple
 from unittest.mock import AsyncMock
 
+import pytest
 from devtools import debug
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from httpx import HTTPStatusError
 from pytest_mock import MockerFixture
-from rctab_models.models import Approval, SubscriptionDetails
+from rctab_models.models import Approval, SubscriptionDetails, SubscriptionState
 
 from rctab.constants import EMAIL_TYPE_SUB_APPROVAL
 from rctab.crud.models import database
@@ -700,3 +703,82 @@ def test_negative_approval_deallocates(
 
         assert details.allocated == 0.0
         assert details.approved == 0.0
+
+
+def test_approve_with_subscription_name(
+    app_with_signed_status_and_controller_tokens: Tuple[FastAPI, str, str],
+    mocker: MockerFixture,
+) -> None:
+    """Approvals can specify a subscription name."""
+    (auth_app, status_token, _) = app_with_signed_status_and_controller_tokens
+
+    mock_send_email = AsyncMock()
+    mocker.patch(
+        "rctab.routers.accounting.send_emails.send_generic_email", mock_send_email
+    )
+
+    with TestClient(auth_app) as client:
+        # Check we raise if the name doesn't exist.
+        result = api_calls.create_approval(
+            client=client,
+            subscription="MyDisplayName",
+            ticket="T001-12",
+            amount=100.0,
+            date_from=datetime.date.today(),
+            date_to=datetime.date.today() + datetime.timedelta(days=1),
+            allocate=True,
+        )
+        assert result.json()["detail"] == "No subscription with that name."
+        with pytest.raises(HTTPStatusError):
+            result.raise_for_status()
+
+        # Add a subscription and give it a name.
+        api_calls.create_subscription(
+            client, constants.TEST_SUB_UUID
+        ).raise_for_status()
+
+        api_calls.create_subscription_detail(
+            client=client,
+            token=status_token,
+            subscription_id=constants.TEST_SUB_UUID,
+            state=SubscriptionState.ENABLED,
+            display_name="MyDisplayName",
+        ).raise_for_status()
+
+        # Use the subscription name to make an approval.
+        result = api_calls.create_approval(
+            client=client,
+            subscription="MyDisplayName",
+            ticket="T001-12",
+            amount=100.0,
+            date_from=datetime.date.today(),
+            date_to=datetime.date.today() + datetime.timedelta(days=1),
+            allocate=True,
+        )
+        result.raise_for_status()
+
+        # Check we raise if the name isn't unique.
+        api_calls.create_subscription(
+            client, constants.TEST_SUB_2_UUID
+        ).raise_for_status()
+
+        api_calls.create_subscription_detail(
+            client=client,
+            token=status_token,
+            subscription_id=constants.TEST_SUB_2_UUID,
+            state=SubscriptionState.ENABLED,
+            display_name="MyDisplayName",
+        ).raise_for_status()
+
+        result = api_calls.create_approval(
+            client=client,
+            subscription="MyDisplayName",
+            ticket="T001-12",
+            amount=100.0,
+            date_from=datetime.date.today(),
+            date_to=datetime.date.today() + datetime.timedelta(days=1),
+            allocate=True,
+        )
+        assert result.json()["detail"] == "More than one subscription with that name."
+        with pytest.raises(HTTPStatusError):
+            result.raise_for_status()
