@@ -5,7 +5,7 @@ import uuid
 from typing import List, Optional, Union
 from uuid import UUID
 
-import sqlalchemy
+from databases.core import Database
 from fastapi import APIRouter
 from pydantic import BaseModel
 from sqlalchemy import desc, func, select, true
@@ -514,23 +514,25 @@ def get_subscription_name(sub_id: Optional[UUID] = None) -> Select:
         subscription_details.c.subscription_id == sub_id
     )
 
-from databases.core import Database
-async def get_subscription_id(db: Database, display_name: str) -> list[UUID]:
+
+async def get_subscription_id(database: Database, display_name: str) -> list[UUID]:
     """Get the subscription ID(s) from a display name."""
-    sd = subscription_details  # alias for brevity
+    details = subscription_details  # alias for brevity
 
     subq = select(
         [
-            sd.c.subscription_id,
-            sd.c.display_name,
+            details.c.subscription_id,
+            details.c.display_name,
             func.row_number()
-                .over(partition_by=sd.c.subscription_id, order_by=sd.c.id.desc())
-                .label("rank"),
+            .over(partition_by=details.c.subscription_id, order_by=details.c.id.desc())
+            .label("rank"),
         ]
     ).alias("subq")
 
-    results = await db.fetch_all(select(subq.c.subscription_id).where(
-        (subq.c.rank == 1) & (subq.c.display_name == display_name)
-    ))
+    results = await database.fetch_all(
+        select(subq.c.subscription_id).where(
+            (subq.c.rank == 1) & (subq.c.display_name == display_name)
+        )
+    )
 
     return [result[0] for result in results]

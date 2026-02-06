@@ -117,7 +117,7 @@ async def test_abolishment(
             "abolishments": [
                 {
                     "subscription_id": expired_sub_id,
-                    "name": "a subscription",
+                    "name": "My-Subscription-Name",
                     "allocation": adjustments[0]["allocation"],
                     "approval": adjustments[0]["approval"],
                 }

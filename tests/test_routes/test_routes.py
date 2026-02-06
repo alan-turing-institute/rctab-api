@@ -18,7 +18,6 @@ from rctab_models.models import (
 from sqlalchemy import and_, func, select
 from sqlalchemy.engine import ResultProxy
 from sqlalchemy.engine.base import Engine
-from sqlalchemy.sql.expression import insert
 
 from rctab.crud.accounting_models import (
     allocations,
@@ -92,7 +91,7 @@ async def create_subscription(
         await db.execute(
             subscription_details.insert().values(),
             SubscriptionStatus(
-                subscription_id=str(subscription_id),
+                subscription_id=subscription_id,
                 state=current_state,
                 display_name="My-Subscription-Name",
                 role_assignments=(
@@ -134,7 +133,7 @@ async def create_subscription(
         await db.execute(
             usage.insert().values(),
             Usage(
-                subscription_id=str(subscription_id),
+                subscription_id=subscription_id,
                 id=str(UUID(int=random.randint(0, 2**32 - 1))),
                 cost=spent[0],
                 amortised_cost=spent[1],
@@ -384,11 +383,9 @@ async def test_refresh_desired_states_doesnt_duplicate(
         over_budget_sub_id,
     ]
 
-from fastapi import FastAPI
+
 @pytest.mark.asyncio
-async def test_get_subscription_id(
-    test_db: Database
-) -> None:
+async def test_get_subscription_id(test_db: Database) -> None:
     """The returned statement should select nothing, a single ID or raise."""
     # Check that we get None if there isn't a match.
     result = await get_subscription_id(test_db, "My-Subscription-Name")
@@ -398,7 +395,7 @@ async def test_get_subscription_id(
     sub1 = await create_subscription(
         test_db,
         # Note create_subscription has a hard-coded display name.
-        current_state=SubscriptionState.ENABLED
+        current_state=SubscriptionState.ENABLED,
     )
     result = await get_subscription_id(test_db, "My-Subscription-Name")
     assert result == [sub1]
@@ -407,22 +404,22 @@ async def test_get_subscription_id(
     await test_db.execute(
         subscription_details.insert().values(),
         SubscriptionStatus(
-            subscription_id=str(sub1),
+            subscription_id=sub1,
             state=SubscriptionState.ENABLED,
             display_name="New-Subscription-Name",
-            role_assignments=()
+            role_assignments=(),
         ).model_dump(),
     )
-    result = await get_subscription_id(test_db,"My-Subscription-Name")
+    result = await get_subscription_id(test_db, "My-Subscription-Name")
     assert result == []
 
-    result = await get_subscription_id(test_db,"New-Subscription-Name")
+    result = await get_subscription_id(test_db, "New-Subscription-Name")
     assert result == [sub1]
 
     # Check two subscriptions with the same name
     # (note I don't know whether Azure allows this).
-    sub1 = await create_subscription(test_db,current_state=SubscriptionState.ENABLED)
-    sub2 = await create_subscription(test_db,current_state=SubscriptionState.ENABLED)
+    sub1 = await create_subscription(test_db, current_state=SubscriptionState.ENABLED)
+    sub2 = await create_subscription(test_db, current_state=SubscriptionState.ENABLED)
 
-    result = await get_subscription_id(test_db,"My-Subscription-Name")
-    assert result == [sub1, sub2] or result == [sub2, sub1]
+    result = await get_subscription_id(test_db, "My-Subscription-Name")
+    assert result in ([sub1, sub2], [sub2, sub1])

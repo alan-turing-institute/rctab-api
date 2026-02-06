@@ -245,7 +245,7 @@ def test_desired_states_enabled(
 
             api_calls.create_approval(
                 client,
-                subscription_id=subscription_id,
+                subscription=subscription_id,
                 amount=100,
                 date_from=date_from,
                 date_to=date_to,

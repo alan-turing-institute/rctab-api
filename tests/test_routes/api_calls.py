@@ -65,7 +65,7 @@ def create_subscription_detail(
     """Create a subscription detail record."""
     return client.post(
         "accounting" + "/all-status",
-        content=AllSubscriptionStatus(
+        json=AllSubscriptionStatus(
             status_list=[
                 SubscriptionStatus(
                     subscription_id=subscription_id,
@@ -185,6 +185,6 @@ def create_usage(
 
     return client.post(
         "usage/all-usage",
-        content=post_data.model_dump(mode="json"),
+        json=post_data.model_dump(mode="json"),
         headers={"authorization": "Bearer " + token},
     )

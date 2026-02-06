@@ -58,7 +58,7 @@ def test_post_status(
 
         resp = client.post(
             "accounting/all-status",
-            content=all_status.model_dump(mode="json").encode("utf-8"),
+            json=all_status.model_dump(mode="json"),
             headers={"authorization": "Bearer " + token},
         )
         assert resp.status_code == 200
@@ -318,7 +318,7 @@ async def test_post_status_sends_status_change_roles(
         template_data,
         ["myuser@example.com", "leif@poee.org"],
     )
-    # remove one of the role assignements
+    # Remove one of the role assignments.
     await post_status(
         AllSubscriptionStatus(
             status_list=[
