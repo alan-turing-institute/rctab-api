@@ -408,17 +408,17 @@ async def test_send_generic_emails(
         {"approval_amount": 1010},
     )
     mock_sendgrid.assert_called_once_with(
-        "New approval for your Azure subscription: a subscription",
+        "New approval for your Azure subscription: My-Subscription-Name",
         "new_approval.html",
         {
             "approval_amount": 1010,
             "summary": {
                 "subscription_id": subscription_id,
                 "abolished": False,
-                "name": "a subscription",
+                "name": "My-Subscription-Name",
                 "role_assignments": [
                     {
-                        "display_name": "SomePrincipal Display " "Name",
+                        "display_name": "SomePrincipal Display Name",
                         "mail": None,
                         "principal_id": "some-principal-id",
                         "role_definition_id": "some-role-def-id",
@@ -556,7 +556,7 @@ async def test_send_generic_emails_no_recipients(
         dict(
             subscription_id=str(subscription_id),
             state=SubscriptionState("Enabled"),
-            display_name="a subscription",
+            display_name="My-Subscription-Name",
             role_assignments=[],
         ),
     )
@@ -593,7 +593,7 @@ async def test_send_generic_emails_no_recipients(
         (
             "RCTab undeliverable: "
             "New approval for your Azure subscription: "
-            "a subscription"
+            "My-Subscription-Name"
         ),
         "new_approval.html",
         {
@@ -601,7 +601,7 @@ async def test_send_generic_emails_no_recipients(
             "summary": {
                 "subscription_id": subscription_id,
                 "abolished": False,
-                "name": "a subscription",
+                "name": "My-Subscription-Name",
                 "role_assignments": [],
                 "status": "Enabled",
                 "approved_from": None,
@@ -872,7 +872,7 @@ async def test_send_overbudget_emails(
     assert len(mock_send.call_args_list) == 1
     assert (
         mock_send.call_args_list[0].args[0]
-        == "RCTab undeliverable: 170.0% of allocated budget used by your Azure subscription: a subscription"
+        == "RCTab undeliverable: 170.0% of allocated budget used by your Azure subscription: My-Subscription-Name"
     )
     assert mock_send.call_args_list[0].args[1] == "usage_alert.html"
     assert mock_send.call_args_list[0].args[2]["percentage_used"] == 170.0
