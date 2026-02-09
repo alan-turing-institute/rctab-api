@@ -29,6 +29,7 @@ from rctab.crud.auth import (
     user_authenticated,
 )
 from rctab.db import ENGINE, get_async_connection
+from rctab.exceptions import InsufficientPrivilegesException
 from rctab.logutils import set_log_handler
 from rctab.routers import accounting, frontend
 from rctab.routers.accounting import routes
@@ -125,6 +126,22 @@ async def custom_404_handler(request: Request, __: HTTPException) -> _TemplateRe
     )
 
 
+# Todo: Register Insufficient Privileges handler
+@app.exception_handler(InsufficientPrivilegesException)
+async def insufficient_privileges_exception_handler(
+    request: Request, _: InsufficientPrivilegesException
+) -> _TemplateResponse:
+    """Handle insufficient privileges to view a page."""
+    return templates.TemplateResponse(
+        "insufficient_privileges.html",
+        {
+            "request": request,
+            "version": __version__,
+        },
+        status_code=403,
+    )
+
+
 app.mount(
     "/static",
     StaticFiles(directory=str((Path(__file__).parent / "static").absolute())),
@@ -134,9 +151,6 @@ app.mount(
 app.include_router(frontend.router, prefix="")
 app.include_router(accounting.router, prefix="/usage", tags=["Usage"])
 app.include_router(accounting.router, prefix="/status", tags=["Status"])
-app.include_router(
-    accounting.router, prefix=accounting.routes.PREFIX, tags=["Accounting"]
-)
 app.include_router(routes.router, prefix=routes.PREFIX, tags=["Accounting"])
 
 

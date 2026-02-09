@@ -4,15 +4,18 @@ from uuid import UUID
 
 import jwt
 import pytest
-from fastapi import HTTPException
+from fastapi import FastAPI, HTTPException
 from fastapi.templating import Jinja2Templates
+from fastapi.testclient import TestClient
 from jinja2 import Environment, PackageLoader, StrictUndefined, select_autoescape
 from pytest_mock import MockerFixture
 from rctab_models.models import RoleAssignment, SubscriptionState, UserRBAC
 from sqlalchemy.ext.asyncio.engine import AsyncConnection
 
 from rctab.crud.accounting_models import subscription, subscription_details
+from rctab.crud.models import user_rbac
 from rctab.db import ENGINE
+from rctab.exceptions import InsufficientPrivilegesException
 from rctab.routers.frontend import check_user_on_subscription, home
 from rctab.routers.frontend import subscription_details as subscription_details_page
 from tests.test_routes import constants
@@ -253,3 +256,119 @@ async def test_render_details_page(
     mocker.patch("rctab.routers.frontend.check_user_access", mock_check_access)
 
     await subscription_details_page(subscription_id, mock_request, mock_user, test_db)
+
+
+@pytest.mark.asyncio
+async def test_home_page_raises(
+    mocker: MockerFixture, test_db: AsyncConnection
+) -> None:
+    """Check that we can pick up on undefined variable template issues."""
+
+    # Use StrictUndefined while testing
+    mocker.patch(
+        "rctab.routers.frontend.templates",
+        Jinja2Templates(
+            env=Environment(
+                loader=PackageLoader("rctab"),
+                autoescape=select_autoescape(),
+                undefined=StrictUndefined,
+            )
+        ),
+    )
+    oid = UUID(int=random.randint(0, (2**32) - 1))
+
+    await test_db.execute(
+        user_rbac.insert().values(),
+        dict(
+            oid=str(oid),
+            username="no_access_user",
+            has_access=False,
+            is_admin=False,
+        ),
+    )
+
+    mock_request = mocker.Mock()
+
+    mock_user = mocker.Mock()
+    mock_user.token = {
+        "access_token": jwt.encode(
+            {"unique_name": "me@my.org", "name": "My Name"}, "my key"
+        )
+    }
+    mock_user.oid = oid
+
+    mocker.patch("rctab.routers.frontend.BETA_ACCESS", True)
+    with pytest.raises(InsufficientPrivilegesException):
+        await home(mock_request, mock_user, conn=test_db)
+
+
+@pytest.mark.asyncio
+async def test_details_page_raises(
+    mocker: MockerFixture, test_db: AsyncConnection
+) -> None:
+    """Check that we can pick up on undefined variable template issues."""
+
+    # Use StrictUndefined while testing
+    mocker.patch(
+        "rctab.routers.frontend.templates",
+        Jinja2Templates(
+            env=Environment(
+                loader=PackageLoader("rctab"),
+                autoescape=select_autoescape(),
+                undefined=StrictUndefined,
+            )
+        ),
+    )
+    oid = UUID(int=random.randint(0, (2**32) - 1))
+    sub_id = UUID(int=random.randint(0, (2**32) - 1))
+
+    await test_db.execute(
+        user_rbac.insert().values(),
+        dict(
+            oid=str(oid),
+            username="no_access_user",
+            has_access=False,
+            is_admin=False,
+        ),
+    )
+
+    mock_request = mocker.Mock()
+
+    mock_user = mocker.Mock()
+    mock_user.token = {
+        "access_token": jwt.encode(
+            {"unique_name": "me@my.org", "name": "My Name"}, "my key"
+        )
+    }
+    mock_user.oid = oid
+
+    mocker.patch("rctab.routers.frontend.BETA_ACCESS", True)
+    with pytest.raises(InsufficientPrivilegesException):
+        await subscription_details_page(sub_id, mock_request, mock_user, conn=test_db)
+
+    mocker.patch("rctab.routers.frontend.BETA_ACCESS", False)
+
+    async def user_not_on_subscription(_: UUID, __: str) -> bool:
+        return False
+
+    mocker.patch(
+        "rctab.routers.frontend.check_user_on_subscription", user_not_on_subscription
+    )
+    with pytest.raises(InsufficientPrivilegesException):
+        await subscription_details_page(sub_id, mock_request, mock_user, conn=test_db)
+
+
+def test_end_to_end_insufficient_privileges(
+    auth_app: FastAPI,
+    mocker: MockerFixture,
+) -> None:
+    """A user without access should see the insufficient privileges page."""
+    with TestClient(auth_app) as client:
+        mocker.patch("rctab.routers.frontend.BETA_ACCESS", True)
+
+        resp = client.get(
+            "/",
+        )
+
+        assert resp.status_code == 403
+        assert "You have insufficient privileges to access this page" in resp.text

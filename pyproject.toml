@@ -1,6 +1,6 @@
 [project]
 name = "RCTab"
-version = "1.8.1"
+version = "1.9.0"
 description = "The RCTab API. Manage Azure budgets and usage"
 authors = []
 dynamic = [ "dependencies" ]
@@ -11,8 +11,8 @@ dependencies = [
     "asyncpg (>=0.27.0,<0.28.0)",
     "azure-identity (>=1.23.0,<2.0.0)",
     "celery (>=5.5.3,<6.0.0)",
-    "fastapi (>=0.115.14,<0.116.0)",
-    "fastapimsal @ git+https://git@github.com/alan-turing-institute/fastapimsal@0.10.0",
+    "fastapi (>=0.121.2,<0.122.0)",
+    "fastapimsal @ git+https://git@github.com/alan-turing-institute/fastapimsal@0.11.0",
     "jinja2 (>=3.1.6,<4.0.0)",
     "myst-parser[docs] (>=3.0.1,<4.0.0)",
     "numpy (>=1.26.4,<2.0.0)",

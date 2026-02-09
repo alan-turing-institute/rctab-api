@@ -52,6 +52,16 @@ async def create_test_user(
             (str(constants.ADMIN_UUID), constants.ADMIN_NAME, True, True)
         )
     )
+    await conn.execute(
+        insert(user_rbac).values(
+            (
+                str(constants.USER_WITHOUT_ACCESS_UUID),
+                constants.USER_WITHOUT_ACCESS_NAME,
+                False,
+                False,
+            )
+        )
+    )
 
 
 def pytest_unconfigure(config: Any) -> None:  # pylint: disable=unused-argument
