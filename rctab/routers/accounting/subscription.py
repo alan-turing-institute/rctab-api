@@ -15,6 +15,7 @@ from rctab.crud.auth import token_admin_verified
 from rctab.db import AsyncConnection, get_async_connection
 from rctab.routers.accounting.routes import (
     SubscriptionItem,
+    get_subscription_id,
     get_subscriptions_with_disable,
     router,
 )
@@ -71,3 +72,12 @@ async def post_subscription(
         "status": "success",
         "detail": f"Added subscription {subscription.sub_id} to RCTab",
     }
+
+
+@router.get("/subscription-id")
+async def get_sub_id(
+    display_name: str, _: UserRBAC = Depends(token_admin_verified)
+) -> list[UUID]:
+    """Get the subscription ID given a display name."""
+    results = await get_subscription_id(database, display_name)
+    return results
