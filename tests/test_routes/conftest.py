@@ -22,13 +22,18 @@ def event_loop() -> Generator[AbstractEventLoop, None, None]:
 @pytest.fixture(scope="session", autouse=True)
 async def setup_test_data() -> AsyncGenerator[None, None]:
     # Insert async setup code here
-    conn = await ENGINE.connect()
-    await cleanup_test_data(conn)
-    await create_test_user(conn)
-    # commit the transaction to ensure the test user is created
-    await conn.commit()
-    yield
+    # Ensure pooled connections created in other test loops are dropped first.
     await ENGINE.dispose()
+    conn = await ENGINE.connect()
+    try:
+        await cleanup_test_data(conn)
+        await create_test_user(conn)
+        # commit the transaction to ensure the test user is created
+        await conn.commit()
+        yield
+    finally:
+        await conn.close()
+        await ENGINE.dispose()
 
 
 async def cleanup_test_data(conn: Any) -> None:
@@ -36,7 +41,11 @@ async def cleanup_test_data(conn: Any) -> None:
     # This function should be called after all tests are done
     await clean_up(conn)
     await conn.execute(
-        delete(user_rbac).where(user_rbac.c.oid == str(constants.ADMIN_UUID))
+        delete(user_rbac).where(
+            user_rbac.c.oid.in_(
+                (str(constants.ADMIN_UUID), str(constants.USER_WITHOUT_ACCESS_UUID))
+            )
+        )
     )
 
 

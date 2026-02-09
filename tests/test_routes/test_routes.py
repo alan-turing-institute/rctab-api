@@ -34,8 +34,11 @@ from tests.test_routes import constants
 async def test_db() -> AsyncGenerator[AsyncConnection, None]:
     """Connect before & disconnect after each test."""
     conn = await ENGINE.connect()
-    yield conn
-    await ENGINE.dispose()
+    try:
+        yield conn
+    finally:
+        await conn.close()
+        await ENGINE.dispose()
 
 
 async def create_subscription(

@@ -348,7 +348,7 @@ async def test_details_page_raises(
 
     mocker.patch("rctab.routers.frontend.BETA_ACCESS", False)
 
-    async def user_not_on_subscription(_: UUID, __: str) -> bool:
+    async def user_not_on_subscription(_: AsyncConnection, __: UUID, ___: str) -> bool:
         return False
 
     mocker.patch(

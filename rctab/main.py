@@ -114,11 +114,8 @@ async def unicorn_exception_handler(
 async def custom_404_handler(request: Request, __: HTTPException) -> _TemplateResponse:
     """Provide a more useful 404 page."""
     return templates.TemplateResponse(
-        "404.html",
-        {
-            "request": request,
-            "version": __version__,
-        },
+        request=request,
+        name="404.html",
         status_code=404,
     )
 
@@ -130,11 +127,8 @@ async def insufficient_privileges_exception_handler(
 ) -> _TemplateResponse:
     """Handle insufficient privileges to view a page."""
     return templates.TemplateResponse(
-        "insufficient_privileges.html",
-        {
-            "request": request,
-            "version": __version__,
-        },
+        request=request,
+        name="insufficient_privileges.html",
         status_code=403,
     )
 
