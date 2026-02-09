@@ -11,23 +11,24 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.sql import select
 
 from rctab.crud.models import user_cache, user_rbac
-from rctab.db import AsyncConnection, get_async_connection
+from rctab.db import ENGINE, AsyncConnection, get_async_connection
 
 
 # Define cache functions
-async def load_cache(oid: str, conn: AsyncConnection) -> msal.SerializableTokenCache:
+async def load_cache(oid: str) -> msal.SerializableTokenCache:
     """Load a user's token cache from the database."""
     cache = msal.SerializableTokenCache()
     # todo : handle case where cache is empty
-    value = await conn.scalar(select(user_cache.c.cache).where(user_cache.c.oid == oid))
-    if value:
-        cache.deserialize(value)
-        return cache
+    async with ENGINE.begin() as conn:
+        value = await conn.scalar(
+            select(user_cache.c.cache).where(user_cache.c.oid == oid)
+        )
+        if value:
+            cache.deserialize(value)
+            return cache
 
 
-async def save_cache(
-    oid: str, cache: msal.SerializableTokenCache, conn: AsyncConnection
-) -> None:
+async def save_cache(oid: str, cache: msal.SerializableTokenCache) -> None:
     """Save a user's token cache to the database."""
     if cache.has_state_changed:
         values = {"oid": oid, "cache": cache.serialize()}
@@ -40,13 +41,15 @@ async def save_cache(
             )
             .values(values)
         )
-        await conn.execute(query)
+        async with ENGINE.begin() as conn:
+            await conn.execute(query)
 
 
-async def remove_cache(oid: str, conn: AsyncConnection) -> None:
+async def remove_cache(oid: str) -> None:
     """Delete a user's token cache from the database."""
     query = user_cache.delete().where(user_cache.c.oid == oid)
-    await conn.execute(query)
+    async with ENGINE.begin() as conn:
+        await conn.execute(query)
 
 
 async def check_user_access(

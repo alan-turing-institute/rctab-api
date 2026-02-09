@@ -21,7 +21,6 @@ from starlette.templating import _TemplateResponse
 from rctab.constants import __version__
 from rctab.crud.auth import (
     add_user,
-    load_cache,
     remove_cache,
     save_cache,
     token_admin_verified,
@@ -97,9 +96,7 @@ async def set_secure_headers(request: Any, call_next: Callable[[Any], Any]) -> A
 
 
 # Add session middleware and authentication routes
-fastapimsal.init_auth(
-    app, f_load_cache=load_cache, f_save_cache=save_cache, f_remove_cache=remove_cache
-)
+fastapimsal.init_auth(app, f_save_cache=save_cache, f_remove_cache=remove_cache)
 
 
 @app.exception_handler(UniqueViolationError)

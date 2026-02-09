@@ -1,6 +1,6 @@
 ---
 
-name: Lint
+name: Safety
 
 on:
   pull_request:
@@ -40,20 +40,12 @@ jobs:
           path: .venv
           key: venv-${{ runner.os }}-${{ steps.full-python-version.outputs.version }}-${{ hashFiles('**/poetry.lock') }}
 
-      - name: Check poetry.lock consistency
-        shell: bash
-        run: poetry check --lock
-
       - name: Install dependencies
         shell: bash
         run: poetry install --all-extras
 
-      - name: Upgrade pip
-        shell: bash
-        run: poetry run pip install --upgrade pip
-
-      - name: Ready the MyPy Cache
-        shell: bash
-        run: mkdir .mypy_cache
-
       - uses: pre-commit/action@v3.0.1
+        env:
+          SAFETY_API_KEY: ${{ secrets.SAFETY_API_KEY }}
+        with:
+          extra_args: --all-files --config .pre-commit-safety.yaml
