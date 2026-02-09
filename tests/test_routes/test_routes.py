@@ -391,7 +391,7 @@ async def test_refresh_desired_states_doesnt_duplicate(
 async def test_get_subscription_id(test_db: Database) -> None:
     """The returned statement should select nothing, a single ID or raise."""
     # Check that we get None if there isn't a match.
-    result = await get_subscription_id(test_db, "My-Subscription-Name")
+    result = await get_subscription_id(test_db, "some display name")
     assert result == []
 
     # Check things work for a single subscription_details entry.
@@ -400,7 +400,7 @@ async def test_get_subscription_id(test_db: Database) -> None:
         # Note create_subscription has a hard-coded display name.
         current_state=SubscriptionState.ENABLED,
     )
-    result = await get_subscription_id(test_db, "My-Subscription-Name")
+    result = await get_subscription_id(test_db, "a subscription")
     assert result == [sub1]
 
     # Check a single subscription with > 1 name entry.
@@ -424,5 +424,5 @@ async def test_get_subscription_id(test_db: Database) -> None:
     sub1 = await create_subscription(test_db, current_state=SubscriptionState.ENABLED)
     sub2 = await create_subscription(test_db, current_state=SubscriptionState.ENABLED)
 
-    result = await get_subscription_id(test_db, "My-Subscription-Name")
+    result = await get_subscription_id(test_db, "a subscription")
     assert result in ([sub1, sub2], [sub2, sub1])
