@@ -1,6 +1,7 @@
 """The accounting routes."""
 
 from rctab.routers.accounting import (
+    allocations,
     approvals,
     desired_states,
     persistence,
