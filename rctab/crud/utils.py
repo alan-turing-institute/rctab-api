@@ -25,6 +25,9 @@ async def insert_subscriptions_if_not_exists(
         },
     )
 
+    if not subscriptions:
+        return
+
     values = [
         dict(subscription_id=i, admin=ADMIN_OID, abolished=False) for i in subscriptions
     ]

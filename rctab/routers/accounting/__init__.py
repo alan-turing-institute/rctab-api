@@ -7,5 +7,6 @@ from rctab.routers.accounting import (
     persistence,
     status,
     subscription,
+    usage,
 )
 from rctab.routers.accounting.routes import router

@@ -507,7 +507,7 @@ class UsageEmailContextManager(AbstractAsyncContextManager):
         start = datetime.now()
 
         summary = get_subscriptions_summary().alias()
-        summaries = await _fetch_all(self.database, summary)
+        summaries = await _fetch_all(self.database, select(summary))
 
         self.at_enter = []
         for lower in self.thresholds:
@@ -537,7 +537,7 @@ class UsageEmailContextManager(AbstractAsyncContextManager):
         start = datetime.now()
 
         summary = get_subscriptions_summary().alias()
-        summaries = await _fetch_all(self.database, summary)
+        summaries = await _fetch_all(self.database, select(summary))
 
         for i, lower in enumerate(self.thresholds):
             upper = (
