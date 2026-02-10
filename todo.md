@@ -16,7 +16,7 @@ Compared against: merge-base with `main` (`0b4c83b79d88a187f5525f7a8dc96b1386a9e
 - [ ] `rctab/routers/accounting/status.py`
 - [x] `rctab/routers/accounting/summary_emails.py`
 - [ ] `rctab/routers/accounting/usage.py`
-- [ ] `rctab/tasks.py`
+- [x] `rctab/tasks.py`
 
 ## Test files
 
@@ -32,4 +32,4 @@ Compared against: merge-base with `main` (`0b4c83b79d88a187f5525f7a8dc96b1386a9e
 - [x] `tests/test_routes/test_summary_emails.py`
 - [ ] `tests/test_routes/test_transactions.py`
 - [ ] `tests/test_routes/test_usage.py`
-- [ ] `tests/test_tasks.py`
+- [x] `tests/test_tasks.py`
