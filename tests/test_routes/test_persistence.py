@@ -1,43 +1,78 @@
+from typing import Any, AsyncGenerator
 from unittest.mock import ANY, AsyncMock
 
+import pytest
 import pytest_mock
 from fastapi import FastAPI
-from fastapi.testclient import TestClient
+from httpx import ASGITransport, AsyncClient
 from rctab_models.models import SubscriptionDetails
 
-from tests.test_routes import api_calls, constants
+from rctab.db import ENGINE, get_async_connection
+from rctab.routers.accounting.routes import PREFIX
+from tests.test_routes import constants
+
+# pylint: disable=redefined-outer-name
 
 
-def test_post_persistent(auth_app: FastAPI, mocker: pytest_mock.MockerFixture) -> None:
-    """Set subscription to always on"""
+@pytest.fixture
+async def auth_app_with_tx(auth_app: FastAPI) -> AsyncGenerator[FastAPI, None]:
+    """Override DB dependency with one transaction-bound connection per test."""
+    conn = await ENGINE.connect()
+    trans = await conn.begin()
 
-    with TestClient(auth_app) as client:
-        mock_send_email = AsyncMock()
-        mocker.patch(
-            "rctab.routers.accounting.send_emails.send_generic_email", mock_send_email
+    async def _get_async_connection_override() -> AsyncGenerator[Any, None]:
+        yield conn
+
+    auth_app.dependency_overrides[get_async_connection] = _get_async_connection_override
+
+    try:
+        yield auth_app
+    finally:
+        auth_app.dependency_overrides.pop(get_async_connection, None)
+        await trans.rollback()
+        await conn.close()
+
+
+@pytest.mark.asyncio
+async def test_post_persistent(
+    auth_app_with_tx: FastAPI, mocker: pytest_mock.MockerFixture
+) -> None:
+    """Set subscription to always on."""
+    mock_send_email = AsyncMock()
+    mocker.patch(
+        "rctab.routers.accounting.send_emails.send_generic_email", mock_send_email
+    )
+
+    async with AsyncClient(
+        transport=ASGITransport(app=auth_app_with_tx), base_url="http://test"
+    ) as client:
+        result = await client.post(
+            PREFIX + "/subscription",
+            json={"sub_id": str(constants.TEST_SUB_UUID)},
         )
-
-        api_calls.create_subscription(client, constants.TEST_SUB_UUID)
-
-        result = api_calls.set_persistence(
-            client, constants.TEST_SUB_UUID, always_on=True
-        )
-
         assert result.status_code == 200
 
-        mock_send_email.assert_called_once_with(
-            ANY,
-            constants.TEST_SUB_UUID,
-            "persistence_change.html",
-            "Persistence change for your Azure subscription:",
-            "subscription persistence",
-            {"sub_id": constants.TEST_SUB_UUID, "always_on": True},
+        result = await client.post(
+            PREFIX + "/persistent",
+            json={"sub_id": str(constants.TEST_SUB_UUID), "always_on": True},
         )
 
+    assert result.status_code == 200
+    mock_send_email.assert_called_once_with(
+        ANY,
+        constants.TEST_SUB_UUID,
+        "persistence_change.html",
+        "Persistence change for your Azure subscription:",
+        "subscription persistence",
+        {"sub_id": constants.TEST_SUB_UUID, "always_on": True},
+    )
 
-def test_get_persistent(auth_app: FastAPI, mocker: pytest_mock.MockerFixture) -> None:
-    """Check we're now persistent"""
 
+@pytest.mark.asyncio
+async def test_get_persistent(
+    auth_app_with_tx: FastAPI, mocker: pytest_mock.MockerFixture
+) -> None:
+    """Check we're now persistent."""
     expected_details = SubscriptionDetails(
         subscription_id=constants.TEST_SUB_UUID,
         name=None,
@@ -58,21 +93,40 @@ def test_get_persistent(auth_app: FastAPI, mocker: pytest_mock.MockerFixture) ->
         abolished=False,
     )
 
-    with TestClient(auth_app) as client:
-        mock_send_email = AsyncMock()
-        mocker.patch(
-            "rctab.routers.accounting.send_emails.send_generic_email", mock_send_email
+    mock_send_email = AsyncMock()
+    mocker.patch(
+        "rctab.routers.accounting.send_emails.send_generic_email", mock_send_email
+    )
+
+    async with AsyncClient(
+        transport=ASGITransport(app=auth_app_with_tx), base_url="http://test"
+    ) as client:
+        result = await client.post(
+            PREFIX + "/subscription",
+            json={"sub_id": str(constants.TEST_SUB_UUID)},
+        )
+        assert result.status_code == 200
+
+        result = await client.post(
+            PREFIX + "/persistent",
+            json={"sub_id": str(constants.TEST_SUB_UUID), "always_on": True},
+        )
+        assert result.status_code == 200
+
+        result = await client.get(
+            PREFIX + "/subscription",
+            params={"sub_id": str(constants.TEST_SUB_UUID)},
         )
 
-        api_calls.create_subscription(client, constants.TEST_SUB_UUID)
-        api_calls.set_persistence(client, constants.TEST_SUB_UUID, always_on=True)
-        api_calls.assert_subscription_status(client, expected_details=expected_details)
-
-        mock_send_email.assert_called_once_with(
-            ANY,
-            constants.TEST_SUB_UUID,
-            "persistence_change.html",
-            "Persistence change for your Azure subscription:",
-            "subscription persistence",
-            {"sub_id": constants.TEST_SUB_UUID, "always_on": True},
-        )
+    assert result.status_code == 200
+    result_json = result.json()
+    assert len(result_json) == 1
+    assert expected_details == SubscriptionDetails(**result_json[0])
+    mock_send_email.assert_called_once_with(
+        ANY,
+        constants.TEST_SUB_UUID,
+        "persistence_change.html",
+        "Persistence change for your Azure subscription:",
+        "subscription persistence",
+        {"sub_id": constants.TEST_SUB_UUID, "always_on": True},
+    )

@@ -23,7 +23,7 @@ def test_get_subscription(
         result = client.request(
             "GET",
             PREFIX + "/subscription",
-            json={"sub_id": str(constants.TEST_SUB_UUID)},
+            params={"sub_id": str(constants.TEST_SUB_UUID)},
         )
 
     assert result.status_code == 404
