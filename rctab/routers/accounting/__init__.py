@@ -5,6 +5,7 @@ from rctab.routers.accounting import (
     approvals,
     cost_recovery,
     desired_states,
+    finances,
     persistence,
     status,
     subscription,
