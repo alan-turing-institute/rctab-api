@@ -1,9 +1,8 @@
 """Background tasks that run daily."""
 
 import logging
-from contextlib import asynccontextmanager
 from datetime import datetime
-from typing import AsyncIterator, List, Optional
+from typing import List, Optional
 
 from sqlalchemy import desc, insert, select
 from sqlalchemy.exc import ResourceClosedError
@@ -12,7 +11,6 @@ from sqlalchemy.sql.base import Executable
 
 from rctab.constants import EMAIL_TYPE_SUMMARY
 from rctab.crud.accounting_models import emails, failed_emails
-from rctab.db import ENGINE
 from rctab.routers.accounting.send_emails import (
     MissingEmailParamsError,
     prepare_summary_email,
@@ -20,18 +18,6 @@ from rctab.routers.accounting.send_emails import (
 )
 
 logger = logging.getLogger(__name__)
-
-
-@asynccontextmanager
-async def _conn_ctx(
-    conn: Optional[AsyncConnection] = None,
-) -> AsyncIterator[AsyncConnection]:
-    """Yield a provided async connection or create one."""
-    if conn is not None:
-        yield conn
-        return
-    async with ENGINE.begin() as new_conn:
-        yield new_conn
 
 
 async def _execute(conn: AsyncConnection, statement: Executable) -> Optional[object]:
@@ -45,8 +31,8 @@ async def _execute(conn: AsyncConnection, statement: Executable) -> Optional[obj
 
 async def send_summary_email(
     recipients: List[str],
+    conn: AsyncConnection,
     since_this_datetime: Optional[datetime] = None,
-    conn: Optional[AsyncConnection] = None,
 ) -> None:
     """Sends a summary email to the addresses in the recipients list.
 
@@ -61,79 +47,78 @@ async def send_summary_email(
     Args:
         recipients : The email addresses to send summary emails to.
         since_this_datetime : Include information since this date and time, by default None.
-        conn : Optional async DB connection for transaction-scoped callers.
+        conn : Async DB connection to use for reads/writes.
     """
-    async with _conn_ctx(conn) as connection:
-        template_name = "daily_summary.html"
-        template_data = await prepare_summary_email(connection, since_this_datetime)
-        subject = "Daily summary"
-        if recipients:
-            try:
-                status = send_with_sendgrid(
-                    subject,
-                    template_name,
-                    template_data,
-                    recipients,
-                )
-                insert_statement = insert(emails).values(
+    template_name = "daily_summary.html"
+    template_data = await prepare_summary_email(conn, since_this_datetime)
+    subject = "Daily summary"
+    if recipients:
+        try:
+            status = send_with_sendgrid(
+                subject,
+                template_name,
+                template_data,
+                recipients,
+            )
+            insert_statement = insert(emails).values(
+                {
+                    "status": status,
+                    "type": EMAIL_TYPE_SUMMARY,
+                    "recipients": ";".join(recipients),
+                }
+            )
+            await _execute(conn, insert_statement)
+            logger.info(
+                "Status code summary email: %s",
+                status,
+            )
+        except MissingEmailParamsError as error:
+            insert_statement = (
+                insert(failed_emails)
+                .values(
                     {
-                        "status": status,
-                        "type": EMAIL_TYPE_SUMMARY,
-                        "recipients": ";".join(recipients),
+                        "type": subject,
+                        "subject": error.subject,
+                        "recipients": ";".join(error.recipients),
+                        "from_email": error.from_email,
+                        "message": error.message,
                     }
                 )
-                await _execute(connection, insert_statement)
-                logger.info(
-                    "Status code summary email: %s",
-                    status,
-                )
-            except MissingEmailParamsError as error:
-                insert_statement = (
-                    insert(failed_emails)
-                    .values(
-                        {
-                            "type": subject,
-                            "subject": error.subject,
-                            "recipients": ";".join(error.recipients),
-                            "from_email": error.from_email,
-                            "message": error.message,
-                        }
-                    )
-                    .returning(failed_emails.c.id)
-                )
-                row = await _execute(connection, insert_statement)
-                logger.error(
-                    "'%s' email failed to send due to missing "
-                    "api_key or send email address.\n"
-                    "It has been logged in the 'failed_emails' table with id=%s.\n"
-                    "Use 'get_failed_emails.py' to retrieve it to send manually.",
-                    subject,
-                    row,
-                )
+                .returning(failed_emails.c.id)
+            )
+            row = await _execute(conn, insert_statement)
+            logger.error(
+                "'%s' email failed to send due to missing "
+                "api_key or send email address.\n"
+                "It has been logged in the 'failed_emails' table with id=%s.\n"
+                "Use 'get_failed_emails.py' to retrieve it to send manually.",
+                subject,
+                row,
+            )
 
-        else:
-            logger.error("Missing summary email recipient.")
+    else:
+        logger.error("Missing summary email recipient.")
 
 
-async def get_timestamp_last_summary_email(
-    conn: Optional[AsyncConnection] = None,
-) -> Optional[datetime]:
+async def get_timestamp_last_summary_email(conn: AsyncConnection) -> Optional[datetime]:
     """Retrieve the timestamp from the emails table of the most recent summary email sent.
+
+    Args:
+        conn: Async DB connection to use for the query.
 
     Returns:
         The timestamp of the last summary email sent.
     """
-    async with _conn_ctx(conn) as connection:
-        query = (
-            select(emails)
-            .where(emails.c.type == EMAIL_TYPE_SUMMARY)
-            .order_by(desc(emails.c.id))
-        )
-        row = (await connection.execute(query)).mappings().first()
-        if row:
-            time_last_summary = row["time_created"]
-            logger.info("Last summary email was sent at: %s", time_last_summary)
-        else:
-            time_last_summary = None
-            logger.info("There's been no summary email so far.")
-        return time_last_summary
+    query = (
+        select(emails)
+        .where(emails.c.type == EMAIL_TYPE_SUMMARY)
+        .order_by(desc(emails.c.id))
+    )
+    row = (await conn.execute(query)).mappings().first()
+    if row:
+        time_last_summary = row["time_created"]
+        logger.info("Last summary email was sent at: %s", time_last_summary)
+    else:
+        time_last_summary = None
+        logger.info("There's been no summary email so far.")
+    return time_last_summary
