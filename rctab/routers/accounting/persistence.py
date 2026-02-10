@@ -1,5 +1,6 @@
 """Routes that determine whether a subscription is permanently on."""
 
+import logging
 from typing import Any
 from uuid import UUID
 
@@ -14,6 +15,8 @@ from rctab.crud.auth import token_admin_verified
 from rctab.db import get_async_connection
 from rctab.routers.accounting import send_emails
 from rctab.routers.accounting.routes import router
+
+logger = logging.getLogger(__name__)
 
 
 class NewPersistenceStatus(BaseModel):
@@ -39,14 +42,24 @@ async def post_persistency_status(
         },
     )
 
-    await send_emails.send_generic_email(
-        conn,
-        persistence.sub_id,
-        "persistence_change.html",
-        "Persistence change for your Azure subscription:",
-        "subscription persistence",
-        persistence.model_dump(),
-    )
+    # pylint: disable=broad-exception-caught
+    try:
+        # Preserve persistence changes even if notification handling fails.
+        async with conn.begin_nested():
+            await send_emails.send_generic_email(
+                conn,
+                persistence.sub_id,
+                "persistence_change.html",
+                "Persistence change for your Azure subscription:",
+                "subscription persistence",
+                persistence.model_dump(),
+            )
+    except Exception:  # pragma: no cover - integration behavior
+        logger.exception(
+            "Failed to send persistence-change notification for %s",
+            persistence.sub_id,
+        )
+    # pylint: enable=broad-exception-caught
 
     return {
         "status": "success",
