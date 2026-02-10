@@ -5,6 +5,7 @@ from rctab.routers.accounting import (
     approvals,
     desired_states,
     persistence,
+    status,
     subscription,
 )
 from rctab.routers.accounting.routes import router
