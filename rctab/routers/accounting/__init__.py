@@ -3,6 +3,7 @@
 from rctab.routers.accounting import (
     allocations,
     approvals,
+    cost_recovery,
     desired_states,
     persistence,
     status,
