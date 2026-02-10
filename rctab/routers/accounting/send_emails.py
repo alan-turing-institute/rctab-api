@@ -13,7 +13,6 @@ from rctab_models.models import SubscriptionState, SubscriptionStatus
 from sendgrid import Mail, SendGridAPIClient
 from sqlalchemy import and_, asc, desc, func, insert, or_, select
 from sqlalchemy.engine import RowMapping
-from sqlalchemy.exc import ResourceClosedError
 from sqlalchemy.sql import Select
 
 from rctab.constants import (
@@ -62,10 +61,7 @@ async def _fetch_all(conn: AsyncConnection, query: Any) -> List[RowMapping]:
 async def _execute(conn: AsyncConnection, statement: Any) -> Any:
     """Execute an INSERT/UPDATE/DELETE statement and return a scalar if available."""
     result = await conn.execute(statement)
-    try:
-        return result.scalar_one_or_none()
-    except ResourceClosedError:
-        return None
+    return result.scalar_one_or_none() if result.returns_rows else None
 
 
 async def get_sub_email_recipients(
