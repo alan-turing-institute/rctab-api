@@ -41,13 +41,13 @@ async def get_subscription(
     conn: AsyncConnection = Depends(get_async_connection),
 ) -> List[SubscriptionDetails]:
     """Whether a subscription with the specified uuid is registered."""
-    rows = [dict(x) for x in await get_subscriptions_with_disable(conn, sub_id)]
+    rows = (await get_subscriptions_with_disable(conn, sub_id)).mappings().all()
     if not rows:
         raise HTTPException(
             status_code=404,
             detail=f"Subscription {sub_id} not found",
         )
-    result = [SubscriptionDetails(**x) for x in rows]
+    result = [SubscriptionDetails(**dict(x)) for x in rows]
 
     return result
 
