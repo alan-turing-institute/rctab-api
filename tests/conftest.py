@@ -25,6 +25,8 @@ from rctab.db import ENGINE, get_async_connection
 from rctab.settings import Settings
 from tests.test_routes import constants
 
+# pylint: disable=W0621
+
 
 @pytest.fixture(scope="session", autouse=True)
 def clear_database_once() -> None:
@@ -159,13 +161,10 @@ def get_token_verified_override() -> Callable:
     return _token_verified
 
 
-# pylint: disable=W0621
 @pytest.fixture
 def auth_app(
     get_oauth_settings_override: Callable, get_token_verified_override: Callable
 ) -> FastAPI:
-    # todo roll back database changes after each test
-
     # pylint: disable=import-outside-toplevel
     from rctab import app
 
