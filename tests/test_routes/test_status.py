@@ -685,9 +685,9 @@ async def test_post_status_filters_roles(
     results = (
         (
             await test_db.execute(
-                select(subscription_details).where(
-                    subscription_details.c.subscription_id == sub_id
-                )
+                select(subscription_details)
+                .where(subscription_details.c.subscription_id == sub_id)
+                .order_by(subscription_details.c.time_created)
             )
         )
         .mappings()
