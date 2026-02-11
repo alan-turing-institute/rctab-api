@@ -41,7 +41,6 @@ async def test_db() -> AsyncGenerator[AsyncConnection, None]:
         if transaction.is_active:
             await transaction.rollback()
         await conn.close()
-        await ENGINE.dispose()
 
 
 async def create_subscription(

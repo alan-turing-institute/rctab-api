@@ -1,26 +1,21 @@
-# from typing import Tuple
-
 import pytest
 from fastapi import FastAPI
-from fastapi.testclient import TestClient
-
-# from rctab_models.models import BillingStatus, SubscriptionDetails, SubscriptionState
-from sqlalchemy.ext.asyncio.engine import AsyncConnection
+from httpx import ASGITransport, AsyncClient
 
 from rctab.routers.accounting.routes import PREFIX
-from tests.test_routes import api_calls, constants
-from tests.test_routes.utils import no_rollback_test_db  # pylint: disable=unused-import
+from tests.test_routes import constants
 
 
 @pytest.mark.asyncio
-def test_get_subscription(
-    auth_app: FastAPI,
-    no_rollback_test_db: AsyncConnection,  # pylint: disable=redefined-outer-name,unused-argument
+async def test_get_subscription(
+    auth_app_with_tx: FastAPI,  # pylint: disable=redefined-outer-name
 ) -> None:
     """Getting a subscription that doesn't exist."""
 
-    with TestClient(auth_app) as client:
-        result = client.request(
+    async with AsyncClient(
+        transport=ASGITransport(app=auth_app_with_tx), base_url="http://test"
+    ) as client:
+        result = await client.request(
             "GET",
             PREFIX + "/subscription",
             params={"sub_id": str(constants.TEST_SUB_UUID)},
@@ -31,30 +26,39 @@ def test_get_subscription(
 
 @pytest.mark.asyncio
 async def test_post_subscription(
-    auth_app: FastAPI,
-    no_rollback_test_db: AsyncConnection,  # pylint: disable=unused-argument,redefined-outer-name
+    auth_app_with_tx: FastAPI,  # pylint: disable=redefined-outer-name
 ) -> None:
     """Register a subscription"""
-    # return
 
-    with TestClient(auth_app) as client:
-        result = api_calls.create_subscription(client, constants.TEST_SUB_UUID)
+    async with AsyncClient(
+        transport=ASGITransport(app=auth_app_with_tx), base_url="http://test"
+    ) as client:
+        result = await client.post(
+            PREFIX + "/subscription",
+            json={"sub_id": str(constants.TEST_SUB_UUID)},
+        )
         assert result.status_code == 200
 
 
 @pytest.mark.asyncio
 async def test_post_subscription_twice(
-    auth_app: FastAPI,
-    no_rollback_test_db: AsyncConnection,  # pylint: disable=unused-argument,redefined-outer-name
+    auth_app_with_tx: FastAPI,  # pylint: disable=redefined-outer-name
 ) -> None:
     """Can't register it if it already exists"""
 
-    with TestClient(auth_app) as client:
-
-        result = api_calls.create_subscription(client, constants.TEST_SUB_UUID)
+    async with AsyncClient(
+        transport=ASGITransport(app=auth_app_with_tx), base_url="http://test"
+    ) as client:
+        result = await client.post(
+            PREFIX + "/subscription",
+            json={"sub_id": str(constants.TEST_SUB_UUID)},
+        )
         assert result.status_code == 200
 
-        result = api_calls.create_subscription(client, constants.TEST_SUB_UUID)
+        result = await client.post(
+            PREFIX + "/subscription",
+            json={"sub_id": str(constants.TEST_SUB_UUID)},
+        )
         assert result.status_code == 409
 
 

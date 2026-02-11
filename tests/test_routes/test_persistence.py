@@ -1,4 +1,3 @@
-from typing import Any, AsyncGenerator
 from unittest.mock import ANY, AsyncMock
 
 import pytest
@@ -7,30 +6,10 @@ from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 from rctab_models.models import SubscriptionDetails
 
-from rctab.db import ENGINE, get_async_connection
 from rctab.routers.accounting.routes import PREFIX
 from tests.test_routes import constants
 
 # pylint: disable=redefined-outer-name
-
-
-@pytest.fixture
-async def auth_app_with_tx(auth_app: FastAPI) -> AsyncGenerator[FastAPI, None]:
-    """Override DB dependency with one transaction-bound connection per test."""
-    conn = await ENGINE.connect()
-    trans = await conn.begin()
-
-    async def _get_async_connection_override() -> AsyncGenerator[Any, None]:
-        yield conn
-
-    auth_app.dependency_overrides[get_async_connection] = _get_async_connection_override
-
-    try:
-        yield auth_app
-    finally:
-        auth_app.dependency_overrides.pop(get_async_connection, None)
-        await trans.rollback()
-        await conn.close()
 
 
 @pytest.mark.asyncio
