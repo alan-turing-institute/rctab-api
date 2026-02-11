@@ -30,6 +30,6 @@ Compared against: merge-base with `main` (`0b4c83b79d88a187f5525f7a8dc96b1386a9e
 - [x] `tests/test_routes/test_persistence.py`
 - [x] `tests/test_routes/test_status.py`
 - [x] `tests/test_routes/test_summary_emails.py`
-- [ ] `tests/test_routes/test_transactions.py`
+- [x] `tests/test_routes/test_transactions.py` (removed; legacy `databases` behavior guard)
 - [x] `tests/test_routes/test_usage.py`
 - [x] `tests/test_tasks.py`

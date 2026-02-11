@@ -20,26 +20,27 @@ from rctab.routers.accounting.routes import SubscriptionItem, router
 async def check_create_finance(
     new_finance: Finance,  # pylint: disable=redefined-outer-name
     conn: AsyncConnection,
-) -> None:
+) -> Finance:
     """Check whether the new finance row is valid."""
-    new_finance.date_from = get_start_month(new_finance.date_from)
-    new_finance.date_to = get_end_month(new_finance.date_to)
+    normalized_finance = Finance(**new_finance.model_dump())
+    normalized_finance.date_from = get_start_month(normalized_finance.date_from)
+    normalized_finance.date_to = get_end_month(normalized_finance.date_to)
 
-    if new_finance.date_from > new_finance.date_to:
+    if normalized_finance.date_from > normalized_finance.date_to:
         raise HTTPException(
             status_code=400,
-            detail=f"Date from ({str(new_finance.date_from)}) cannot be greater than date to ({str(new_finance.date_to)})",
+            detail=f"Date from ({str(normalized_finance.date_from)}) cannot be greater than date to ({str(normalized_finance.date_to)})",
         )
 
-    if new_finance.amount < 0:
+    if normalized_finance.amount < 0:
         raise HTTPException(
             status_code=400,
-            detail=f"Amount should not be negative but was {new_finance.amount}",
+            detail=f"Amount should not be negative but was {normalized_finance.amount}",
         )
 
     query = (
         select(cost_recovery)
-        .where(cost_recovery.c.subscription_id == new_finance.subscription_id)
+        .where(cost_recovery.c.subscription_id == normalized_finance.subscription_id)
         .order_by(desc(cost_recovery.c.id))
     )
     last_cost_recovery = (await conn.execute(query)).mappings().first()
@@ -48,13 +49,14 @@ async def check_create_finance(
         last_recovery_month = last_cost_recovery_dict["month"]
 
         # we can't add new finance row for a time period that has been recovered already
-        if new_finance.date_from <= last_recovery_month:
+        if normalized_finance.date_from <= last_recovery_month:
             raise HTTPException(
                 status_code=400,
                 detail=f"We have already recovered costs until {str(last_cost_recovery['month'])} "
-                + f"for the subscription {str(new_finance.subscription_id)}, "
+                + f"for the subscription {str(normalized_finance.subscription_id)}, "
                 + "please choose a later start date",
             )
+    return normalized_finance
 
 
 @router.get("/finance", response_model=List[FinanceWithID])
@@ -83,13 +85,13 @@ async def post_finance(
     conn: AsyncConnection = Depends(get_async_connection),
 ) -> FinanceWithID:
     """Create a new finance record."""
-    await check_create_finance(new_finance, conn)
+    normalized_finance = await check_create_finance(new_finance, conn)
 
     async with conn.begin_nested():
         new_primary_key = (
             await conn.execute(
                 insert(accounting_models.finance)
-                .values({"admin": user.oid, **new_finance.model_dump()})
+                .values({"admin": user.oid, **normalized_finance.model_dump()})
                 .returning(finance.c.id)
             )
         ).scalar_one()
@@ -219,9 +221,14 @@ async def delete_finance(
 
     try:
         await conn.execute(delete(finance).where(finance.c.id == finance_id))
-    except IntegrityError:
-        # This is almost certainly the reason and is a more helpful message
-        raise HTTPException(status_code=409, detail="Costs have already been recovered")
+    except IntegrityError as exc:
+        sqlstate = getattr(exc.orig, "sqlstate", None)
+        if sqlstate == "23503":
+            # Foreign key violation; this finance row has related cost_recovery rows.
+            raise HTTPException(
+                status_code=409, detail="Costs have already been recovered"
+            ) from exc
+        raise
 
     return FinanceWithID(**dict(finance_row))
 

@@ -10,6 +10,7 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from fastapi import FastAPI, Request
 from jose.jws import sign
+from sqlalchemy.sql.expression import text
 
 from rctab.crud.auth import (
     token_admin_verified,
@@ -18,8 +19,35 @@ from rctab.crud.auth import (
     user_authenticated,
     user_authenticated_no_error,
 )
+from rctab.db import ENGINE
 from rctab.settings import Settings
 from tests.test_routes import constants
+
+
+@pytest.fixture(scope="session", autouse=True)
+async def clear_database_once() -> None:
+    """Clear accounting tables once before the test session starts."""
+    async with ENGINE.begin() as conn:
+        await conn.execute(
+            text(
+                """
+                TRUNCATE TABLE
+                    accounting.status,
+                    accounting.usage,
+                    accounting.costmanagement,
+                    accounting.allocations,
+                    accounting.approvals,
+                    accounting.persistence,
+                    accounting.emails,
+                    accounting.cost_recovery,
+                    accounting.finance,
+                    accounting.finance_history,
+                    accounting.subscription,
+                    accounting.cost_recovery_log
+                RESTART IDENTITY CASCADE
+                """
+            )
+        )
 
 
 @pytest.fixture

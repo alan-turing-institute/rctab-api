@@ -34,9 +34,12 @@ from tests.test_routes import constants
 async def test_db() -> AsyncGenerator[AsyncConnection, None]:
     """Connect before & disconnect after each test."""
     conn = await ENGINE.connect()
+    transaction = await conn.begin()
     try:
         yield conn
     finally:
+        if transaction.is_active:
+            await transaction.rollback()
         await conn.close()
         await ENGINE.dispose()
 

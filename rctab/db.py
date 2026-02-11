@@ -13,6 +13,10 @@ ENGINE: Final = create_async_engine(str(SETTINGS.postgres_dsn))
 
 
 async def get_async_connection() -> AsyncGenerator[AsyncConnection, None]:
-    """Yields an asynchronous database connection."""
+    """Yield an async connection with a request-scoped transaction.
+
+    The transaction is committed on successful request completion and
+    rolled back on exceptions.
+    """
     async with ENGINE.begin() as conn:
         yield conn

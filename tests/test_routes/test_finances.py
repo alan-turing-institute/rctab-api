@@ -152,7 +152,10 @@ async def test_post_finance(
     mock_rbac.oid = constants.ADMIN_UUID
     result = await post_finance(f_a, mock_rbac, test_db)  # type: ignore
 
-    assert Finance(**result.model_dump()) == f_a
+    expected_finance = Finance(**f_a.model_dump())
+    expected_finance.date_from = get_start_month(expected_finance.date_from)
+    expected_finance.date_to = get_end_month(expected_finance.date_to)
+    assert Finance(**result.model_dump()) == expected_finance
 
 
 def test_get_start_month() -> None:
@@ -192,10 +195,12 @@ async def test_check_finance(
         priority=1,
     )
 
-    await check_create_finance(f_a, test_db)
+    normalized_finance = await check_create_finance(f_a, test_db)
 
-    assert f_a.date_from.day == 1
-    assert f_a.date_to.day == 31
+    assert normalized_finance.date_from.day == 1
+    assert normalized_finance.date_to.day == 31
+    assert f_a.date_from.day == 19
+    assert f_a.date_to.day == 23
 
 
 @pytest.mark.asyncio
@@ -217,9 +222,11 @@ async def test_check_finance_raise_exception_dates(
     )
     with pytest.raises(HTTPException) as exception_info:
         await check_create_finance(f_a, test_db)
+    expected_from = get_start_month(f_a.date_from)
+    expected_to = get_end_month(f_a.date_to)
     assert (
         exception_info.value.detail
-        == f"Date from ({str(f_a.date_from)}) cannot be greater than date to ({str(f_a.date_to)})"
+        == f"Date from ({str(expected_from)}) cannot be greater than date to ({str(expected_to)})"
     )
 
 
