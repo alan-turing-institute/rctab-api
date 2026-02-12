@@ -1,4 +1,4 @@
-# pylint: disable=too-many-lines
+# pylint: disable=too-many-lines,redefined-outer-name
 import random
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Generator
@@ -48,10 +48,8 @@ from rctab.routers.accounting.send_emails import (
 from rctab.routers.accounting.usage import post_usage
 from tests.test_routes import constants
 from tests.test_routes.constants import ADMIN_DICT
+from tests.test_routes.test_routes import test_db  # pylint: disable=unused-import
 from tests.test_routes.test_routes import create_subscription
-from tests.test_routes.test_routes import (
-    test_db as _test_db,  # pylint: disable=unused-import
-)
 from tests.utils import print_list_diff
 
 USAGE_DICT: dict[str, Any] = {
