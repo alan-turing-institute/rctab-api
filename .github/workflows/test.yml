@@ -24,12 +24,6 @@ jobs:
         python_version: ['3.11']
 
     services:
-      postgres:
-        image: postgres:14
-        env:
-          POSTGRES_PASSWORD: password
-        ports:
-          - 5432:5432
       redis:
         image: redis
         ports:
@@ -55,24 +49,17 @@ jobs:
         shell: bash
         run: |
           export CELERY_RESULT_BACKEND="redis://localhost:6379/0"
-          scripts/runtests.sh -d -c main
+          scripts/runtests.sh -c main -s
 
       - name: Run route tests
         shell: bash
         run: |
-          scripts/runtests.sh -d -c routes
+          scripts/runtests.sh -c routes -s
 
       - name: Check DB downgrade
         shell: bash
-        # Downgrade to the initial alembic revision
         run: |
-          set -a
-          source example.auth.env
-          source example.env
-          set +a
-          poetry run alembic upgrade head
-          poetry run alembic downgrade b65796c99771
-          poetry run alembic upgrade head
+          scripts/runtests.sh -c migrations -s
 
   docker_build:
     runs-on: ubuntu-latest
