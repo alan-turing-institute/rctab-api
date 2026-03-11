@@ -88,13 +88,14 @@ class Settings(BaseSettings):
         ssl = self.get("ssl_required", False)
         self["ssl_required"] = ssl
 
-        ssl_str = "?sslmode=require" if ssl else ""
-
+        async_ssl_str = "?ssl=require" if ssl else ""
         self["postgres_dsn"] = (
-            f"postgresql+asyncpg://{user}:{password}@{host}:{port}/{db_name}{ssl_str}"
+            f"postgresql+asyncpg://{user}:{password}@{host}:{port}/{db_name}{async_ssl_str}"
         )
+
+        sync_ssl_str = "?sslmode=require" if ssl else ""
         self["sync_postgres_dsn"] = (
-            f"postgresql://{user}:{password}@{host}:{port}/{db_name}{ssl_str}"
+            f"postgresql://{user}:{password}@{host}:{port}/{db_name}{sync_ssl_str}"
         )
 
         return self
