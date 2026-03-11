@@ -1,4 +1,5 @@
 import logging
+import os
 from uuid import UUID
 
 import pytest
@@ -16,26 +17,33 @@ def test_settings() -> None:
 
 def test_minimal_settings() -> None:
     """Check that we can make a new settings with the minimal required values."""
-    settings = Settings(  # type: ignore
-        db_user="my_db_user",
-        db_password="my_db_password",
-        db_host="my_db_host",
-        # To stop any local .env files influencing the test
-        _env_file=None,
-    )
 
-    # Check the defaults
-    assert settings.db_port == 5432
-    assert settings.db_name == ""
-    assert settings.ssl_required is False
-    assert settings.testing is True  # Tricky one to test
-    assert settings.log_level == logging.getLevelName(logging.WARNING)
-    assert settings.ignore_whitelist is False
-    assert settings.whitelist == []
-    assert settings.notifiable_roles == ["Contributor"]
-    assert settings.roles_filter == ["Contributor"]
-    assert settings.admin_email_recipients == []
-    assert settings.expiry_email_freq == [1, 7, 30]
+    # Temporarily override the env var, which could be set to True.
+    original = os.environ.pop("SSL_REQUIRED") if "SSL_REQUIRED" in os.environ else None
+    try:
+        settings = Settings(  # type: ignore
+            db_user="my_db_user",
+            db_password="my_db_password",
+            db_host="my_db_host",
+            # To stop any local .env files influencing the test
+            _env_file=None,
+        )
+
+        # Check the defaults
+        assert settings.db_port == 5432
+        assert settings.db_name == ""
+        assert settings.ssl_required is False
+        assert settings.testing is True  # Tricky one to test
+        assert settings.log_level == logging.getLevelName(logging.WARNING)
+        assert settings.ignore_whitelist is False
+        assert settings.whitelist == []
+        assert settings.notifiable_roles == ["Contributor"]
+        assert settings.roles_filter == ["Contributor"]
+        assert settings.admin_email_recipients == []
+        assert settings.expiry_email_freq == [1, 7, 30]
+    finally:
+        if original is not None:
+            os.environ["SSL_REQUIRED"] = original
 
 
 def test_settings_raises() -> None:
@@ -69,7 +77,7 @@ def test_maximal_settings() -> None:
         db_host="my_db_host",
         db_port=5432,
         db_name="my_db_name",
-        ssl_required=False,
+        ssl_required=True,
         testing=False,
         sendgrid_api_key="sendgrid_key1234",
         sendgrid_sender_email="myemail@myorg.com",
@@ -89,9 +97,9 @@ def test_maximal_settings() -> None:
 
     assert (
         str(settings.postgres_dsn)
-        == "postgresql+asyncpg://my_db_user:my_db_password@my_db_host:5432/my_db_name"
+        == "postgresql+asyncpg://my_db_user:my_db_password@my_db_host:5432/my_db_name?ssl=require"
     )
     assert (
         str(settings.sync_postgres_dsn)
-        == "postgresql://my_db_user:my_db_password@my_db_host:5432/my_db_name"
+        == "postgresql://my_db_user:my_db_password@my_db_host:5432/my_db_name?sslmode=require"
     )

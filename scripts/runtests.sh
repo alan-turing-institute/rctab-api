@@ -22,6 +22,7 @@ function command_help {
 
 CONTAINER_ENGINE=docker
 SSL_DATABASE=false
+CLEANUP_DONE=false
 while getopts "hpc:e:ds" option; do
     case $option in
         h) # Help
@@ -69,7 +70,7 @@ function setup {
             -v "$CERT_DIR:/tmp/certs" \
             --entrypoint bash \
             postgres:17 \
-            -lc 'set -euo pipefail
+            -c 'set -euo pipefail
             install -m 600 /tmp/certs/server.key /var/lib/postgresql/server.key
             install -m 644 /tmp/certs/server.crt /var/lib/postgresql/server.crt
             chown postgres:postgres /var/lib/postgresql/server.key /var/lib/postgresql/server.crt
@@ -99,6 +100,11 @@ function setup {
 }
 
 function cleanup {
+    if [ "$CLEANUP_DONE" = true ]; then
+        return 0
+    fi
+    CLEANUP_DONE=true
+
     set +x
     if [ "$SKIP_DATABASE" = true ]; then
         set -x
@@ -120,8 +126,15 @@ function cleanup {
     $CONTAINER_ENGINE compose -f compose/docker-compose.yaml --profile db_only down
 }
 
-# Call cleanup if this script is cancelled with Ctrl-C
-trap cleanup SIGINT
+function cleanup_on_exit {
+    EXIT_CODE=$?
+    cleanup || true
+    exit "$EXIT_CODE"
+}
+
+trap cleanup_on_exit EXIT
+trap 'exit 130' SIGINT
+trap 'exit 143' SIGTERM
 
 # Print commands being executed
 set -x
@@ -169,5 +182,3 @@ elif [ "$TEST_CONFIGURATION" = "migrations" ]; then
 else
     poetry run pytest "${EXTRA_ARGS[@]}"
 fi
-
-cleanup
