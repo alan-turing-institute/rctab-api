@@ -34,9 +34,7 @@ def clear_database_once() -> None:
 
     async def _clear() -> None:
         async with ENGINE.begin() as conn:
-            await conn.execute(
-                text(
-                    """
+            await conn.execute(text("""
                     TRUNCATE TABLE
                         accounting.status,
                         accounting.usage,
@@ -51,9 +49,7 @@ def clear_database_once() -> None:
                         accounting.subscription,
                         accounting.cost_recovery_log
                     RESTART IDENTITY CASCADE
-                    """
-                )
-            )
+                    """))
 
     asyncio.run(_clear())
 
@@ -63,9 +59,7 @@ async def auth_app_with_tx(auth_app: FastAPI) -> AsyncGenerator[FastAPI, None]:
     """Override DB dependency with one transaction-bound connection per test."""
     conn = await ENGINE.connect()
     trans = await conn.begin()
-    await conn.execute(
-        text(
-            """
+    await conn.execute(text("""
             TRUNCATE TABLE
                 accounting.status,
                 accounting.usage,
@@ -80,9 +74,7 @@ async def auth_app_with_tx(auth_app: FastAPI) -> AsyncGenerator[FastAPI, None]:
                 accounting.subscription,
                 accounting.cost_recovery_log
             RESTART IDENTITY CASCADE
-            """
-        )
-    )
+            """))
 
     async def _get_async_connection_override() -> AsyncGenerator[AsyncConnection, None]:
         yield conn

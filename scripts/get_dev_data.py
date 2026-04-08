@@ -1,5 +1,4 @@
-"""Get data from production database and save as json files for testing
-"""
+"""Get data from production database and save as json files for testing"""
 
 import argparse
 import json

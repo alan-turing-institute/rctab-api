@@ -400,7 +400,7 @@ def _get_costmanagement(
 
 
 def test_write_read_costmanagement(
-    app_with_signed_billing_token: Tuple[FastAPI, str]
+    app_with_signed_billing_token: Tuple[FastAPI, str],
 ) -> None:
     """POST some cost-management data, GET it back, and check that the response matches
     the input. Do it twice, because the first time inserts new subscriptions, whereas

@@ -1,5 +1,4 @@
-"""Insert data from database json files into local database.
-"""
+"""Insert data from database json files into local database."""
 
 import argparse
 import json
