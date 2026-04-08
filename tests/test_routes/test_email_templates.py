@@ -5,7 +5,6 @@ from typing import Any, AsyncGenerator, Dict, Generator
 from uuid import UUID
 
 import pytest
-from databases import Database
 from jinja2 import Environment, PackageLoader, StrictUndefined
 from rctab_models.models import (
     Allocation,
@@ -16,6 +15,7 @@ from rctab_models.models import (
     SubscriptionState,
     SubscriptionStatus,
 )
+from sqlalchemy.ext.asyncio.engine import AsyncConnection
 
 from rctab.constants import EMAIL_TYPE_SUB_WELCOME, EMAIL_TYPE_USAGE_ALERT
 from rctab.crud import accounting_models
@@ -33,7 +33,7 @@ from tests.test_routes.test_routes import (  # pylint: disable=unused-import
 
 @pytest.fixture()
 async def subscription_summary(
-    test_db: Database,
+    test_db: AsyncConnection,
 ) -> AsyncGenerator[Dict[str, Any], None]:
     subscription_id = await create_subscription(
         db=test_db,  # type: ignore
@@ -43,10 +43,10 @@ async def subscription_summary(
         spent=(148, 0),
     )
 
-    sub_summary = await test_db.fetch_one(
-        get_subscriptions_summary(sub_id=subscription_id, execute=False)
-    )
-    yield dict(sub_summary)  # type: ignore
+    result = await test_db.execute(get_subscriptions_summary(sub_id=subscription_id))
+    sub_summary = result.mappings().first()
+    assert sub_summary is not None
+    yield dict(sub_summary)
 
 
 @pytest.fixture()
@@ -101,7 +101,7 @@ async def test_welcome_emails_render_with_url(
 
 @pytest.mark.asyncio
 async def test_status_emails_render(
-    test_db: Database,
+    test_db: AsyncConnection,
     subscription_summary: Dict[str, Any],
     jinja2_environment: Environment,
 ) -> None:
@@ -436,7 +436,7 @@ def test_abolishment_emails_render(jinja2_environment: Environment) -> None:
 
 
 @pytest.mark.asyncio
-async def test_send_summary_email_render(test_db: Database) -> None:
+async def test_send_summary_email_render(test_db: AsyncConnection) -> None:
     since_this_datetime = datetime.now(timezone.utc) - timedelta(days=1)
     # make a few subscriptions
     test_sub_1 = await create_subscription(

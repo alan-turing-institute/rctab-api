@@ -21,8 +21,8 @@ from rctab.constants import ADMIN_OID
 from rctab.crud import accounting_models
 from rctab.crud.accounting_models import refresh_materialised_view, usage_view
 from rctab.crud.auth import token_admin_verified
-from rctab.crud.models import database, executemany
 from rctab.crud.utils import insert_subscriptions_if_not_exists
+from rctab.db import AsyncConnection, get_async_connection
 from rctab.routers.accounting.desired_states import refresh_desired_states
 from rctab.routers.accounting.routes import router
 from rctab.routers.accounting.send_emails import UsageEmailContextManager
@@ -74,10 +74,11 @@ async def authenticate_usage_app(token: str = Depends(oauth2_scheme)) -> Dict[st
     return payload
 
 
-async def insert_usage(all_usage: AllUsage) -> None:
+async def insert_usage(conn: AsyncConnection, all_usage: AllUsage) -> None:
     """Inserts usage into the database.
 
     Args:
+        conn: Database connection to execute SQL statements.
         all_usage: Usage data to insert.
     """
     usage_query = insert(accounting_models.usage)
@@ -85,24 +86,25 @@ async def insert_usage(all_usage: AllUsage) -> None:
     logger.info("Inserting usage data")
     insert_start = datetime.datetime.now()
 
-    await executemany(
-        database,
-        usage_query,
-        values=[i.model_dump() for i in all_usage.usage_list],
-    )
+    usage_rows = [i.model_dump() for i in all_usage.usage_list]
+    if usage_rows:
+        await conn.execute(usage_query, usage_rows)
     logger.info("Inserting usage data took %s", datetime.datetime.now() - insert_start)
     refresh_start = datetime.datetime.now()
-    await refresh_materialised_view(database, usage_view)
+    await refresh_materialised_view(conn, usage_view)
     logger.info(
         "Refreshing the usage view took %s",
         datetime.datetime.now() - refresh_start,
     )
 
 
-async def delete_usage(start_date: datetime.date, end_date: datetime.date) -> None:
+async def delete_usage(
+    conn: AsyncConnection, start_date: datetime.date, end_date: datetime.date
+) -> None:
     """Deletes usage(s) within a date range from the database.
 
     Args:
+        conn: Database connection to execute SQL statements.
         start_date: Defines the beginning of the date range.
         end_date: Defines the end of the date range.
     """
@@ -115,14 +117,16 @@ async def delete_usage(start_date: datetime.date, end_date: datetime.date) -> No
     logger.info("Delete usage data within a date range")
     delete_start = datetime.datetime.now()
 
-    await database.execute(usage_query)
+    await conn.execute(usage_query)
 
     logger.info("Delete usage data took %s", datetime.datetime.now() - delete_start)
 
 
 @router.post("/monthly-usage", response_model=TmpReturnStatus)
 async def post_monthly_usage(
-    all_usage: AllUsage, _: Dict[str, str] = Depends(authenticate_usage_app)
+    all_usage: AllUsage,
+    _: Dict[str, str] = Depends(authenticate_usage_app),
+    conn: AsyncConnection = Depends(get_async_connection),
 ) -> TmpReturnStatus:
     """Inserts monthly usage data into the database."""
     logger.info("Post monthly usage called")
@@ -153,7 +157,7 @@ async def post_monthly_usage(
         len(all_usage.usage_list),
     )
 
-    async with database.transaction():
+    async with conn.begin_nested():
 
         logger.info(
             "Post monthly usage deleting existing usage data for %s - %s",
@@ -167,7 +171,7 @@ async def post_monthly_usage(
             .where(accounting_models.usage.c.date >= date_min)
             .where(accounting_models.usage.c.date <= date_max)
         )
-        await database.execute(query_del)
+        await conn.execute(query_del)
 
         logger.info(
             "Post monthly usage inserting new subscriptions if they don't exist"
@@ -175,11 +179,11 @@ async def post_monthly_usage(
 
         unique_subscriptions = list({i.subscription_id for i in all_usage.usage_list})
 
-        await insert_subscriptions_if_not_exists(unique_subscriptions)
+        await insert_subscriptions_if_not_exists(unique_subscriptions, conn)
 
         logger.info("Post monthly usage inserting monthly usage data")
 
-        await insert_usage(all_usage)
+        await insert_usage(conn, all_usage)
 
     # Note that we don't refresh the desired states here as we don't
     # want to trigger excess emails.
@@ -193,24 +197,26 @@ async def post_monthly_usage(
 
 @router.post("/all-usage", response_model=TmpReturnStatus)
 async def post_usage(
-    all_usage: AllUsage, _: Dict[str, str] = Depends(authenticate_usage_app)
+    all_usage: AllUsage,
+    _: Dict[str, str] = Depends(authenticate_usage_app),
+    conn: AsyncConnection = Depends(get_async_connection),
 ) -> TmpReturnStatus:
     """Write some usage data to the database."""
     post_start = datetime.datetime.now()
 
-    async with UsageEmailContextManager(database):
+    async with UsageEmailContextManager(conn):
 
-        async with database.transaction():
+        async with conn.begin_nested():
             unique_subscriptions = list(
                 {i.subscription_id for i in all_usage.usage_list}
             )
-            await delete_usage(all_usage.start_date, all_usage.end_date)
+            await delete_usage(conn, all_usage.start_date, all_usage.end_date)
 
-            await insert_subscriptions_if_not_exists(unique_subscriptions)
+            await insert_subscriptions_if_not_exists(unique_subscriptions, conn)
 
-            await insert_usage(all_usage)
+            await insert_usage(conn, all_usage)
 
-    await refresh_desired_states(UUID(ADMIN_OID), unique_subscriptions)
+    await refresh_desired_states(conn, UUID(ADMIN_OID), unique_subscriptions)
 
     logger.info("POSTing usage took %s", datetime.datetime.now() - post_start)
 
@@ -220,10 +226,13 @@ async def post_usage(
 
 
 @router.get("/all-usage", response_model=List[Usage])
-async def get_usage(_: UserRBAC = Depends(token_admin_verified)) -> List[Usage]:
+async def get_usage(
+    _: UserRBAC = Depends(token_admin_verified),
+    conn: AsyncConnection = Depends(get_async_connection),
+) -> List[Usage]:
     """Get all usage data."""
     usage_query = select(accounting_models.usage)
-    rows = [dict(x) for x in await database.fetch_all(usage_query)]
+    rows = [dict(x) for x in (await conn.execute(usage_query)).mappings().all()]
     result = [Usage(**x) for x in rows]
 
     return result
@@ -233,14 +242,15 @@ async def get_usage(_: UserRBAC = Depends(token_admin_verified)) -> List[Usage]:
 async def post_cm_usage(
     all_cm_usage: AllCMUsage,
     _: Dict[str, str] = Depends(authenticate_usage_app),
+    conn: AsyncConnection = Depends(get_async_connection),
 ) -> TmpReturnStatus:
     """Write cost-management data to the database."""
-    async with database.transaction():
+    async with conn.begin_nested():
         unique_subscriptions = list(
             {i.subscription_id for i in all_cm_usage.cm_usage_list}
         )
 
-        await insert_subscriptions_if_not_exists(unique_subscriptions)
+        await insert_subscriptions_if_not_exists(unique_subscriptions, conn)
 
         cm_query = insert(accounting_models.costmanagement)
         update_dict = {c.name: c for c in cm_query.excluded if not c.primary_key}
@@ -249,10 +259,9 @@ async def post_cm_usage(
             set_=update_dict,
         )
 
-        await executemany(
-            database,
+        await conn.execute(
             on_duplicate_key_stmt,
-            values=[i.model_dump() for i in all_cm_usage.cm_usage_list],
+            [i.model_dump() for i in all_cm_usage.cm_usage_list],
         )
 
     return TmpReturnStatus(
@@ -261,9 +270,12 @@ async def post_cm_usage(
 
 
 @router.get("/all-cm-usage", response_model=List[CMUsage])
-async def get_cm_usage(_: UserRBAC = Depends(token_admin_verified)) -> List[CMUsage]:
+async def get_cm_usage(
+    _: UserRBAC = Depends(token_admin_verified),
+    conn: AsyncConnection = Depends(get_async_connection),
+) -> List[CMUsage]:
     """Get all cost-management data."""
     cm_query = select(accounting_models.costmanagement)
-    rows = [dict(x) for x in await database.fetch_all(cm_query)]
+    rows = [dict(x) for x in (await conn.execute(cm_query)).mappings().all()]
     result = [CMUsage(**x) for x in rows]
     return result

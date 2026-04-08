@@ -21,7 +21,7 @@ from rctab.constants import ADJUSTMENT_DELTA, ADMIN_OID, EXPIRY_ADJUSTMENT_MSG
 from rctab.crud.accounting_models import allocations as allocations_table
 from rctab.crud.accounting_models import approvals as approvals_table
 from rctab.crud.accounting_models import status as status_table
-from rctab.crud.models import database
+from rctab.db import AsyncConnection, get_async_connection
 from rctab.routers.accounting import send_emails
 from rctab.routers.accounting.routes import get_subscriptions_summary, router
 from rctab.settings import get_settings
@@ -73,16 +73,17 @@ async def authenticate_app(token: str = Depends(oauth2_scheme)) -> Dict[str, str
 
 @router.get("/desired-states", response_model=List[DesiredState])
 async def get_desired_states(
-    _: Dict[str, str] = Depends(authenticate_app)
+    _: Dict[str, str] = Depends(authenticate_app),
+    conn: AsyncConnection = Depends(get_async_connection),
 ) -> List[DesiredState]:
     """Get the desired states of subscriptions that need to be enabled/disabled."""
     # pylint: disable=singleton-comparison,unexpected-keyword-arg
 
     # Refresh the desired states before we return them
-    await refresh_desired_states(UUID(ADMIN_OID))
+    await refresh_desired_states(conn, UUID(ADMIN_OID))
 
     # Handle: desired_status == NULL and status == NULL
-    summaries = get_subscriptions_summary(execute=False).alias()
+    summaries = get_subscriptions_summary().alias()
 
     to_be_changed = select(
         summaries.c.subscription_id,
@@ -118,7 +119,7 @@ async def get_desired_states(
         )
     )
 
-    rows = await database.fetch_all(to_be_changed)
+    rows = (await conn.execute(to_be_changed)).mappings().all()
 
     desired_state_list = [
         DesiredState(
@@ -138,6 +139,7 @@ async def get_desired_states(
 
 
 async def refresh_desired_states(
+    conn: AsyncConnection,
     admin_oid: UUID,
     subscription_ids: Optional[List[UUID]] = None,
 ) -> None:
@@ -146,7 +148,7 @@ async def refresh_desired_states(
     # pylint: disable=unexpected-keyword-arg
     # pylint: disable=too-many-locals
 
-    sub_query = get_subscriptions_summary(execute=False).alias()
+    sub_query = get_subscriptions_summary().alias()
 
     if subscription_ids:
         summaries = (
@@ -179,7 +181,7 @@ async def refresh_desired_states(
     ).alias()
 
     # Adjusting approvals and allocations for expired subscriptions
-    for row in await database.fetch_all(over_time):
+    for row in (await conn.execute(select(over_time))).mappings().all():
         if row["allocated"] - row["total_cost"] >= ADJUSTMENT_DELTA:
             insert_neg_allocation = allocations_table.insert().values(
                 subscription_id=row["subscription_id"],
@@ -188,7 +190,7 @@ async def refresh_desired_states(
                 amount=row["total_cost"] - row["allocated"],
                 currency=DEFAULT_CURRENCY,
             )
-            await database.execute(insert_neg_allocation)
+            await conn.execute(insert_neg_allocation)
 
         if row["approved"] - row["total_cost"] >= ADJUSTMENT_DELTA:
             insert_neg_approval = approvals_table.insert().values(
@@ -200,7 +202,7 @@ async def refresh_desired_states(
                 date_from=row["approved_from"],
                 date_to=row["approved_to"],
             )
-            await database.execute(insert_neg_approval)
+            await conn.execute(insert_neg_approval)
 
     # Subscriptions with more usage than allocated budget
     # that currently have a desired_status of True
@@ -316,7 +318,11 @@ async def refresh_desired_states(
     )
 
     # Execute query before the insert, as it won't return anything afterwards
-    to_be_inserted = await database.fetch_all(over_time_or_over_budget_desired_on)
+    to_be_inserted = (
+        (await conn.execute(select(over_time_or_over_budget_desired_on)))
+        .mappings()
+        .all()
+    )
     subscriptions_and_reasons = [
         (row["subscription_id"], row["reason"].value, row["old_reason"])
         for row in to_be_inserted
@@ -326,7 +332,7 @@ async def refresh_desired_states(
         # Sending emails when the reason changes is unnecessary
         if not old_reason:
             await send_emails.send_generic_email(
-                database,
+                conn,
                 subscription_id,
                 "will_be_disabled.html",
                 "We will turn off your Azure subscription:",
@@ -334,7 +340,7 @@ async def refresh_desired_states(
                 {"reason": reason},
             )
 
-    await database.execute(insert_false_statement)
+    await conn.execute(insert_false_statement)
 
     # Insert rows for subscriptions that should be enabled
     # but aren't currently. These are all of our subscriptions
@@ -369,12 +375,14 @@ async def refresh_desired_states(
     )
 
     # Execute query before the insert, as it won't return anything afterwards
-    to_be_inserted = await database.fetch_all(should_be_enabled_but_are_not)
+    to_be_inserted = (
+        (await conn.execute(should_be_enabled_but_are_not)).mappings().all()
+    )
     subscriptions = [row["subscription_id"] for row in to_be_inserted]
 
     for subscription_id in subscriptions:
         await send_emails.send_generic_email(
-            database,
+            conn,
             subscription_id,
             "will_be_enabled.html",
             "We will turn on your Azure subscription:",
@@ -382,4 +390,4 @@ async def refresh_desired_states(
             {},
         )
 
-    await database.execute(insert_true_statement)
+    await conn.execute(insert_true_statement)

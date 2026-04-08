@@ -1,25 +1,25 @@
 from datetime import date, timedelta
-from typing import Tuple
-from unittest.mock import AsyncMock
+from unittest.mock import ANY, AsyncMock
 from uuid import UUID
 
 import pytest
-from databases import Database
 from fastapi import FastAPI
-from fastapi.testclient import TestClient
+from httpx import ASGITransport, AsyncClient
 from pytest_mock import MockerFixture
 from rctab_models.models import BillingStatus, DesiredState, SubscriptionState
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio.engine import AsyncConnection
 
 from rctab.crud.accounting_models import refresh_materialised_view
 from rctab.crud.accounting_models import status as status_table
 from rctab.crud.accounting_models import usage as usage_table
 from rctab.crud.accounting_models import usage_view
-from rctab.crud.models import database
+from rctab.db import get_async_connection
 from rctab.routers.accounting import desired_states
 from rctab.routers.accounting.desired_states import refresh_desired_states
 from rctab.routers.accounting.routes import PREFIX, get_subscriptions_summary
-from tests.test_routes import api_calls, constants
+from rctab.settings import Settings
+from tests.test_routes import constants
 from tests.test_routes.test_routes import (  # pylint: disable=unused-import
     create_subscription,
     test_db,
@@ -34,7 +34,7 @@ TICKET = "T001-12"
 
 @pytest.mark.asyncio
 async def test_desired_states_budget_adjustment_applied(
-    test_db: Database,
+    test_db: AsyncConnection,
     mocker: MockerFixture,
 ) -> None:
     approved = 100
@@ -54,18 +54,28 @@ async def test_desired_states_budget_adjustment_applied(
     mocker.patch(
         "rctab.routers.accounting.send_emails.send_generic_email", mock_send_emails
     )
+    mocker.patch(
+        "rctab.routers.accounting.desired_states.get_settings",
+        return_value=Settings(ignore_whitelist=True),
+    )
+    mocker.patch(
+        "rctab.routers.accounting.desired_states.get_settings",
+        return_value=Settings(ignore_whitelist=True),
+    )
 
-    await refresh_desired_states(constants.ADMIN_UUID, [expired_sub_id])
+    await refresh_desired_states(test_db, constants.ADMIN_UUID, [expired_sub_id])
 
-    desired_state_rows = await test_db.fetch_all(select(status_table))
+    desired_state_rows = (await test_db.execute(select(status_table))).mappings().all()
     row_dicts = [dict(row) for row in desired_state_rows]
 
     # The subscription expired today
     assert len(row_dicts) == 1
     assert row_dicts[0]["reason"] == BillingStatus.EXPIRED
 
-    sub_summary = await test_db.fetch_one(
-        get_subscriptions_summary(sub_id=expired_sub_id, execute=False)
+    sub_summary = (
+        (await test_db.execute(get_subscriptions_summary(sub_id=expired_sub_id)))
+        .mappings()
+        .first()
     )
 
     # approved and allocation should match usage
@@ -75,7 +85,7 @@ async def test_desired_states_budget_adjustment_applied(
 
 @pytest.mark.asyncio
 async def test_desired_states_budget_adjustment_approved_ignored(
-    test_db: Database,
+    test_db: AsyncConnection,
     mocker: MockerFixture,
 ) -> None:
     approved = 100
@@ -95,18 +105,28 @@ async def test_desired_states_budget_adjustment_approved_ignored(
     mocker.patch(
         "rctab.routers.accounting.send_emails.send_generic_email", mock_send_emails
     )
+    mocker.patch(
+        "rctab.routers.accounting.desired_states.get_settings",
+        return_value=Settings(ignore_whitelist=True),
+    )
+    mocker.patch(
+        "rctab.routers.accounting.desired_states.get_settings",
+        return_value=Settings(ignore_whitelist=True),
+    )
 
-    await refresh_desired_states(constants.ADMIN_UUID, [expired_sub_id])
+    await refresh_desired_states(test_db, constants.ADMIN_UUID, [expired_sub_id])
 
-    desired_state_rows = await test_db.fetch_all(select(status_table))
+    desired_state_rows = (await test_db.execute(select(status_table))).mappings().all()
     row_dicts = [dict(row) for row in desired_state_rows]
 
     # The subscription expired today
     assert len(row_dicts) == 1
     assert row_dicts[0]["reason"] == BillingStatus.OVER_BUDGET_AND_EXPIRED
 
-    sub_summary = await test_db.fetch_one(
-        get_subscriptions_summary(sub_id=expired_sub_id, execute=False)
+    sub_summary = (
+        (await test_db.execute(get_subscriptions_summary(sub_id=expired_sub_id)))
+        .mappings()
+        .first()
     )
 
     # approved and allocation should match usage
@@ -116,7 +136,7 @@ async def test_desired_states_budget_adjustment_approved_ignored(
 
 @pytest.mark.asyncio
 async def test_desired_states_budget_adjustment_ignored(
-    test_db: Database,
+    test_db: AsyncConnection,
     mocker: MockerFixture,
 ) -> None:
     approved = 100
@@ -136,17 +156,19 @@ async def test_desired_states_budget_adjustment_ignored(
         "rctab.routers.accounting.send_emails.send_generic_email", mock_send_emails
     )
 
-    await refresh_desired_states(constants.ADMIN_UUID, [expired_sub_id])
+    await refresh_desired_states(test_db, constants.ADMIN_UUID, [expired_sub_id])
 
-    desired_state_rows = await test_db.fetch_all(select(status_table))
+    desired_state_rows = (await test_db.execute(select(status_table))).mappings().all()
     row_dicts = [dict(row) for row in desired_state_rows]
 
     # The subscription expired today
     assert len(row_dicts) == 1
     assert row_dicts[0]["reason"] == BillingStatus.OVER_BUDGET_AND_EXPIRED
 
-    sub_summary = await test_db.fetch_one(
-        get_subscriptions_summary(sub_id=expired_sub_id, execute=False)
+    sub_summary = (
+        (await test_db.execute(get_subscriptions_summary(sub_id=expired_sub_id)))
+        .mappings()
+        .first()
     )
 
     # approved and allocation should match usage
@@ -154,135 +176,145 @@ async def test_desired_states_budget_adjustment_ignored(
     assert sub_summary["allocated"] == allocated  # type: ignore
 
 
-def test_desired_states_disabled(
-    app_with_signed_status_and_controller_tokens: Tuple[FastAPI, str, str],
+@pytest.mark.asyncio
+async def test_desired_states_disabled(
+    auth_app: FastAPI,
+    test_db: AsyncConnection,
     mocker: MockerFixture,
 ) -> None:
-    (
-        auth_app,
-        status_token,
-        controller_token,
-    ) = app_with_signed_status_and_controller_tokens
+    mock_send_emails = AsyncMock()
+    mocker.patch(
+        "rctab.routers.accounting.send_emails.send_generic_email", mock_send_emails
+    )
+    mocker.patch(
+        "rctab.routers.accounting.desired_states.get_settings",
+        return_value=Settings(ignore_whitelist=True),
+    )
 
-    sub_ids = [UUID(int=0), UUID(int=1), UUID(int=2)]
-    with TestClient(auth_app) as client:
-        mock_send_emails = AsyncMock()
-        mocker.patch(
-            "rctab.routers.accounting.send_emails.send_generic_email", mock_send_emails
+    sub_unchanged = await create_subscription(
+        test_db,
+        always_on=True,
+        current_state=SubscriptionState("Enabled"),
+        approved=(100.0, date.today() + timedelta(days=1)),
+    )
+    _ = sub_unchanged
+    await create_subscription(test_db)
+    expired_sub_id = await create_subscription(
+        test_db,
+        always_on=False,
+        current_state=SubscriptionState("Enabled"),
+    )
+    await test_db.execute(
+        status_table.insert(),
+        {
+            "subscription_id": expired_sub_id,
+            "admin": constants.ADMIN_UUID,
+            "active": False,
+            "reason": BillingStatus.EXPIRED,
+        },
+    )
+
+    async def _get_async_connection_override() -> AsyncConnection:
+        return test_db
+
+    mock_refresh = AsyncMock()
+    mocker.patch(
+        "rctab.routers.accounting.desired_states.refresh_desired_states", mock_refresh
+    )
+
+    auth_app.dependency_overrides[desired_states.authenticate_app] = lambda: {
+        "sub": "controller-app"
+    }
+    auth_app.dependency_overrides[get_async_connection] = _get_async_connection_override
+
+    async with AsyncClient(
+        transport=ASGITransport(app=auth_app), base_url="http://test"
+    ) as client:
+        response = await client.get(PREFIX + "/desired-states")
+
+    assert response.status_code == 200
+    mock_refresh.assert_called_once_with(ANY, UUID(desired_states.ADMIN_OID))
+    expected = [
+        DesiredState(
+            subscription_id=expired_sub_id,
+            desired_state=SubscriptionState("Disabled"),
         )
+    ]
+    actual = [DesiredState(**x) for x in response.json()]
+    assert actual == expected
 
-        # The first subscription has active==True and the second
-        # has no subscription_details row, so we only expect the third to be returned
 
-        for sub_id in sub_ids:
-            api_calls.create_subscription(
-                client, subscription_id=sub_id
-            ).raise_for_status()
+@pytest.mark.asyncio
+async def test_desired_states_enabled(
+    auth_app: FastAPI,
+    test_db: AsyncConnection,
+    mocker: MockerFixture,
+) -> None:
+    mock_send_emails = AsyncMock()
+    mocker.patch(
+        "rctab.routers.accounting.send_emails.send_generic_email", mock_send_emails
+    )
+    mocker.patch(
+        "rctab.routers.accounting.desired_states.get_settings",
+        return_value=Settings(ignore_whitelist=True),
+    )
 
-        # This subscription has no approved_to date so should be disabled
-        # for being expired
-        api_calls.create_subscription_detail(
-            client,
-            status_token,
-            subscription_id=UUID(int=2),
-            state=SubscriptionState("Enabled"),
-        ).raise_for_status()
+    expected = []
 
-        mock_refresh = AsyncMock()
-        mocker.patch(
-            "rctab.routers.accounting.desired_states.refresh_desired_states",
-            mock_refresh,
+    for subscription_state in [
+        SubscriptionState("Disabled"),
+        SubscriptionState("Expired"),
+        SubscriptionState("Warned"),
+    ]:
+        sub_id = await create_subscription(
+            test_db,
+            always_on=False,
+            current_state=subscription_state,
+            approved=(100.0, date.today() + timedelta(days=1)),
         )
-
-        response = client.get(
-            PREFIX + "/desired-states",
-            headers={"authorization": "Bearer " + controller_token},
-        )
-
-        # Getting the desired states should have the side effect of
-        # refreshing the desired states
-        mock_refresh.assert_called_once_with(UUID(desired_states.ADMIN_OID))
-
-        assert response.status_code == 200
-
-        expected = [
+        expected.append(
             DesiredState(
-                subscription_id=str(UUID(int=2)),
-                desired_state=SubscriptionState("Disabled"),
+                subscription_id=sub_id,
+                desired_state=SubscriptionState("Enabled"),
             )
-        ]
-        actual = [DesiredState(**x) for x in response.json()]
-        assert actual == expected
-
-
-def test_desired_states_enabled(
-    app_with_signed_status_and_controller_tokens: Tuple[FastAPI, str, str],
-    mocker: MockerFixture,
-) -> None:
-    (
-        auth_app,
-        status_token,
-        controller_token,
-    ) = app_with_signed_status_and_controller_tokens
-
-    with TestClient(auth_app) as client:
-        mock_send_emails = AsyncMock()
-        mocker.patch(
-            "rctab.routers.accounting.send_emails.send_generic_email", mock_send_emails
+        )
+        await test_db.execute(
+            status_table.insert(),
+            {
+                "subscription_id": sub_id,
+                "admin": constants.ADMIN_UUID,
+                "active": True,
+            },
         )
 
-        expected = []
+    async def _get_async_connection_override() -> AsyncConnection:
+        return test_db
 
-        # Both of these are disabled but should be enabled
-        for subscription_id, subscription_state in [
-            (UUID(int=4), SubscriptionState("Disabled")),
-            (UUID(int=5), SubscriptionState("Expired")),
-            (UUID(int=6), SubscriptionState("Warned")),
-        ]:
-            api_calls.create_subscription(
-                client, subscription_id=subscription_id
-            ).raise_for_status()
+    mock_refresh = AsyncMock()
+    mocker.patch(
+        "rctab.routers.accounting.desired_states.refresh_desired_states", mock_refresh
+    )
 
-            api_calls.create_approval(
-                client,
-                subscription_id=subscription_id,
-                amount=100,
-                date_from=date_from,
-                date_to=date_to,
-                ticket=TICKET,
-                allocate=True,
-                currency="GBP",
-            ).raise_for_status()
+    auth_app.dependency_overrides[desired_states.authenticate_app] = lambda: {
+        "sub": "controller-app"
+    }
+    auth_app.dependency_overrides[get_async_connection] = _get_async_connection_override
 
-            api_calls.create_subscription_detail(
-                client,
-                token=status_token,
-                subscription_id=subscription_id,
-                state=subscription_state,
-            ).raise_for_status()
+    async with AsyncClient(
+        transport=ASGITransport(app=auth_app), base_url="http://test"
+    ) as client:
+        response = await client.get(PREFIX + "/desired-states")
 
-            response = client.get(
-                PREFIX + "/desired-states",
-                headers={"authorization": "Bearer " + controller_token},
-            )
-
-            assert response.status_code == 200
-
-            expected.append(
-                DesiredState(
-                    subscription_id=subscription_id,
-                    desired_state=SubscriptionState("Enabled"),
-                )
-            )
-
-        actual = [DesiredState(**x) for x in response.json()]
-        assert len(actual) == len(expected)
-        assert set(actual) == set(expected)
+    assert response.status_code == 200
+    mock_refresh.assert_called_once_with(ANY, UUID(desired_states.ADMIN_OID))
+    actual = [DesiredState(**x) for x in response.json()]
+    assert len(actual) == len(expected)
+    assert set(actual) == set(expected)
 
 
 @pytest.mark.asyncio
 async def test_refresh_sends_disabled_emails(
-    test_db: Database, mocker: MockerFixture
+    test_db: AsyncConnection, mocker: MockerFixture
 ) -> None:
     over_budget_sub_id = await create_subscription(
         test_db,
@@ -298,11 +330,11 @@ async def test_refresh_sends_disabled_emails(
         "rctab.routers.accounting.send_emails.send_generic_email", mock_send_emails
     )
 
-    await refresh_desired_states(constants.ADMIN_UUID, [over_budget_sub_id])
+    await refresh_desired_states(test_db, constants.ADMIN_UUID, [over_budget_sub_id])
 
     # We should email each disabled subscription
     mock_send_emails.assert_called_with(
-        database,
+        ANY,
         over_budget_sub_id,
         "will_be_disabled.html",
         "We will turn off your Azure subscription:",
@@ -313,7 +345,7 @@ async def test_refresh_sends_disabled_emails(
 
 @pytest.mark.asyncio
 async def test_refresh_sends_enabled_emails(
-    test_db: Database, mocker: MockerFixture
+    test_db: AsyncConnection, mocker: MockerFixture
 ) -> None:
     within_budget_sub_id = await create_subscription(
         test_db,
@@ -329,11 +361,11 @@ async def test_refresh_sends_enabled_emails(
         "rctab.routers.accounting.send_emails.send_generic_email", mock_send_emails
     )
 
-    await refresh_desired_states(constants.ADMIN_UUID, [within_budget_sub_id])
+    await refresh_desired_states(test_db, constants.ADMIN_UUID, [within_budget_sub_id])
 
     # We should email each disabled subscription
     mock_send_emails.assert_called_with(
-        database,
+        ANY,
         within_budget_sub_id,
         "will_be_enabled.html",
         "We will turn on your Azure subscription:",
@@ -343,7 +375,9 @@ async def test_refresh_sends_enabled_emails(
 
 
 @pytest.mark.asyncio
-async def test_refresh_reason_changes(test_db: Database, mocker: MockerFixture) -> None:
+async def test_refresh_reason_changes(
+    test_db: AsyncConnection, mocker: MockerFixture
+) -> None:
     """We should update the reason for disabling if that reason changes."""
     expired_sub_id = await create_subscription(
         test_db,
@@ -359,11 +393,11 @@ async def test_refresh_reason_changes(test_db: Database, mocker: MockerFixture) 
         "rctab.routers.accounting.send_emails.send_generic_email", mock_send_emails
     )
 
-    await refresh_desired_states(constants.ADMIN_UUID, [expired_sub_id])
+    await refresh_desired_states(test_db, constants.ADMIN_UUID, [expired_sub_id])
 
     # We should email each disabled subscription
     mock_send_emails.assert_called_with(
-        database,
+        ANY,
         expired_sub_id,
         "will_be_disabled.html",
         "We will turn off your Azure subscription:",
@@ -372,7 +406,7 @@ async def test_refresh_reason_changes(test_db: Database, mocker: MockerFixture) 
     )
     assert mock_send_emails.call_count == 1
 
-    desired_state_rows = await test_db.fetch_all(select(status_table))
+    desired_state_rows = (await test_db.execute(select(status_table))).mappings().all()
     row_dicts = [dict(row) for row in desired_state_rows]
 
     # The subscription expired today
@@ -391,16 +425,20 @@ async def test_refresh_reason_changes(test_db: Database, mocker: MockerFixture) 
     )
     await refresh_materialised_view(test_db, usage_view)
 
-    await refresh_desired_states(constants.ADMIN_UUID, [expired_sub_id])
+    await refresh_desired_states(test_db, constants.ADMIN_UUID, [expired_sub_id])
 
     # If the reason for disabling changes, we don't want to send an email
     assert mock_send_emails.call_count == 1
 
     row_dicts = [
         dict(row)
-        for row in await test_db.fetch_all(
-            select(status_table).order_by(status_table.c.time_created)
+        for row in (
+            await test_db.execute(
+                select(status_table).order_by(status_table.c.time_created)
+            )
         )
+        .mappings()
+        .all()
     ]
 
     # We should have a new row showing that there are two reasons
@@ -410,7 +448,7 @@ async def test_refresh_reason_changes(test_db: Database, mocker: MockerFixture) 
 
 @pytest.mark.asyncio
 async def test_refresh_reason_stays_the_same(
-    test_db: Database, mocker: MockerFixture
+    test_db: AsyncConnection, mocker: MockerFixture
 ) -> None:
     """Multiple calls shouldn't insert extra rows."""
 
@@ -428,24 +466,30 @@ async def test_refresh_reason_stays_the_same(
         "rctab.routers.accounting.send_emails.send_generic_email", mock_send_emails
     )
 
-    await refresh_desired_states(constants.ADMIN_UUID, [expired_sub_id])
+    await refresh_desired_states(test_db, constants.ADMIN_UUID, [expired_sub_id])
 
-    desired_state_rows = await test_db.fetch_all(select(status_table))
+    desired_state_rows = (await test_db.execute(select(status_table))).mappings().all()
     row_dicts = [dict(row) for row in desired_state_rows]
     assert len(row_dicts) == 1
     assert row_dicts[0]["reason"] == BillingStatus.EXPIRED
 
-    await refresh_desired_states(constants.ADMIN_UUID, [expired_sub_id])
+    await refresh_desired_states(test_db, constants.ADMIN_UUID, [expired_sub_id])
 
-    desired_state_rows = await test_db.fetch_all(
-        select(status_table).order_by(status_table.c.time_created)
+    desired_state_rows = (
+        (
+            await test_db.execute(
+                select(status_table).order_by(status_table.c.time_created)
+            )
+        )
+        .mappings()
+        .all()
     )
     row_dicts = [dict(row) for row in desired_state_rows]
     assert len(row_dicts) == 1
 
 
 @pytest.mark.asyncio
-async def test_small_tolerance(test_db: Database, mocker: MockerFixture) -> None:
+async def test_small_tolerance(test_db: AsyncConnection, mocker: MockerFixture) -> None:
     """Check that we allow subscriptions to go 0.001p over budget."""
     # pylint: disable=singleton-comparison
     close_to_budget_sub_id = await create_subscription(
@@ -462,10 +506,18 @@ async def test_small_tolerance(test_db: Database, mocker: MockerFixture) -> None
         "rctab.routers.accounting.send_emails.send_generic_email", mock_send_emails
     )
 
-    await refresh_desired_states(constants.ADMIN_UUID, [close_to_budget_sub_id])
+    await refresh_desired_states(
+        test_db, constants.ADMIN_UUID, [close_to_budget_sub_id]
+    )
 
-    desired_state_rows = await test_db.fetch_all(
-        select(status_table).where(status_table.c.reason == None)
+    desired_state_rows = (
+        (
+            await test_db.execute(
+                select(status_table).where(status_table.c.reason == None)
+            )
+        )
+        .mappings()
+        .all()
     )
     row_dicts = [dict(row) for row in desired_state_rows]
     assert len(row_dicts) == 1

@@ -1,7 +1,9 @@
 import datetime
 import json
-from unittest.mock import AsyncMock
+from unittest.mock import ANY, AsyncMock
+from uuid import uuid4
 
+import pytest
 from devtools import debug
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -9,10 +11,15 @@ from pytest_mock import MockerFixture
 from rctab_models.models import Approval, SubscriptionDetails
 
 from rctab.constants import EMAIL_TYPE_SUB_APPROVAL
-from rctab.crud.models import database
 from rctab.routers.accounting.routes import PREFIX
 from tests.test_routes import api_calls, constants
 from tests.test_routes.test_routes import test_db  # pylint: disable=unused-import
+
+
+@pytest.fixture(autouse=True)
+def unique_test_sub_uuid(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Use a fresh subscription UUID for each test to avoid cross-test contamination."""
+    monkeypatch.setattr(constants, "TEST_SUB_UUID", uuid4())
 
 
 def test_approve_date_from_in_past(auth_app: FastAPI, mocker: MockerFixture) -> None:
@@ -199,7 +206,7 @@ def test_successful_approval(auth_app: FastAPI, mocker: MockerFixture) -> None:
         # We will receive calls for the persistence, the approval
         # and the change of desired state
         mock_send_email.assert_any_call(
-            database,
+            ANY,
             constants.TEST_SUB_UUID,
             "new_approval.html",
             "New approval for your Azure subscription:",
@@ -635,7 +642,7 @@ def test_post_approval_refreshes_desired_states(
         # Posting an approval should have the side effect of
         # refreshing the desired states
         mock_refresh.assert_called_once_with(
-            constants.ADMIN_UUID, [constants.TEST_SUB_UUID]
+            ANY, constants.ADMIN_UUID, [constants.TEST_SUB_UUID]
         )
 
 

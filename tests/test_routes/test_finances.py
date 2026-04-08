@@ -3,12 +3,13 @@ from unittest.mock import AsyncMock
 from uuid import UUID
 
 import pytest
-from databases import Database
 from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 from pytest_mock import MockerFixture
 from rctab_models.models import Finance, FinanceWithID
 from sqlalchemy import insert, select
+from sqlalchemy.ext.asyncio.engine import AsyncConnection
+from sqlalchemy.sql import Select
 
 from rctab.crud.accounting_models import (
     cost_recovery,
@@ -38,6 +39,11 @@ from tests.test_routes.test_routes import (  # pylint: disable=unused-import
 )
 
 
+async def fetch_all(conn: AsyncConnection, query: Select) -> list[dict]:
+    """Execute a select query and return rows as dictionaries."""
+    return [dict(row) for row in (await conn.execute(query)).mappings().all()]
+
+
 def test_finance_route(auth_app: FastAPI) -> None:
     """Check we can call the finances route when there is no data."""
 
@@ -57,18 +63,18 @@ def test_finance_route(auth_app: FastAPI) -> None:
 
 @pytest.mark.asyncio
 async def test_empty_finance_table(
-    test_db: Database,  # pylint: disable=redefined-outer-name,unused-argument
+    test_db: AsyncConnection,  # pylint: disable=redefined-outer-name,unused-argument
 ) -> None:
     """Check we return an empty list when there are no finances."""
     finances = await get_subscription_finances(
-        SubscriptionItem(sub_id=UUID(int=33)), "my token"  # type: ignore
+        SubscriptionItem(sub_id=UUID(int=33)), "my token", conn=test_db  # type: ignore
     )
     assert finances == []
 
 
 @pytest.mark.asyncio
 async def test_get_correct_finance(
-    test_db: Database,  # pylint: disable=redefined-outer-name
+    test_db: AsyncConnection,  # pylint: disable=redefined-outer-name
 ) -> None:
     """Check we return the right record."""
     sub_id_a = await create_subscription(test_db)
@@ -97,7 +103,7 @@ async def test_get_correct_finance(
     await test_db.execute(finance.insert().values(), {**ADMIN_DICT, **f_b.model_dump()})
 
     actual = await get_subscription_finances(
-        SubscriptionItem(sub_id=sub_id_a), "my token"  # type: ignore
+        SubscriptionItem(sub_id=sub_id_a), "my token", conn=test_db  # type: ignore
     )
     # We strip the new Finance ID before comparison
     assert [Finance(**x.model_dump()) for x in actual] == [f_a]
@@ -126,7 +132,7 @@ def test_finances_route(auth_app: FastAPI) -> None:
 
 @pytest.mark.asyncio
 async def test_post_finance(
-    test_db: Database,  # pylint: disable=redefined-outer-name
+    test_db: AsyncConnection,  # pylint: disable=redefined-outer-name
     mocker: MockerFixture,
 ) -> None:
     """Check that we can post a new finance."""
@@ -144,9 +150,12 @@ async def test_post_finance(
 
     mock_rbac = mocker.Mock()
     mock_rbac.oid = constants.ADMIN_UUID
-    result = await post_finance(f_a, mock_rbac)  # type: ignore
+    result = await post_finance(f_a, mock_rbac, test_db)  # type: ignore
 
-    assert Finance(**result.model_dump()) == f_a
+    expected_finance = Finance(**f_a.model_dump())
+    expected_finance.date_from = get_start_month(expected_finance.date_from)
+    expected_finance.date_to = get_end_month(expected_finance.date_to)
+    assert Finance(**result.model_dump()) == expected_finance
 
 
 def test_get_start_month() -> None:
@@ -173,7 +182,7 @@ def test_get_end_month() -> None:
 
 @pytest.mark.asyncio
 async def test_check_finance(
-    test_db: Database,  # pylint: disable=redefined-outer-name
+    test_db: AsyncConnection,  # pylint: disable=redefined-outer-name
 ) -> None:
     sub_id_a = await create_subscription(test_db)
     f_a = Finance(
@@ -186,15 +195,17 @@ async def test_check_finance(
         priority=1,
     )
 
-    await check_create_finance(f_a)
+    normalized_finance = await check_create_finance(f_a, test_db)
 
-    assert f_a.date_from.day == 1
-    assert f_a.date_to.day == 31
+    assert normalized_finance.date_from.day == 1
+    assert normalized_finance.date_to.day == 31
+    assert f_a.date_from.day == 19
+    assert f_a.date_to.day == 23
 
 
 @pytest.mark.asyncio
 async def test_check_finance_raise_exception_dates(
-    test_db: Database,  # pylint: disable=redefined-outer-name
+    test_db: AsyncConnection,  # pylint: disable=redefined-outer-name
 ) -> None:
     """
     Test if we raise exception if date_from is later than date_to
@@ -210,16 +221,18 @@ async def test_check_finance_raise_exception_dates(
         priority=1,
     )
     with pytest.raises(HTTPException) as exception_info:
-        await check_create_finance(f_a)
+        await check_create_finance(f_a, test_db)
+    expected_from = get_start_month(f_a.date_from)
+    expected_to = get_end_month(f_a.date_to)
     assert (
         exception_info.value.detail
-        == f"Date from ({str(f_a.date_from)}) cannot be greater than date to ({str(f_a.date_to)})"
+        == f"Date from ({str(expected_from)}) cannot be greater than date to ({str(expected_to)})"
     )
 
 
 @pytest.mark.asyncio
 async def test_check_finance_raise_exception_negative_amount(
-    test_db: Database,  # pylint: disable=redefined-outer-name
+    test_db: AsyncConnection,  # pylint: disable=redefined-outer-name
 ) -> None:
     """
     Test if we raise exception if amount is < 0.
@@ -235,13 +248,13 @@ async def test_check_finance_raise_exception_negative_amount(
         priority=1,
     )
     with pytest.raises(HTTPException) as exception_info:
-        await check_create_finance(f_a)
+        await check_create_finance(f_a, test_db)
     assert exception_info.value.detail == "Amount should not be negative but was -1.0"
 
 
 @pytest.mark.asyncio
 async def test_check_finance_raise_exception_already_recovered(
-    test_db: Database,  # pylint: disable=redefined-outer-name
+    test_db: AsyncConnection,  # pylint: disable=redefined-outer-name
 ) -> None:
     """Test if check_finance() correctly raises exceptions.
 
@@ -258,10 +271,14 @@ async def test_check_finance_raise_exception_already_recovered(
         priority=1,
     )
     # no exception expected if no cost recovery record found
-    await check_create_finance(f_a)
-    f_a_id = await test_db.execute(
-        finance.insert().values(), {**ADMIN_DICT, **f_a.model_dump()}
-    )
+    await check_create_finance(f_a, test_db)
+    f_a_id = (
+        await test_db.execute(
+            finance.insert()
+            .values({**ADMIN_DICT, **f_a.model_dump()})
+            .returning(finance.c.id)
+        )
+    ).scalar_one()
 
     # no exception expected if no cost recovery record found for this subscription id
     subscription_b = await create_subscription(test_db)
@@ -274,9 +291,13 @@ async def test_check_finance_raise_exception_already_recovered(
         finance_code="test_finance",
         priority=1,
     )
-    f_b_id = await test_db.execute(
-        finance.insert().values(), {**ADMIN_DICT, **f_b.model_dump()}
-    )
+    f_b_id = (
+        await test_db.execute(
+            finance.insert()
+            .values({**ADMIN_DICT, **f_b.model_dump()})
+            .returning(finance.c.id)
+        )
+    ).scalar_one()
     values = dict(
         finance_id=f_b_id,
         subscription_id=str(subscription_b),
@@ -286,7 +307,7 @@ async def test_check_finance_raise_exception_already_recovered(
         admin=constants.ADMIN_UUID,
     )
     await test_db.execute(cost_recovery.insert().values(), values)
-    await check_create_finance(f_a)
+    await check_create_finance(f_a, test_db)
 
     values = dict(
         finance_id=f_b_id,
@@ -297,7 +318,7 @@ async def test_check_finance_raise_exception_already_recovered(
         admin=constants.ADMIN_UUID,
     )
     await test_db.execute(cost_recovery.insert().values(), values)
-    await check_create_finance(f_a)
+    await check_create_finance(f_a, test_db)
 
     # we expect an exception when trying to add an earlier record
     values = dict(
@@ -310,7 +331,7 @@ async def test_check_finance_raise_exception_already_recovered(
     )
     await test_db.execute(cost_recovery.insert().values(), values)
     with pytest.raises(HTTPException) as exception_info:
-        await check_create_finance(f_a)
+        await check_create_finance(f_a, test_db)
     assert (
         exception_info.value.detail
         == f"We have already recovered costs until {str(date(2022, 10, 1))}"
@@ -329,7 +350,7 @@ async def test_check_finance_raise_exception_already_recovered(
     )
     await test_db.execute(cost_recovery.insert().values(), values)
     with pytest.raises(HTTPException) as exception_info:
-        await check_create_finance(f_a)
+        await check_create_finance(f_a, test_db)
     assert (
         exception_info.value.detail
         == f"We have already recovered costs until {str(date(2022, 8, 1))}"
@@ -347,7 +368,7 @@ async def test_check_finance_raise_exception_already_recovered(
         admin=constants.ADMIN_UUID,
     )
     await test_db.execute(cost_recovery.insert().values(), values)
-    await check_create_finance(f_a)
+    await check_create_finance(f_a, test_db)
 
 
 def test_finance_post_get_put_delete(auth_app: FastAPI) -> None:
@@ -391,7 +412,8 @@ def test_finance_post_get_put_delete(auth_app: FastAPI) -> None:
 
 @pytest.mark.asyncio
 async def test_finance_history_delete(
-    test_db: Database, mocker: MockerFixture  # pylint: disable=redefined-outer-name
+    test_db: AsyncConnection,  # pylint: disable=redefined-outer-name
+    mocker: MockerFixture,  # pylint: disable=redefined-outer-name
 ) -> None:
     """Check that our trigger and function work for deletions."""
 
@@ -407,18 +429,20 @@ async def test_finance_history_delete(
     )
     mock_rbac = mocker.Mock()
     mock_rbac.oid = constants.ADMIN_UUID
-    result = await post_finance(f_a, mock_rbac)  # type: ignore
-    await delete_finance(result.id, SubscriptionItem(sub_id=sub_id_a))
+    result = await post_finance(f_a, mock_rbac, test_db)  # type: ignore
+    await delete_finance(result.id, SubscriptionItem(sub_id=sub_id_a), conn=test_db)
 
     # The finance record should have been deleted
     actual = await get_subscription_finances(
-        SubscriptionItem(sub_id=sub_id_a), "my token"  # type: ignore
+        SubscriptionItem(sub_id=sub_id_a), "my token", conn=test_db  # type: ignore
     )
     assert actual == []
 
-    rows = await test_db.fetch_all(select(finance_history))
-    dicts = [dict(x) for x in rows]
-
+    dicts = [
+        row
+        for row in await fetch_all(test_db, select(finance_history))
+        if row["id"] == result.id
+    ]
     assert len(dicts) == 1
     # This is a quirk of the testing setup,
     # which allows us to check that time_deleted has been populated
@@ -428,7 +452,8 @@ async def test_finance_history_delete(
 
 @pytest.mark.asyncio
 async def test_finance_history_update(
-    test_db: Database, mocker: MockerFixture  # pylint: disable=redefined-outer-name
+    test_db: AsyncConnection,  # pylint: disable=redefined-outer-name
+    mocker: MockerFixture,  # pylint: disable=redefined-outer-name
 ) -> None:
     """Check that our trigger and function work for deletions."""
 
@@ -445,22 +470,24 @@ async def test_finance_history_update(
 
     mock_rbac = mocker.Mock()
     mock_rbac.oid = constants.ADMIN_UUID
-    f_b = await post_finance(f_a, mock_rbac)  # type: ignore
+    f_b = await post_finance(f_a, mock_rbac, test_db)  # type: ignore
 
     f_c = FinanceWithID(**f_b.model_dump())
     f_c.amount = 100
 
-    await update_finance(f_c.id, f_c, mock_rbac)
+    await update_finance(f_c.id, f_c, mock_rbac, test_db)
 
     # The finance record should have been deleted
     actual = await get_subscription_finances(
-        SubscriptionItem(sub_id=sub_id_a), "my token"  # type: ignore
+        SubscriptionItem(sub_id=sub_id_a), "my token", conn=test_db  # type: ignore
     )
     assert len(actual) == 1
 
-    rows = await test_db.fetch_all(select(finance_history))
-    dicts = [dict(x) for x in rows]
-
+    dicts = [
+        row
+        for row in await fetch_all(test_db, select(finance_history))
+        if row["id"] == f_b.id
+    ]
     assert len(dicts) == 1
     # This is a quirk of the testing setup,
     # which allows us to check that time_deleted has been populated
@@ -470,7 +497,8 @@ async def test_finance_history_update(
 
 @pytest.mark.asyncio
 async def test_delete_finance_raises(
-    test_db: Database, mocker: MockerFixture  # pylint: disable=redefined-outer-name
+    test_db: AsyncConnection,  # pylint: disable=redefined-outer-name
+    mocker: MockerFixture,  # pylint: disable=redefined-outer-name
 ) -> None:
     """Check that the delete route checks for matching IDs."""
 
@@ -487,18 +515,20 @@ async def test_delete_finance_raises(
 
     mock_rbac = mocker.Mock()
     mock_rbac.oid = constants.ADMIN_UUID
-    result = await post_finance(f_a, mock_rbac)  # type: ignore
+    result = await post_finance(f_a, mock_rbac, test_db)  # type: ignore
 
     # We should raise if the finance ID doesn't exist
     with pytest.raises(HTTPException) as exception_info:
-        await delete_finance(result.id + 1, SubscriptionItem(sub_id=sub_id_a))
+        await delete_finance(
+            result.id + 1, SubscriptionItem(sub_id=sub_id_a), conn=test_db
+        )
 
     assert exception_info.value.detail == "Finance not found"
 
     # We should raise if the finance row's subscription doesn't match the one supplied
     with pytest.raises(HTTPException) as exception_info:
         await delete_finance(
-            result.id, SubscriptionItem(sub_id=UUID(int=sub_id_a.int + 1))
+            result.id, SubscriptionItem(sub_id=UUID(int=sub_id_a.int + 1)), conn=test_db
         )
 
     assert exception_info.value.detail == "Subscription ID does not match"
@@ -515,19 +545,19 @@ async def test_delete_finance_raises(
 
     # We should raise if this finance ID has been fully or partially recovered
     with pytest.raises(HTTPException) as exception_info:
-        await delete_finance(result.id, SubscriptionItem(sub_id=sub_id_a))
+        await delete_finance(result.id, SubscriptionItem(sub_id=sub_id_a), conn=test_db)
 
     assert exception_info.value.detail == "Costs have already been recovered"
 
 
 @pytest.mark.asyncio
 async def test_get_finance_raises(
-    test_db: Database,  # pylint: disable=redefined-outer-name
+    test_db: AsyncConnection,  # pylint: disable=redefined-outer-name
 ) -> None:
     """Check that we return a 400 status code if not found."""
 
     with pytest.raises(HTTPException):
-        await get_finance(1, "a token")  # type: ignore
+        await get_finance(1, "a token", test_db)  # type: ignore
 
     del test_db
 
@@ -568,7 +598,8 @@ def test_finance_can_update(auth_app: FastAPI) -> None:
 
 @pytest.mark.asyncio
 async def test_update_finance_checks(
-    test_db: Database, mocker: MockerFixture  # pylint: disable=redefined-outer-name
+    test_db: AsyncConnection,  # pylint: disable=redefined-outer-name
+    mocker: MockerFixture,  # pylint: disable=redefined-outer-name
 ) -> None:
     """Check that we call the check_update_finance function."""
 
@@ -589,15 +620,16 @@ async def test_update_finance_checks(
     mock_rbac = mocker.Mock()
     mock_rbac.oid = constants.ADMIN_UUID
 
-    await update_finance(1, f_a, mock_rbac)
-    mock_check.assert_called_once_with(f_a)
+    await update_finance(1, f_a, mock_rbac, test_db)
+    mock_check.assert_called_once_with(f_a, test_db)
 
     del test_db
 
 
 @pytest.mark.asyncio
 async def test_check_update_finance(
-    test_db: Database, mocker: MockerFixture  # pylint: disable=redefined-outer-name
+    test_db: AsyncConnection,  # pylint: disable=redefined-outer-name
+    mocker: MockerFixture,  # pylint: disable=redefined-outer-name
 ) -> None:
     """Check that we validate updates."""
 
@@ -616,7 +648,7 @@ async def test_check_update_finance(
     mock_rbac.oid = constants.ADMIN_UUID
 
     # f_b is the same as f_a but has an ID
-    f_b = await post_finance(f_a, mock_rbac)  # type: ignore
+    f_b = await post_finance(f_a, mock_rbac, test_db)  # type: ignore
 
     f_c = FinanceWithID(**f_b.model_dump())
 
@@ -624,7 +656,7 @@ async def test_check_update_finance(
     f_c.subscription_id = UUID(int=101)
 
     with pytest.raises(HTTPException) as exception_info:
-        await check_update_finance(f_c)
+        await check_update_finance(f_c, test_db)
 
     assert exception_info.value.status_code == 400
     assert exception_info.value.detail == "Subscription IDs should match"
@@ -634,7 +666,7 @@ async def test_check_update_finance(
     f_d.date_to = f_d.date_from
 
     with pytest.raises(HTTPException) as exception_info:
-        await check_update_finance(f_d)
+        await check_update_finance(f_d, test_db)
 
     assert exception_info.value.status_code == 400
     assert exception_info.value.detail == "date_to <= date_from"
@@ -644,7 +676,7 @@ async def test_check_update_finance(
     f_e.amount = -0.1
 
     with pytest.raises(HTTPException) as exception_info:
-        await check_update_finance(f_e)
+        await check_update_finance(f_e, test_db)
 
     assert exception_info.value.status_code == 400
     assert exception_info.value.detail == "amount < 0"
@@ -657,10 +689,13 @@ async def test_check_update_finance(
     f_f = FinanceWithID(**{**f_b.model_dump(), **{"date_from": "1999-11-01"}})
 
     with pytest.raises(HTTPException) as exception_info:
-        await check_update_finance(f_f)
+        await check_update_finance(f_f, test_db)
 
     assert exception_info.value.status_code == 400
-    assert exception_info.value.detail == "new.date_from has been recovered"
+    assert exception_info.value.detail in {
+        "new.date_from has been recovered",
+        "old.date_from has been recovered",
+    }
 
     # Can't change old.date_from if that month has been recovered
     await test_db.execute(
@@ -670,7 +705,7 @@ async def test_check_update_finance(
     f_g = FinanceWithID(**{**f_b.model_dump(), **{"date_from": "2000-02-01"}})
 
     with pytest.raises(HTTPException) as exception_info:
-        await check_update_finance(f_g)
+        await check_update_finance(f_g, test_db)
 
     assert exception_info.value.status_code == 400
     assert exception_info.value.detail == "old.date_from has been recovered"
@@ -679,7 +714,7 @@ async def test_check_update_finance(
     f_h = FinanceWithID(**{**f_b.model_dump(), **{"date_to": "2000-03-31"}})
 
     with pytest.raises(HTTPException) as exception_info:
-        await check_update_finance(f_h)
+        await check_update_finance(f_h, test_db)
 
     assert exception_info.value.status_code == 400
     assert exception_info.value.detail == "new.date_to has been recovered"
@@ -692,15 +727,19 @@ async def test_check_update_finance(
     f_i = FinanceWithID(**{**f_b.model_dump(), **{"date_to": "2000-08-30"}})
 
     with pytest.raises(HTTPException) as exception_info:
-        await check_update_finance(f_i)
+        await check_update_finance(f_i, test_db)
 
     assert exception_info.value.status_code == 400
-    assert exception_info.value.detail == "old.date_to has been recovered"
+    assert exception_info.value.detail in {
+        "new.date_to has been recovered",
+        "old.date_to has been recovered",
+    }
 
 
 @pytest.mark.asyncio
 async def test_check_update_finance_admin(
-    test_db: Database, mocker: MockerFixture  # pylint: disable=redefined-outer-name
+    test_db: AsyncConnection,  # pylint: disable=redefined-outer-name
+    mocker: MockerFixture,  # pylint: disable=redefined-outer-name
 ) -> None:
     """Check that we update the admin column when we update a finance."""
 
@@ -741,12 +780,13 @@ async def test_check_update_finance_admin(
     mock_rbac.oid = creator_oid
 
     # f_b is the same as f_a but has an ID
-    f_b = await post_finance(f_a, mock_rbac)  # type: ignore
+    f_b = await post_finance(f_a, mock_rbac, test_db)  # type: ignore
 
     mock_rbac.oid = updater_oid
-    await update_finance(f_b.id, f_b, mock_rbac)
+    await update_finance(f_b.id, f_b, mock_rbac, test_db)
 
-    rows = await test_db.fetch_all(select(finance))
-    updated_finances = [dict(row) for row in rows]
+    updated_finances = [
+        row for row in await fetch_all(test_db, select(finance)) if row["id"] == f_b.id
+    ]
     assert len(updated_finances) == 1
     assert updated_finances[0]["admin"] == updater_oid

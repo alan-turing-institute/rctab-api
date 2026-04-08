@@ -13,8 +13,8 @@ from sqlalchemy import and_, desc, insert, select
 
 from rctab.constants import ADMIN_OID, EMAIL_TYPE_SUB_WELCOME
 from rctab.crud.accounting_models import emails, subscription_details
-from rctab.crud.models import database
 from rctab.crud.utils import insert_subscriptions_if_not_exists
+from rctab.db import AsyncConnection, get_async_connection
 from rctab.routers.accounting import send_emails
 from rctab.routers.accounting.desired_states import refresh_desired_states
 from rctab.routers.accounting.routes import router
@@ -69,12 +69,13 @@ async def authenticate_status_app(
 async def post_status(
     all_status: AllSubscriptionStatus,
     _: Dict[str, str] = Depends(authenticate_status_app),
+    conn: AsyncConnection = Depends(get_async_connection),
 ) -> TmpReturnStatus:
     """Inserts subscription status data into the database."""
-    async with database.transaction():
+    async with conn.begin_nested():
         unique_subscriptions = [i.subscription_id for i in all_status.status_list]
 
-        await insert_subscriptions_if_not_exists(unique_subscriptions)
+        await insert_subscriptions_if_not_exists(unique_subscriptions, conn)
 
         for new_status in all_status.status_list:
             temp = new_status.model_dump_json().encode("utf-8")
@@ -95,24 +96,28 @@ async def post_status(
                 )
                 .order_by(desc(subscription_details.c.id))
             )
-            status_row = await database.fetch_one(status_select)
+            status_row = (await conn.execute(status_select)).mappings().first()
             old_status = SubscriptionStatus(**dict(status_row)) if status_row else None
 
-            previous_welcome_email = await database.fetch_one(
-                select(emails).where(
-                    and_(
-                        emails.c.subscription_id == new_status.subscription_id,
-                        emails.c.type == EMAIL_TYPE_SUB_WELCOME,
+            previous_welcome_email = (
+                (
+                    await conn.execute(
+                        select(emails).where(
+                            and_(
+                                emails.c.subscription_id == new_status.subscription_id,
+                                emails.c.type == EMAIL_TYPE_SUB_WELCOME,
+                            )
+                        )
                     )
                 )
+                .mappings()
+                .first()
             )
 
             # If there is no prior status or the status has changed at all, we want to insert a new row.
             if old_status != new_status:
                 status_insert = insert(subscription_details)
-                await database.execute(
-                    query=status_insert, values=new_status.model_dump()
-                )
+                await conn.execute(status_insert, new_status.model_dump())
 
                 if previous_welcome_email:
                     # We want to ignore some roles when deciding whether to
@@ -138,21 +143,21 @@ async def post_status(
 
                     if filtered_old_status != filtered_new_status:
                         await send_emails.send_status_change_emails(
-                            database, new_status, old_status
+                            conn, new_status, old_status
                         )
 
             if not previous_welcome_email:
-                welcome_kwargs = send_emails.prepare_welcome_email(database, new_status)
+                welcome_kwargs = send_emails.prepare_welcome_email(conn, new_status)
                 await send_emails.send_generic_email(**welcome_kwargs)
 
     # Send expiry emails if needed.
-    await send_emails.check_for_subs_nearing_expiry(database)
+    await send_emails.check_for_subs_nearing_expiry(conn)
 
     # Send overbudget emails if needed.
-    await send_emails.check_for_overbudget_subs(database)
+    await send_emails.check_for_overbudget_subs(conn)
 
     # Not strictly necessary, since the status data shouldn't have changed them,
     # but refresh the desired states anyway
-    await refresh_desired_states(UUID(ADMIN_OID), unique_subscriptions)
+    await refresh_desired_states(conn, UUID(ADMIN_OID), unique_subscriptions)
 
     return TmpReturnStatus(status="success")

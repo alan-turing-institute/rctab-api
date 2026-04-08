@@ -4,6 +4,7 @@ import logging
 import os
 import subprocess
 from typing import Generator, List
+from unittest.mock import ANY
 from uuid import UUID
 
 import pytest
@@ -102,7 +103,7 @@ async def test_send(
     recipients = ["me@my.org"]
     mock_get_settings.return_value.admin_email_recipients = recipients
     await send()
-    mock_send.assert_called_once_with(recipients, None)
+    mock_send.assert_called_once_with(recipients, ANY, None)
 
 
 @pytest.mark.asyncio
@@ -126,4 +127,4 @@ async def test_abolish(
     mock_abolish = mocker.patch("rctab.tasks.abolish_subscriptions")
 
     await abolish()
-    mock_abolish.assert_called_once_with(UUID(ADMIN_OID))
+    mock_abolish.assert_called_once_with(ANY, UUID(ADMIN_OID))

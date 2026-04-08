@@ -4,8 +4,8 @@ from unittest.mock import AsyncMock
 from uuid import UUID
 
 import pytest
-from databases import Database
 from pytest_mock import MockerFixture
+from sqlalchemy.ext.asyncio.engine import AsyncConnection
 
 from rctab.constants import EMAIL_TYPE_SUMMARY
 from rctab.crud.accounting_models import emails, failed_emails, subscription
@@ -23,7 +23,7 @@ from tests.test_routes.test_routes import (  # pylint: disable=unused-import # n
 
 @pytest.mark.asyncio
 async def test_get_timestamp_last_summary_email(
-    test_db: Database,  # pylint: disable=redefined-outer-name  # noqa
+    test_db: AsyncConnection,  # pylint: disable=redefined-outer-name  # noqa
 ) -> None:
     test_subscription_id = UUID(int=random.randint(0, (2**32) - 1))
     await test_db.execute(
@@ -35,7 +35,7 @@ async def test_get_timestamp_last_summary_email(
         ),
     )
     time_created = datetime.now(timezone.utc) - timedelta(seconds=10)
-    time_last_summary = await get_timestamp_last_summary_email()
+    time_last_summary = await get_timestamp_last_summary_email(conn=test_db)
     assert not time_last_summary
     await test_db.execute(
         emails.insert().values(),
@@ -48,14 +48,14 @@ async def test_get_timestamp_last_summary_email(
         ),
     )
 
-    time_last_summary = await get_timestamp_last_summary_email()
+    time_last_summary = await get_timestamp_last_summary_email(conn=test_db)
     assert time_last_summary == time_created
 
 
 @pytest.mark.asyncio
 async def test_send_summary_email(
     mocker: MockerFixture,
-    test_db: Database,  # pylint: disable=redefined-outer-name  # noqa
+    test_db: AsyncConnection,  # pylint: disable=redefined-outer-name  # noqa
 ) -> None:
     # pylint: disable=unused-argument
     mock_prepare = AsyncMock()
@@ -70,7 +70,7 @@ async def test_send_summary_email(
         "rctab.routers.accounting.summary_emails.send_with_sendgrid"
     )
 
-    await send_summary_email(email_recipients)
+    await send_summary_email(email_recipients, conn=test_db)
 
     mock_send.assert_called_with(
         "Daily summary",
@@ -83,7 +83,7 @@ async def test_send_summary_email(
 @pytest.mark.asyncio
 async def test_send_summary_email_missing_params(
     mocker: MockerFixture,
-    test_db: Database,  # pylint: disable=redefined-outer-name  # noqa
+    test_db: AsyncConnection,  # pylint: disable=redefined-outer-name  # noqa
 ) -> None:
     # pylint: disable=unused-argument
     mock_prepare = AsyncMock()
@@ -103,9 +103,9 @@ async def test_send_summary_email_missing_params(
         message="the_message",
     )
 
-    await send_summary_email(email_recipients)
+    await send_summary_email(email_recipients, conn=test_db)
 
-    row = await test_db.fetch_one(failed_emails.select())
+    row = (await test_db.execute(failed_emails.select())).mappings().first()
 
     assert row is not None
     assert row["type"] == "Daily summary"

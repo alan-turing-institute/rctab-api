@@ -1,16 +1,17 @@
 import random
 from datetime import date
 from typing import Tuple
-from unittest.mock import AsyncMock
+from unittest.mock import ANY, AsyncMock
 from uuid import UUID
 
 import pytest
-from databases import Database
 from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 from pytest_mock import MockerFixture
 from rctab_models.models import CostRecovery, Finance, Usage
 from sqlalchemy import insert, select
+from sqlalchemy.ext.asyncio.engine import AsyncConnection
+from sqlalchemy.sql import Select
 
 from rctab.constants import ADMIN_OID
 from rctab.crud import accounting_models
@@ -26,6 +27,11 @@ from tests.test_routes.constants import ADMIN_DICT
 from tests.test_routes.test_routes import test_db  # pylint: disable=unused-import
 from tests.test_routes.test_routes import create_subscription
 from tests.test_routes.utils import no_rollback_test_db  # pylint: disable=unused-import
+
+
+async def fetch_all(conn: AsyncConnection, query: Select) -> list[dict]:
+    """Execute a select query and return rows as dictionaries."""
+    return [dict(row) for row in (await conn.execute(query)).mappings().all()]
 
 
 def test_cost_recovery_app_route(
@@ -48,7 +54,10 @@ def test_cost_recovery_app_route(
         )
 
         mock.assert_called_once_with(
-            recovery_period, commit_transaction=True, admin=UUID(ADMIN_OID)
+            recovery_period,
+            commit_transaction=True,
+            admin=UUID(ADMIN_OID),
+            conn=ANY,
         )
 
         assert result.status_code == 200
@@ -77,7 +86,10 @@ def test_cost_recovery_cli_route(
         )
 
         mock.assert_called_once_with(
-            recovery_period, commit_transaction=True, admin=constants.ADMIN_UUID
+            recovery_period,
+            commit_transaction=True,
+            admin=constants.ADMIN_UUID,
+            conn=ANY,
         )
 
         assert result.status_code == 200
@@ -103,7 +115,10 @@ def test_cost_recovery_cli_route_dry_run(
         )
 
         mock.assert_called_once_with(
-            recovery_period, commit_transaction=False, admin=constants.ADMIN_UUID
+            recovery_period,
+            commit_transaction=False,
+            admin=constants.ADMIN_UUID,
+            conn=ANY,
         )
 
         assert result.status_code == 200
@@ -112,7 +127,7 @@ def test_cost_recovery_cli_route_dry_run(
 
 @pytest.mark.asyncio
 async def test_cost_recovery_simple(
-    test_db: Database,  # pylint: disable=redefined-outer-name
+    test_db: AsyncConnection,  # pylint: disable=redefined-outer-name
 ) -> None:
     """Check we can recover costs for a single finance row."""
     subscription_id = await create_subscription(test_db)
@@ -143,13 +158,13 @@ async def test_cost_recovery_simple(
     )
     cost_recovery_period = CostRecoveryMonth(first_day=date(year=2001, month=1, day=1))
     await calc_cost_recovery(
-        cost_recovery_period, commit_transaction=True, admin=constants.ADMIN_UUID
+        cost_recovery_period,
+        commit_transaction=True,
+        admin=constants.ADMIN_UUID,
+        conn=test_db,
     )
 
-    results = [
-        dict(row)
-        for row in await test_db.fetch_all(select(accounting_models.cost_recovery))
-    ]
+    results = await fetch_all(test_db, select(accounting_models.cost_recovery))
 
     assert len(results) == 1
 
@@ -162,7 +177,7 @@ async def test_cost_recovery_simple(
 
 @pytest.mark.asyncio
 async def test_cost_recovery_two_finances(
-    test_db: Database,  # pylint: disable=redefined-outer-name
+    test_db: AsyncConnection,  # pylint: disable=redefined-outer-name
 ) -> None:
     """Check we can recover costs where there are overlapping finance records."""
     subscription_id = await create_subscription(test_db)
@@ -196,13 +211,13 @@ async def test_cost_recovery_two_finances(
 
     cost_recovery_period = CostRecoveryMonth(first_day=date(year=2001, month=1, day=1))
     await calc_cost_recovery(
-        cost_recovery_period, commit_transaction=True, admin=constants.ADMIN_UUID
+        cost_recovery_period,
+        commit_transaction=True,
+        admin=constants.ADMIN_UUID,
+        conn=test_db,
     )
 
-    results = [
-        dict(row)
-        for row in await test_db.fetch_all(select(accounting_models.cost_recovery))
-    ]
+    results = await fetch_all(test_db, select(accounting_models.cost_recovery))
 
     assert len(results) == 2
 
@@ -213,7 +228,7 @@ async def test_cost_recovery_two_finances(
 
 @pytest.mark.asyncio
 async def test_cost_recovery_second_month(
-    test_db: Database,  # pylint: disable=redefined-outer-name
+    test_db: AsyncConnection,  # pylint: disable=redefined-outer-name
 ) -> None:
     """Check that two months can be recovered correctly."""
     subscription_id = await create_subscription(test_db)
@@ -258,22 +273,26 @@ async def test_cost_recovery_second_month(
 
     cost_recovery_period = CostRecoveryMonth(first_day=date(year=2001, month=1, day=1))
     await calc_cost_recovery(
-        cost_recovery_period, commit_transaction=True, admin=constants.ADMIN_UUID
+        cost_recovery_period,
+        commit_transaction=True,
+        admin=constants.ADMIN_UUID,
+        conn=test_db,
     )
 
     cost_recovery_period = CostRecoveryMonth(first_day=date(year=2001, month=2, day=1))
     await calc_cost_recovery(
-        cost_recovery_period, commit_transaction=True, admin=constants.ADMIN_UUID
+        cost_recovery_period,
+        commit_transaction=True,
+        admin=constants.ADMIN_UUID,
+        conn=test_db,
     )
 
-    results = [
-        dict(row)
-        for row in await test_db.fetch_all(
-            select(accounting_models.cost_recovery).order_by(
-                accounting_models.cost_recovery.c.id
-            )
-        )
-    ]
+    results = await fetch_all(
+        test_db,
+        select(accounting_models.cost_recovery).order_by(
+            accounting_models.cost_recovery.c.id
+        ),
+    )
 
     assert len(results) == 2
 
@@ -286,7 +305,7 @@ async def test_cost_recovery_second_month(
 
 @pytest.mark.asyncio
 async def test_cost_recovery_two_subscriptions(
-    test_db: Database,  # pylint: disable=redefined-outer-name
+    test_db: AsyncConnection,  # pylint: disable=redefined-outer-name
 ) -> None:
     """Check we can recover costs for two different subscriptions."""
     subscription_a = await create_subscription(test_db)
@@ -332,17 +351,18 @@ async def test_cost_recovery_two_subscriptions(
 
     cost_recovery_period = CostRecoveryMonth(first_day=date(year=2001, month=1, day=1))
     await calc_cost_recovery(
-        cost_recovery_period, commit_transaction=True, admin=constants.ADMIN_UUID
+        cost_recovery_period,
+        commit_transaction=True,
+        admin=constants.ADMIN_UUID,
+        conn=test_db,
     )
 
-    results = [
-        dict(row)
-        for row in await test_db.fetch_all(
-            select(accounting_models.cost_recovery).order_by(
-                accounting_models.cost_recovery.c.id
-            )
-        )
-    ]
+    results = await fetch_all(
+        test_db,
+        select(accounting_models.cost_recovery).order_by(
+            accounting_models.cost_recovery.c.id
+        ),
+    )
 
     assert len(results) == 1
 
@@ -353,7 +373,7 @@ async def test_cost_recovery_two_subscriptions(
 
 @pytest.mark.asyncio
 async def test_cost_recovery_priority_one_month(
-    test_db: Database,  # pylint: disable=redefined-outer-name
+    test_db: AsyncConnection,  # pylint: disable=redefined-outer-name
 ) -> None:
     """Check we can recover costs where there are overlapping finance records."""
     subscription_id = await create_subscription(test_db)
@@ -387,17 +407,18 @@ async def test_cost_recovery_priority_one_month(
 
     cost_recovery_period = CostRecoveryMonth(first_day=date(year=2001, month=1, day=1))
     await calc_cost_recovery(
-        cost_recovery_period, commit_transaction=True, admin=constants.ADMIN_UUID
+        cost_recovery_period,
+        commit_transaction=True,
+        admin=constants.ADMIN_UUID,
+        conn=test_db,
     )
 
-    results = [
-        dict(row)
-        for row in await test_db.fetch_all(
-            select(accounting_models.cost_recovery).order_by(
-                accounting_models.cost_recovery.c.finance_code
-            )
-        )
-    ]
+    results = await fetch_all(
+        test_db,
+        select(accounting_models.cost_recovery).order_by(
+            accounting_models.cost_recovery.c.finance_code
+        ),
+    )
 
     assert len(results) == 2
 
@@ -410,7 +431,7 @@ async def test_cost_recovery_priority_one_month(
 
 @pytest.mark.asyncio
 async def test_cost_recovery_priority_two_months(
-    test_db: Database,  # pylint: disable=redefined-outer-name
+    test_db: AsyncConnection,  # pylint: disable=redefined-outer-name
 ) -> None:
     """Check we can recover costs where there are overlapping finance records."""
     subscription_id = await create_subscription(test_db)
@@ -444,17 +465,18 @@ async def test_cost_recovery_priority_two_months(
 
     cost_recovery_period = CostRecoveryMonth(first_day=date(year=2001, month=1, day=1))
     await calc_cost_recovery(
-        cost_recovery_period, commit_transaction=True, admin=constants.ADMIN_UUID
+        cost_recovery_period,
+        commit_transaction=True,
+        admin=constants.ADMIN_UUID,
+        conn=test_db,
     )
 
-    results = [
-        dict(row)
-        for row in await test_db.fetch_all(
-            select(accounting_models.cost_recovery).order_by(
-                accounting_models.cost_recovery.c.finance_code
-            )
-        )
-    ]
+    results = await fetch_all(
+        test_db,
+        select(accounting_models.cost_recovery).order_by(
+            accounting_models.cost_recovery.c.finance_code
+        ),
+    )
 
     assert len(results) == 2
 
@@ -468,7 +490,7 @@ async def test_cost_recovery_priority_two_months(
 @pytest.mark.asyncio
 async def test_cost_recovery_validates(
     mocker: MockerFixture,
-    test_db: Database,  # pylint: disable=redefined-outer-name
+    test_db: AsyncConnection,  # pylint: disable=redefined-outer-name
 ) -> None:
     """Check that we validate the month being recovered."""
     mock_validate = mocker.Mock()
@@ -476,7 +498,9 @@ async def test_cost_recovery_validates(
 
     cost_recovery_month = CostRecoveryMonth(first_day="2001-01-01")
 
-    await calc_cost_recovery(cost_recovery_month, True, constants.ADMIN_UUID)
+    await calc_cost_recovery(
+        cost_recovery_month, True, constants.ADMIN_UUID, conn=test_db
+    )
 
     mock_validate.assert_called_once_with(cost_recovery_month, None)
 
@@ -494,7 +518,9 @@ async def test_cost_recovery_validates(
         {**ADMIN_DICT, "month": date.fromisoformat("2010-09-01")},
     )
 
-    await calc_cost_recovery(cost_recovery_month, True, constants.ADMIN_UUID)
+    await calc_cost_recovery(
+        cost_recovery_month, True, constants.ADMIN_UUID, conn=test_db
+    )
 
     mock_validate.assert_called_with(
         cost_recovery_month, CostRecoveryMonth(first_day=twenty_ten)
@@ -503,8 +529,7 @@ async def test_cost_recovery_validates(
 
 @pytest.mark.asyncio
 async def test_cost_recovery_commit_param(
-    no_rollback_test_db: Database,  # pylint: disable=redefined-outer-name
-    mocker: MockerFixture,
+    no_rollback_test_db: AsyncConnection,  # pylint: disable=redefined-outer-name
 ) -> None:
     """Check the return value when we do a dry-run."""
     subscription_a = await create_subscription(no_rollback_test_db)
@@ -531,17 +556,21 @@ async def test_cost_recovery_commit_param(
         finance_code="test_finance",
         priority=1,
     )
-    new_finance_id = await no_rollback_test_db.execute(
-        insert(accounting_models.finance), {**ADMIN_DICT, **new_finance.model_dump()}
-    )
+    new_finance_id = (
+        await no_rollback_test_db.execute(
+            insert(accounting_models.finance)
+            .values({**ADMIN_DICT, **new_finance.model_dump()})
+            .returning(accounting_models.finance.c.id)
+        )
+    ).scalar_one()
 
     cost_recovery_period = CostRecoveryMonth(first_day=date(year=2001, month=1, day=1))
 
-    mocker.patch(
-        "rctab.routers.accounting.cost_recovery.database", new=no_rollback_test_db
-    )
     cost_recoveries = await calc_cost_recovery(
-        cost_recovery_period, commit_transaction=False, admin=constants.ADMIN_UUID
+        cost_recovery_period,
+        commit_transaction=False,
+        admin=constants.ADMIN_UUID,
+        conn=no_rollback_test_db,
     )
 
     assert cost_recoveries == [
@@ -554,22 +583,16 @@ async def test_cost_recovery_commit_param(
         )
     ]
 
-    results = [
-        dict(row)
-        for row in await no_rollback_test_db.fetch_all(
-            select(accounting_models.cost_recovery)
-        )
-    ]
+    results = await fetch_all(
+        no_rollback_test_db, select(accounting_models.cost_recovery)
+    )
 
     # Since we used commit_transaction=False, we expect the table to be empty
     assert len(results) == 0
 
-    results = [
-        dict(row)
-        for row in await no_rollback_test_db.fetch_all(
-            select(accounting_models.cost_recovery_log)
-        )
-    ]
+    results = await fetch_all(
+        no_rollback_test_db, select(accounting_models.cost_recovery_log)
+    )
 
     # Since we used commit_transaction=False, we expect the table to be empty
     assert len(results) == 0
@@ -581,7 +604,7 @@ class PretendTimeoutError(Exception):
 
 @pytest.mark.asyncio
 async def test_cost_recovery_rollsback(
-    no_rollback_test_db: Database,  # pylint: disable=redefined-outer-name
+    no_rollback_test_db: AsyncConnection,  # pylint: disable=redefined-outer-name
     mocker: MockerFixture,
 ) -> None:
     """Check that we roll back if disconnected."""
@@ -623,19 +646,16 @@ async def test_cost_recovery_rollsback(
     mocker.patch("rctab.routers.accounting.cost_recovery.CostRecovery", mock)
 
     with pytest.raises(PretendTimeoutError):
-        mocker.patch(
-            "rctab.routers.accounting.cost_recovery.database", no_rollback_test_db
-        )
         await calc_cost_recovery(
-            cost_recovery_period, commit_transaction=True, admin=constants.ADMIN_UUID
+            cost_recovery_period,
+            commit_transaction=True,
+            admin=constants.ADMIN_UUID,
+            conn=no_rollback_test_db,
         )
 
-    results = [
-        dict(row)
-        for row in await no_rollback_test_db.fetch_all(
-            select(accounting_models.cost_recovery)
-        )
-    ]
+    results = await fetch_all(
+        no_rollback_test_db, select(accounting_models.cost_recovery)
+    )
 
     # Since we used commit_transaction=False, we expect the table to be empty
     assert len(results) == 0
@@ -643,25 +663,34 @@ async def test_cost_recovery_rollsback(
 
 @pytest.mark.asyncio
 async def test_cost_recovery_log(
-    test_db: Database,  # pylint: disable=redefined-outer-name
+    test_db: AsyncConnection,  # pylint: disable=redefined-outer-name
 ) -> None:
     """Check that we can only recover a month once."""
     # pylint: disable=unused-argument
     cost_recovery_period = CostRecoveryMonth(first_day=date(year=2000, month=1, day=2))
 
     await calc_cost_recovery(
-        cost_recovery_period, commit_transaction=True, admin=constants.ADMIN_UUID
+        cost_recovery_period,
+        commit_transaction=True,
+        admin=constants.ADMIN_UUID,
+        conn=test_db,
     )
 
     # We can dry-run previous months...
     await calc_cost_recovery(
-        cost_recovery_period, commit_transaction=False, admin=constants.ADMIN_UUID
+        cost_recovery_period,
+        commit_transaction=False,
+        admin=constants.ADMIN_UUID,
+        conn=test_db,
     )
 
     # ...but we mustn't commit
     with pytest.raises(HTTPException) as exception_info:
         await calc_cost_recovery(
-            cost_recovery_period, commit_transaction=True, admin=constants.ADMIN_UUID
+            cost_recovery_period,
+            commit_transaction=True,
+            admin=constants.ADMIN_UUID,
+            conn=test_db,
         )
 
     assert exception_info.value.detail == "Expected 2000-02"

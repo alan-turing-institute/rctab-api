@@ -1,12 +1,11 @@
 import datetime
 from typing import Any, Dict, List, Tuple
-from unittest.mock import AsyncMock
-from uuid import UUID
+from unittest.mock import ANY, AsyncMock
+from uuid import UUID, uuid4
 
 import hypothesis
 import pytest
 import pytest_mock
-from databases import Database
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from hypothesis import given, settings
@@ -19,6 +18,7 @@ from rctab_models.models import (
     SubscriptionStatus,
 )
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio.engine import AsyncConnection
 
 from rctab.constants import ADMIN_OID
 from rctab.crud.accounting_models import subscription_details
@@ -28,6 +28,12 @@ from rctab.routers.accounting.routes import get_subscriptions_summary
 from rctab.routers.accounting.status import post_status
 from tests.test_routes import constants
 from tests.test_routes.test_routes import test_db  # pylint: disable=unused-import
+
+
+@pytest.fixture(autouse=True)
+def unique_test_sub_uuid(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Use a fresh subscription UUID per test for isolation."""
+    monkeypatch.setattr(constants, "TEST_SUB_UUID", uuid4())
 
 
 @settings(
@@ -66,7 +72,7 @@ def test_post_status(
         # Posting the status data should have the side effect of
         # refreshing the desired states
         mock_refresh.assert_called_once_with(
-            UUID(ADMIN_OID), [x.subscription_id for x in all_status.status_list]
+            ANY, UUID(ADMIN_OID), [x.subscription_id for x in all_status.status_list]
         )
 
         # Check that we can POST the same status again without issue (idempotency).
@@ -80,7 +86,7 @@ def test_post_status(
 
 @pytest.mark.asyncio
 async def test_post_status_sends_welcome(
-    test_db: Database,  # pylint: disable=redefined-outer-name
+    test_db: AsyncConnection,  # pylint: disable=redefined-outer-name
     mocker: pytest_mock.MockerFixture,
 ) -> None:
     # pylint: disable=unexpected-keyword-arg, too-many-statements
@@ -124,12 +130,20 @@ async def test_post_status_sends_welcome(
     )
 
     await post_status(
-        AllSubscriptionStatus(status_list=[new_detail]), {"fake": "authentication"}
+        AllSubscriptionStatus(status_list=[new_detail]),
+        {"fake": "authentication"},
+        test_db,
     )
 
     template_data: Dict[str, Any] = {}
-    sub_summary = await test_db.fetch_one(
-        get_subscriptions_summary(sub_id=new_detail.subscription_id, execute=False)
+    sub_summary = (
+        (
+            await test_db.execute(
+                get_subscriptions_summary(sub_id=new_detail.subscription_id)
+            )
+        )
+        .mappings()
+        .first()
     )
     if sub_summary:
         template_data["summary"] = dict(sub_summary)
@@ -145,14 +159,16 @@ async def test_post_status_sends_welcome(
 
     # ...and re-POSTing it shouldn't send one...
     await post_status(
-        AllSubscriptionStatus(status_list=[new_detail]), {"fake": "authentication"}
+        AllSubscriptionStatus(status_list=[new_detail]),
+        {"fake": "authentication"},
+        test_db,
     )
     assert mock_send_email.call_count == 1
 
 
 @pytest.mark.asyncio
 async def test_post_status_sends_status_change_name(
-    test_db: Database,  # pylint: disable=redefined-outer-name
+    test_db: AsyncConnection,  # pylint: disable=redefined-outer-name
     mocker: pytest_mock.MockerFixture,
 ) -> None:
     mock_get_settings = mocker.patch(
@@ -193,7 +209,9 @@ async def test_post_status_sends_status_change_name(
         role_assignments=(first_assignment,),
     )
     await post_status(
-        AllSubscriptionStatus(status_list=[new_detail]), {"fake": "authentication"}
+        AllSubscriptionStatus(status_list=[new_detail]),
+        {"fake": "authentication"},
+        test_db,
     )
 
     status_change_detail = SubscriptionStatus(
@@ -206,11 +224,18 @@ async def test_post_status_sends_status_change_name(
     await post_status(
         AllSubscriptionStatus(status_list=[status_change_detail]),
         {"fake": "authentication"},
+        test_db,
     )
 
     template_data: Dict[str, Any] = {}
-    sub_summary = await test_db.fetch_one(
-        get_subscriptions_summary(sub_id=new_detail.subscription_id, execute=False)
+    sub_summary = (
+        (
+            await test_db.execute(
+                get_subscriptions_summary(sub_id=new_detail.subscription_id)
+            )
+        )
+        .mappings()
+        .first()
     )
     if sub_summary:
         template_data["summary"] = dict(sub_summary)
@@ -230,7 +255,7 @@ async def test_post_status_sends_status_change_name(
 
 @pytest.mark.asyncio
 async def test_post_status_sends_status_change_roles(
-    test_db: Database,  # pylint: disable=redefined-outer-name
+    test_db: AsyncConnection,  # pylint: disable=redefined-outer-name
     mocker: pytest_mock.MockerFixture,
 ) -> None:
     mock_get_settings = mocker.patch(
@@ -271,7 +296,9 @@ async def test_post_status_sends_status_change_roles(
         role_assignments=(first_assignment,),
     )
     await post_status(
-        AllSubscriptionStatus(status_list=[new_detail]), {"fake": "authentication"}
+        AllSubscriptionStatus(status_list=[new_detail]),
+        {"fake": "authentication"},
+        test_db,
     )
 
     second_assignment = RoleAssignment(
@@ -295,6 +322,7 @@ async def test_post_status_sends_status_change_roles(
             ]
         ),
         {"fake": "authentication"},
+        test_db,
     )
     template_data: Dict[str, Any] = {
         "removed_from_rbac": [],
@@ -305,8 +333,14 @@ async def test_post_status_sends_status_change_roles(
             }
         ],
     }
-    sub_summary = await test_db.fetch_one(
-        get_subscriptions_summary(sub_id=new_detail.subscription_id, execute=False)
+    sub_summary = (
+        (
+            await test_db.execute(
+                get_subscriptions_summary(sub_id=new_detail.subscription_id)
+            )
+        )
+        .mappings()
+        .first()
     )
     if sub_summary:
         template_data["summary"] = dict(sub_summary)
@@ -331,6 +365,7 @@ async def test_post_status_sends_status_change_roles(
             ]
         ),
         {"fake": "authentication"},
+        test_db,
     )
 
     template_data = {
@@ -343,8 +378,14 @@ async def test_post_status_sends_status_change_roles(
         "added_to_rbac": [],
     }
 
-    sub_summary = await test_db.fetch_one(
-        get_subscriptions_summary(sub_id=new_detail.subscription_id, execute=False)
+    sub_summary = (
+        (
+            await test_db.execute(
+                get_subscriptions_summary(sub_id=new_detail.subscription_id)
+            )
+        )
+        .mappings()
+        .first()
     )
     if sub_summary:
         template_data["summary"] = dict(sub_summary)
@@ -361,7 +402,7 @@ async def test_post_status_sends_status_change_roles(
 
 @pytest.mark.asyncio
 async def test_post_status_sends_looming(
-    test_db: Database,  # pylint: disable=redefined-outer-name
+    test_db: AsyncConnection,  # pylint: disable=redefined-outer-name
     mocker: pytest_mock.MockerFixture,
 ) -> None:
     # pylint: disable=unexpected-keyword-arg
@@ -410,12 +451,20 @@ async def test_post_status_sends_looming(
         ),
     )
     await post_status(
-        AllSubscriptionStatus(status_list=[new_detail]), {"fake": "authentication"}
+        AllSubscriptionStatus(status_list=[new_detail]),
+        {"fake": "authentication"},
+        test_db,
     )
 
     template_data: Dict[str, Any] = {}
-    sub_summary = await test_db.fetch_one(
-        get_subscriptions_summary(sub_id=new_detail.subscription_id, execute=False)
+    sub_summary = (
+        (
+            await test_db.execute(
+                get_subscriptions_summary(sub_id=new_detail.subscription_id)
+            )
+        )
+        .mappings()
+        .first()
     )
     if sub_summary:
         template_data["summary"] = dict(sub_summary)
@@ -442,12 +491,18 @@ async def test_post_status_sends_looming(
     )
     mock_user = mocker.MagicMock()
     mock_user.oid = ADMIN_OID
-    await post_approval(new_approval, mock_user)
+    await post_approval(new_approval, mock_user, test_db)
 
     assert mock_send_email.call_count == 2
     approval_data: Dict[str, Any] = {}
-    sub_summary = await test_db.fetch_one(
-        get_subscriptions_summary(sub_id=new_detail.subscription_id, execute=False)
+    sub_summary = (
+        (
+            await test_db.execute(
+                get_subscriptions_summary(sub_id=new_detail.subscription_id)
+            )
+        )
+        .mappings()
+        .first()
     )
     if sub_summary:
         approval_data["summary"] = dict(sub_summary)
@@ -468,12 +523,20 @@ async def test_post_status_sends_looming(
 
     # Post status again to catch the fact that there's now an expiry date
     await post_status(
-        AllSubscriptionStatus(status_list=[new_detail]), {"fake": "authentication"}
+        AllSubscriptionStatus(status_list=[new_detail]),
+        {"fake": "authentication"},
+        test_db,
     )
 
     expiry_data: Dict[str, Any] = {}
-    sub_summary = await test_db.fetch_one(
-        get_subscriptions_summary(sub_id=new_detail.subscription_id, execute=False)
+    sub_summary = (
+        (
+            await test_db.execute(
+                get_subscriptions_summary(sub_id=new_detail.subscription_id)
+            )
+        )
+        .mappings()
+        .first()
     )
     if sub_summary:
         expiry_data["summary"] = dict(sub_summary)
@@ -496,7 +559,7 @@ async def test_post_status_sends_looming(
 
 @pytest.mark.asyncio
 async def test_post_status_filters_roles(
-    test_db: Database,  # pylint: disable=redefined-outer-name
+    test_db: AsyncConnection,  # pylint: disable=redefined-outer-name
     mocker: pytest_mock.MockerFixture,
 ) -> None:
     # pylint: disable=unexpected-keyword-arg
@@ -521,7 +584,7 @@ async def test_post_status_filters_roles(
     mock_refresh = AsyncMock()
     mocker.patch("rctab.routers.accounting.status.refresh_desired_states", mock_refresh)
 
-    sub_id = UUID(int=373758)
+    sub_id = uuid4()
     old_status = SubscriptionStatus(
         subscription_id=sub_id,
         display_name="display_name",
@@ -550,11 +613,18 @@ async def test_post_status_filters_roles(
             status_list=[SubscriptionStatus(**old_status.model_dump())]
         ),
         {"fake": "authentication"},
+        test_db,
     )
 
     template_data: Dict[str, Any] = {}
-    sub_summary = await test_db.fetch_one(
-        get_subscriptions_summary(sub_id=old_status.subscription_id, execute=False)
+    sub_summary = (
+        (
+            await test_db.execute(
+                get_subscriptions_summary(sub_id=old_status.subscription_id)
+            )
+        )
+        .mappings()
+        .first()
     )
     if sub_summary:
         template_data["summary"] = dict(sub_summary)
@@ -607,11 +677,22 @@ async def test_post_status_filters_roles(
             status_list=[SubscriptionStatus(**newer_status.model_dump())]
         ),
         {"fake": "authentication"},
+        test_db,
     )
     # No new emails expected
     mock_send_email.assert_has_calls([welcome_call])
 
-    results = await test_db.fetch_all(select(subscription_details))
+    results = (
+        (
+            await test_db.execute(
+                select(subscription_details)
+                .where(subscription_details.c.subscription_id == sub_id)
+                .order_by(subscription_details.c.id)
+            )
+        )
+        .mappings()
+        .all()
+    )
     actual = [SubscriptionStatus(**dict(result)) for result in results]
 
     expected = [old_status, newer_status]
@@ -655,10 +736,17 @@ async def test_post_status_filters_roles(
             status_list=[SubscriptionStatus(**newest_status.model_dump())]
         ),
         {"fake": "authentication"},
+        test_db,
     )
 
-    sub_summary = await test_db.fetch_one(
-        get_subscriptions_summary(sub_id=newest_status.subscription_id, execute=False)
+    sub_summary = (
+        (
+            await test_db.execute(
+                get_subscriptions_summary(sub_id=newest_status.subscription_id)
+            )
+        )
+        .mappings()
+        .first()
     )
     if sub_summary:
         template_data["summary"] = dict(sub_summary)
@@ -705,8 +793,16 @@ async def test_post_status_filters_roles(
         ["principle1@example.com", "principle4@example.com"],
     )
 
-    results = await test_db.fetch_all(
-        select(subscription_details).order_by(subscription_details.c.id)
+    results = (
+        (
+            await test_db.execute(
+                select(subscription_details)
+                .where(subscription_details.c.subscription_id == sub_id)
+                .order_by(subscription_details.c.id)
+            )
+        )
+        .mappings()
+        .all()
     )
     actual = [SubscriptionStatus(**dict(result)) for result in results]
 

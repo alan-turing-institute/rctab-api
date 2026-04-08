@@ -1,5 +1,6 @@
 import datetime
-from unittest.mock import AsyncMock
+from unittest.mock import ANY, AsyncMock
+from uuid import uuid4
 
 import pytest
 import pytest_mock
@@ -8,8 +9,14 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from rctab_models.models import SubscriptionDetails
 
-from rctab.crud.models import database
 from tests.test_routes import api_calls, constants
+
+
+@pytest.fixture(autouse=True)
+def unique_test_sub_uuid(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Use a fresh subscription UUID per test for isolation."""
+    monkeypatch.setattr(constants, "TEST_SUB_UUID", uuid4())
+
 
 date_from = datetime.date.today()
 date_to = datetime.date.today() + datetime.timedelta(days=30)
@@ -188,7 +195,7 @@ def test_successful_allocations(
         api_calls.assert_subscription_status(client, expected_details)
 
         mock_send_email.assert_called_with(
-            database,
+            ANY,
             constants.TEST_SUB_UUID,
             "new_allocation.html",
             "New allocation for your Azure subscription:",
@@ -327,5 +334,5 @@ def test_topup_refreshes_desired_states(
         # Topping up a subscription should have the side effect of
         # refreshing the desired states
         mock_refresh.assert_called_once_with(
-            constants.ADMIN_UUID, [constants.TEST_SUB_UUID]
+            ANY, constants.ADMIN_UUID, [constants.TEST_SUB_UUID]
         )

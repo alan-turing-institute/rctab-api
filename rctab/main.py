@@ -14,20 +14,20 @@ from fastapi.openapi.utils import get_openapi
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from sqlalchemy.ext.asyncio.engine import AsyncConnection
 from starlette.exceptions import HTTPException
 from starlette.templating import _TemplateResponse
 
 from rctab.constants import __version__
 from rctab.crud.auth import (
     add_user,
-    load_cache,
     remove_cache,
     save_cache,
     token_admin_verified,
     token_verified,
     user_authenticated,
 )
-from rctab.crud.models import database
+from rctab.db import ENGINE, get_async_connection
 from rctab.exceptions import InsufficientPrivilegesException
 from rctab.logutils import set_log_handler
 from rctab.routers import accounting, frontend
@@ -40,7 +40,6 @@ templates = Jinja2Templates(directory=Path("rctab/templates"))
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     """Handle setup and teardown."""
-    await database.connect()
     settings = get_settings()
     logging.basicConfig(level=settings.log_level)
     set_log_handler()
@@ -56,7 +55,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     logger.warning("Shutting down server...")
 
     logger.info("Disconnecting from database")
-    await database.disconnect()
+    await ENGINE.dispose()
 
 
 app = FastAPI(
@@ -97,9 +96,7 @@ async def set_secure_headers(request: Any, call_next: Callable[[Any], Any]) -> A
 
 
 # Add session middleware and authentication routes
-fastapimsal.init_auth(
-    app, f_load_cache=load_cache, f_save_cache=save_cache, f_remove_cache=remove_cache
-)
+fastapimsal.init_auth(app, f_save_cache=save_cache, f_remove_cache=remove_cache)
 
 
 @app.exception_handler(UniqueViolationError)
@@ -117,11 +114,8 @@ async def unicorn_exception_handler(
 async def custom_404_handler(request: Request, __: HTTPException) -> _TemplateResponse:
     """Provide a more useful 404 page."""
     return templates.TemplateResponse(
-        "404.html",
-        {
-            "request": request,
-            "version": __version__,
-        },
+        request=request,
+        name="404.html",
         status_code=404,
     )
 
@@ -133,11 +127,8 @@ async def insufficient_privileges_exception_handler(
 ) -> _TemplateResponse:
     """Handle insufficient privileges to view a page."""
     return templates.TemplateResponse(
-        "insufficient_privileges.html",
-        {
-            "request": request,
-            "version": __version__,
-        },
+        request=request,
+        name="insufficient_privileges.html",
         status_code=403,
     )
 
@@ -151,16 +142,16 @@ app.mount(
 app.include_router(frontend.router, prefix="")
 app.include_router(accounting.router, prefix="/usage", tags=["Usage"])
 app.include_router(accounting.router, prefix="/status", tags=["Status"])
-app.include_router(
-    accounting.router, prefix=accounting.routes.PREFIX, tags=["Accounting"]
-)
 app.include_router(routes.router, prefix=routes.PREFIX, tags=["Accounting"])
 
 
 @app.post("/admin/request-access", response_class=JSONResponse)
-async def request_admin_access(token: Dict = Depends(token_verified)) -> Dict[str, str]:
+async def request_admin_access(
+    conn: AsyncConnection = Depends(get_async_connection),
+    token: Dict = Depends(token_verified),
+) -> Dict[str, str]:
     """Request administrator access."""
-    await add_user(token["oid"], token["preferred_username"])
+    await add_user(conn, token["oid"], token["preferred_username"])
     return {"detail": "Admin request made"}
 
 

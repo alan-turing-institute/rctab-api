@@ -118,7 +118,7 @@ docker create \
        --publish 5432:5432 \
        --env POSTGRES_PASSWORD=password \
        --volume "$(pwd)/.postgresdata":"/var/lib/postgresql/data" \
-       postgres:14
+       postgres:17
 ```
 
 This will create a container based on the latest PostgreSQL 14 image on DockerHub and

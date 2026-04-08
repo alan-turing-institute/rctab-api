@@ -8,11 +8,11 @@ from types import TracebackType
 from typing import Any, AsyncContextManager, Dict, List, Mapping, Optional, Tuple, Type
 from uuid import UUID
 
-from databases import Database
 from jinja2 import Environment, PackageLoader, exceptions
 from rctab_models.models import SubscriptionState, SubscriptionStatus
 from sendgrid import Mail, SendGridAPIClient
 from sqlalchemy import and_, asc, desc, func, insert, or_, select
+from sqlalchemy.engine import RowMapping
 from sqlalchemy.sql import Select
 
 from rctab.constants import (
@@ -31,6 +31,7 @@ from rctab.crud.accounting_models import (
     subscription,
     subscription_details,
 )
+from rctab.db import AsyncConnection
 from rctab.routers.accounting.routes import (
     get_subscription_details,
     get_subscriptions,
@@ -45,8 +46,26 @@ from rctab.settings import get_settings
 logger = logging.getLogger(__name__)
 
 
+async def _fetch_one(conn: AsyncConnection, query: Any) -> Optional[RowMapping]:
+    """Execute a query and return the first row as a mapping."""
+    result = await conn.execute(query)
+    return result.mappings().first()
+
+
+async def _fetch_all(conn: AsyncConnection, query: Any) -> List[RowMapping]:
+    """Execute a query and return all rows as mappings."""
+    result = await conn.execute(query)
+    return list(result.mappings().all())
+
+
+async def _execute(conn: AsyncConnection, statement: Any) -> Any:
+    """Execute an INSERT/UPDATE/DELETE statement and return a scalar if available."""
+    result = await conn.execute(statement)
+    return result.scalar_one_or_none() if result.returns_rows else None
+
+
 async def get_sub_email_recipients(
-    database: Database, subscription_id: UUID
+    database: AsyncConnection, subscription_id: UUID
 ) -> List[str]:
     """Get the email adresses of users that should be emailed about this subscription.
 
@@ -57,8 +76,8 @@ async def get_sub_email_recipients(
     Returns:
         The email addresses of the users that should receive the email.
     """
-    query = get_subscription_details(subscription_id, execute=False)
-    results = await database.fetch_one(query)
+    query = get_subscription_details(subscription_id)
+    results = await _fetch_one(database, query)
     if results and results["role_assignments"]:
         assignments = results["role_assignments"]
         users_to_notify = [
@@ -145,7 +164,7 @@ def send_with_sendgrid(
 
 
 async def send_generic_email(
-    database: Database,
+    database: AsyncConnection,
     subscription_id: UUID,
     template_name: str,
     subject_prefix: str,
@@ -173,8 +192,8 @@ async def send_generic_email(
             )
             return
 
-    sub_summary = await database.fetch_one(
-        get_subscriptions_summary(sub_id=subscription_id, execute=False)
+    sub_summary = await _fetch_one(
+        database, get_subscriptions_summary(sub_id=subscription_id)
     )
     subscription_name = None
     if sub_summary:
@@ -210,7 +229,7 @@ async def send_generic_email(
                 "extra_info": template_data.get("extra_info"),
             }
         )
-        await database.execute(insert_statement)
+        await _execute(database, insert_statement)
     except MissingEmailParamsError as error:
         insert_statement = (
             insert(failed_emails)
@@ -226,7 +245,7 @@ async def send_generic_email(
             )
             .returning(failed_emails.c.id)
         )
-        row = await database.execute(insert_statement)
+        row = await _execute(database, insert_statement)
         logger.error(
             "'%s' email failed to send to subscription '%s' due to missing "
             "api_key or send email address.\n"
@@ -239,7 +258,7 @@ async def send_generic_email(
 
 
 async def send_expiry_looming_emails(
-    database: Database,
+    database: AsyncConnection,
     subscription_expiry_dates: List[Tuple[UUID, date, SubscriptionState]],
 ) -> None:
     """Send an email to notify users that a subscription is nearing its expiry date.
@@ -257,8 +276,8 @@ async def send_expiry_looming_emails(
         expiry_date,
         status,
     ) in subscription_expiry_dates:
-        row = await database.fetch_one(
-            email_query.where(emails.c.subscription_id == subscription_id)
+        row = await _fetch_one(
+            database, email_query.where(emails.c.subscription_id == subscription_id)
         )
         last_email_date = row["time_created"].date() if row else None
 
@@ -276,7 +295,7 @@ async def send_expiry_looming_emails(
 
 
 async def send_overbudget_emails(
-    database: Database,
+    database: AsyncConnection,
     overbudget_subs: List[Tuple[UUID, float]],
 ) -> None:
     """Send an email to notify users that subscription is overbudget.
@@ -290,8 +309,8 @@ async def send_overbudget_emails(
     email_query = sub_usage_emails()
 
     for subscription_id, percentage_used in overbudget_subs:
-        row = await database.fetch_one(
-            email_query.where(emails.c.subscription_id == subscription_id)
+        row = await _fetch_one(
+            database, email_query.where(emails.c.subscription_id == subscription_id)
         )
         last_email_date = row["time_created"].date() if row else None
 
@@ -401,13 +420,13 @@ def should_send_expiry_email(
     return False
 
 
-async def check_for_subs_nearing_expiry(database: Database) -> None:
+async def check_for_subs_nearing_expiry(database: AsyncConnection) -> None:
     """Check for subscriptions that should trigger an email as they near expiry.
 
     Args:
         database: Holds a record of the subscription, including its expiry date.
     """
-    summary = get_subscriptions_summary(execute=False).alias()
+    summary = get_subscriptions_summary().alias()
 
     # We don't _have_ to filter on approved_to, but it might make things slightly quicker
     expiry_query = (
@@ -420,7 +439,7 @@ async def check_for_subs_nearing_expiry(database: Database) -> None:
         )
         .order_by(summary.c.approved_to)
     )
-    rows = await database.fetch_all(expiry_query)
+    rows = await _fetch_all(database, expiry_query)
 
     within_thirty_days = [
         (row["subscription_id"], row["approved_to"], row["status"]) for row in rows
@@ -429,7 +448,7 @@ async def check_for_subs_nearing_expiry(database: Database) -> None:
         await send_expiry_looming_emails(database, within_thirty_days)
 
 
-async def check_for_overbudget_subs(database: Database) -> None:
+async def check_for_overbudget_subs(database: AsyncConnection) -> None:
     """Check for subscriptions that are overbudget and should trigger an email.
 
     Args:
@@ -437,7 +456,7 @@ async def check_for_overbudget_subs(database: Database) -> None:
     """
     overbudget_subs = []
 
-    summary = get_subscriptions_summary(execute=False).alias()
+    summary = get_subscriptions_summary().alias()
 
     overbudget_query = (
         select(summary.c.subscription_id, summary.c.allocated, summary.c.total_cost)
@@ -455,7 +474,7 @@ async def check_for_overbudget_subs(database: Database) -> None:
         )
     )
 
-    for row in await database.fetch_all(overbudget_query):
+    for row in await _fetch_all(database, overbudget_query):
         if (
             row["allocated"] is not None
             and row["allocated"] != 0
@@ -474,7 +493,7 @@ async def check_for_overbudget_subs(database: Database) -> None:
 class UsageEmailContextManager(AbstractAsyncContextManager):
     """Compare usage at enter and exit, sending emails as necessary."""
 
-    def __init__(self, database: Database):
+    def __init__(self, database: AsyncConnection):
         """Initialise the context manager."""
         self.database = database
         self.thresholds = (0.50, 0.75, 0.9, 0.95)
@@ -487,8 +506,8 @@ class UsageEmailContextManager(AbstractAsyncContextManager):
         logger.info("Getting usage snapshot")
         start = datetime.now()
 
-        summary = get_subscriptions_summary(execute=False).alias()
-        summaries = await self.database.fetch_all(summary)
+        summary = get_subscriptions_summary().alias()
+        summaries = await _fetch_all(self.database, select(summary))
 
         self.at_enter = []
         for lower in self.thresholds:
@@ -517,8 +536,8 @@ class UsageEmailContextManager(AbstractAsyncContextManager):
         logger.info("Checking usage against thresholds")
         start = datetime.now()
 
-        summary = get_subscriptions_summary(execute=False).alias()
-        summaries = await self.database.fetch_all(summary)
+        summary = get_subscriptions_summary().alias()
+        summaries = await _fetch_all(self.database, select(summary))
 
         for i, lower in enumerate(self.thresholds):
             upper = (
@@ -556,7 +575,9 @@ class UsageEmailContextManager(AbstractAsyncContextManager):
         return False
 
 
-def prepare_welcome_email(database: Database, new_status: SubscriptionStatus) -> Dict:
+def prepare_welcome_email(
+    database: AsyncConnection, new_status: SubscriptionStatus
+) -> Dict:
     """Prepare arguments for sending a welcome email for a new_status, if necessary.
 
     Given a new and an old SubscriptionStatus, return a dictionary of arguments that can be given
@@ -575,7 +596,7 @@ def prepare_welcome_email(database: Database, new_status: SubscriptionStatus) ->
 
 
 def prepare_subscription_status_email(
-    database: Database,
+    database: AsyncConnection,
     new_status: SubscriptionStatus,
     old_status: SubscriptionStatus,
 ) -> Dict:
@@ -601,7 +622,7 @@ def prepare_subscription_status_email(
 
 
 def prepare_roles_email(
-    database: Database,
+    database: AsyncConnection,
     new_status: SubscriptionStatus,
     old_status: SubscriptionStatus,
 ) -> Dict[Any, Any]:
@@ -644,7 +665,7 @@ def prepare_roles_email(
 
 
 async def send_status_change_emails(
-    database: Database,
+    database: AsyncConnection,
     new_status: SubscriptionStatus,
     old_status: Optional[SubscriptionStatus] = None,
 ) -> None:
@@ -672,18 +693,18 @@ async def send_status_change_emails(
 
 
 async def get_new_subscriptions_since(
-    database: Database, since_this_datetime: datetime
+    database: AsyncConnection, since_this_datetime: datetime
 ) -> List:
     """Returns a list of all the subscriptions created since the provided datetime."""
     subscription_query = select(subscription).where(
         subscription.c.time_created > since_this_datetime
     )
-    rows = await database.fetch_all(subscription_query)
+    rows = await _fetch_all(database, subscription_query)
     return rows
 
 
 async def get_subscription_details_since(
-    database: Database, subscription_id: UUID, since_this_datetime: datetime
+    database: AsyncConnection, subscription_id: UUID, since_this_datetime: datetime
 ) -> Optional[Tuple[dict, dict]]:
     """Get the oldest and newest rows of the subscription details table.
 
@@ -704,14 +725,14 @@ async def get_subscription_details_since(
         .where(subscription_details.c.time_created > since_this_datetime)
         .order_by(asc(subscription_details.c.id))
     )
-    rows = await database.fetch_all(status_query)
+    rows = await _fetch_all(database, status_query)
     if not rows:
         return None
-    return {**rows[0]._mapping}, {**rows[-1]._mapping}
+    return dict(rows[0]), dict(rows[-1])
 
 
 async def get_emails_sent_since(
-    database: Database, since_this_datetime: datetime
+    database: AsyncConnection, since_this_datetime: datetime
 ) -> List[Dict]:
     """Get information about emails sent since a given time.
 
@@ -730,8 +751,8 @@ async def get_emails_sent_since(
         .where(emails.c.type != EMAIL_TYPE_SUMMARY)
         .where(emails.c.time_created > since_this_datetime)
     )
-    rows = await database.fetch_all(emails_query)
-    all_emails_sent: List[dict] = [{**row._mapping} for row in rows]
+    rows = await _fetch_all(database, emails_query)
+    all_emails_sent: List[dict] = [dict(row) for row in rows]
 
     emails_by_subscription = []
     for key, value in groupby(all_emails_sent, extract_sub_id):
@@ -742,7 +763,7 @@ async def get_emails_sent_since(
             .limit(1)
         )
 
-        name_rows = await database.fetch_all(name_query)
+        name_rows = await _fetch_all(database, name_query)
         if name_rows:
             name = name_rows[0]["name"]
             sub_dict = {"subscription_id": key, "name": name}
@@ -761,7 +782,7 @@ async def get_emails_sent_since(
 
 
 async def get_finance_entries_since(
-    database: Database, since_this_datetime: datetime
+    database: AsyncConnection, since_this_datetime: datetime
 ) -> List[dict]:
     """Get finance info grouped by subscription id.
 
@@ -774,8 +795,8 @@ async def get_finance_entries_since(
         items.
     """
     finance_query = select(finance).where(finance.c.time_created > since_this_datetime)
-    rows = await database.fetch_all(finance_query)
-    all_new_entries = [{**row._mapping} for row in rows]
+    rows = await _fetch_all(database, finance_query)
+    all_new_entries = [dict(row) for row in rows]
     entries_by_subscription = []
     for key, value in groupby(all_new_entries, extract_sub_id):
         name_query = (
@@ -785,7 +806,7 @@ async def get_finance_entries_since(
             .limit(1)
         )
 
-        name_rows = await database.fetch_all(name_query)
+        name_rows = await _fetch_all(database, name_query)
         if name_rows:
             name = name_rows[0]["name"]
             sub_dict = {"subscription_id": key, "name": name}
@@ -808,7 +829,7 @@ def extract_sub_id(my_dict: Mapping) -> UUID:
 
 
 async def prepare_summary_email(
-    database: Database, since_this_datetime: Optional[datetime] = None
+    database: AsyncConnection, since_this_datetime: Optional[datetime] = None
 ) -> dict:
     """Prepares and returns data needed to send summary email.
 
@@ -831,14 +852,14 @@ async def prepare_summary_email(
 
     # get details of new subscriptions
     for sub_id in new_subscriptions:
-        query = get_subscriptions_summary(sub_id, execute=False)
-        summary = await database.fetch_one(query)
+        query = get_subscriptions_summary(sub_id)
+        summary = await _fetch_one(database, query)
         if summary:
-            new_subscriptions_data += [{**summary._mapping}]
+            new_subscriptions_data.append(dict(summary))
 
     # get info about status changes and approvals/allocations
-    query = get_subscriptions(execute=False)
-    all_subscriptions = await database.fetch_all(query)
+    query = get_subscriptions()
+    all_subscriptions = await _fetch_all(database, query)
     for sub in all_subscriptions:
         sub_details_since = await get_subscription_details_since(
             database, sub["subscription_id"], since_this_datetime
@@ -866,8 +887,8 @@ async def prepare_summary_email(
         )
 
         if allocations_since or approvals_since:
-            query = get_subscription_details(sub["subscription_id"], execute=False)
-            sub_details = await database.fetch_one(query)
+            query = get_subscription_details(sub["subscription_id"])
+            sub_details = await _fetch_one(database, query)
             new_approvals_and_allocations += [
                 {
                     "allocations": allocations_since,
@@ -900,7 +921,7 @@ async def prepare_summary_email(
 
 
 async def get_allocations_since(
-    database: Database, subscription_id: UUID, since_this_datetime: datetime
+    database: AsyncConnection, subscription_id: UUID, since_this_datetime: datetime
 ) -> List:
     """Get new allocations since given datetime.
 
@@ -917,13 +938,13 @@ async def get_allocations_since(
         .where(allocations.c.subscription_id == subscription_id)
         .where(allocations.c.time_created > since_this_datetime)
     )
-    rows = await database.fetch_all(query)
-    allocations_since = [r[0] for r in rows]
+    rows = await _fetch_all(database, query)
+    allocations_since = [r["amount"] for r in rows]
     return allocations_since
 
 
 async def get_approvals_since(
-    database: Database, subscription_id: UUID, since_this_datetime: datetime
+    database: AsyncConnection, subscription_id: UUID, since_this_datetime: datetime
 ) -> List:
     """Get new approvals since given datetime.
 
@@ -940,8 +961,8 @@ async def get_approvals_since(
         .where(approvals.c.subscription_id == subscription_id)
         .where(approvals.c.time_created > since_this_datetime)
     )
-    rows = await database.fetch_all(query)
-    approvals_since = [r[0] for r in rows]
+    rows = await _fetch_all(database, query)
+    approvals_since = [r["amount"] for r in rows]
     return approvals_since
 
 

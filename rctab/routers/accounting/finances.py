@@ -4,84 +4,101 @@ import calendar
 import datetime
 from typing import Any, List
 
-from asyncpg import ForeignKeyViolationError
 from fastapi import Depends, HTTPException
 from rctab_models.models import Finance, FinanceWithID, UserRBAC
 from sqlalchemy import delete, desc, insert, select, update
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio.engine import AsyncConnection
 
 from rctab.crud import accounting_models
 from rctab.crud.accounting_models import cost_recovery, cost_recovery_log, finance
 from rctab.crud.auth import token_admin_verified
-from rctab.crud.models import database
+from rctab.db import get_async_connection
 from rctab.routers.accounting.routes import SubscriptionItem, router
 
 
 async def check_create_finance(
     new_finance: Finance,  # pylint: disable=redefined-outer-name
-) -> None:
+    conn: AsyncConnection,
+) -> Finance:
     """Check whether the new finance row is valid."""
-    new_finance.date_from = get_start_month(new_finance.date_from)
-    new_finance.date_to = get_end_month(new_finance.date_to)
+    normalized_finance = Finance(**new_finance.model_dump())
+    normalized_finance.date_from = get_start_month(normalized_finance.date_from)
+    normalized_finance.date_to = get_end_month(normalized_finance.date_to)
 
-    if new_finance.date_from > new_finance.date_to:
+    if normalized_finance.date_from > normalized_finance.date_to:
         raise HTTPException(
             status_code=400,
-            detail=f"Date from ({str(new_finance.date_from)}) cannot be greater than date to ({str(new_finance.date_to)})",
+            detail=f"Date from ({str(normalized_finance.date_from)}) cannot be greater than date to ({str(normalized_finance.date_to)})",
         )
 
-    if new_finance.amount < 0:
+    if normalized_finance.amount < 0:
         raise HTTPException(
             status_code=400,
-            detail=f"Amount should not be negative but was {new_finance.amount}",
+            detail=f"Amount should not be negative but was {normalized_finance.amount}",
         )
 
     query = (
         select(cost_recovery)
-        .where(cost_recovery.c.subscription_id == new_finance.subscription_id)
+        .where(cost_recovery.c.subscription_id == normalized_finance.subscription_id)
         .order_by(desc(cost_recovery.c.id))
     )
-    last_cost_recovery = await database.fetch_one(query)
+    last_cost_recovery = (await conn.execute(query)).mappings().first()
     if last_cost_recovery:
         last_cost_recovery_dict = {**dict(last_cost_recovery)}
         last_recovery_month = last_cost_recovery_dict["month"]
 
         # we can't add new finance row for a time period that has been recovered already
-        if new_finance.date_from <= last_recovery_month:
+        if normalized_finance.date_from <= last_recovery_month:
             raise HTTPException(
                 status_code=400,
                 detail=f"We have already recovered costs until {str(last_cost_recovery['month'])} "
-                + f"for the subscription {str(new_finance.subscription_id)}, "
+                + f"for the subscription {str(normalized_finance.subscription_id)}, "
                 + "please choose a later start date",
             )
+    return normalized_finance
 
 
 @router.get("/finance", response_model=List[FinanceWithID])
 async def get_subscription_finances(
-    subscription: SubscriptionItem, _: UserRBAC = Depends(token_admin_verified)
+    subscription: SubscriptionItem,
+    _: UserRBAC = Depends(token_admin_verified),
+    conn: AsyncConnection = Depends(get_async_connection),
 ) -> List[FinanceWithID]:
     """Return a list of Finance objects for a subscription."""
-    return [
-        FinanceWithID(**dict(x))
-        for x in await database.fetch_all(
-            select(finance).where(finance.c.subscription_id == subscription.sub_id)
+    rows = (
+        (
+            await conn.execute(
+                select(finance).where(finance.c.subscription_id == subscription.sub_id)
+            )
         )
-    ]
+        .mappings()
+        .all()
+    )
+    return [FinanceWithID(**dict(x)) for x in rows]
 
 
 @router.post("/finances", status_code=201, response_model=FinanceWithID)
 async def post_finance(
-    new_finance: Finance, user: UserRBAC = Depends(token_admin_verified)
+    new_finance: Finance,
+    user: UserRBAC = Depends(token_admin_verified),
+    conn: AsyncConnection = Depends(get_async_connection),
 ) -> FinanceWithID:
     """Create a new finance record."""
-    await check_create_finance(new_finance)
+    normalized_finance = await check_create_finance(new_finance, conn)
 
-    async with database.transaction():
-        new_primary_key = await database.execute(
-            insert(accounting_models.finance),
-            {"admin": user.oid, **new_finance.model_dump()},
-        )
-        new_row = await database.fetch_one(
-            select(finance).where(finance.c.id == new_primary_key)
+    async with conn.begin_nested():
+        new_primary_key = (
+            await conn.execute(
+                insert(accounting_models.finance)
+                .values({"admin": user.oid, **normalized_finance.model_dump()})
+                .returning(finance.c.id)
+            )
+        ).scalar_one()
+        new_row = (
+            (await conn.execute(select(finance).where(finance.c.id == new_primary_key)))
+            .mappings()
+            .first()
         )
         assert new_row
         newly_created_finance = FinanceWithID(**dict(new_row))
@@ -89,7 +106,9 @@ async def post_finance(
     return newly_created_finance
 
 
-async def check_update_finance(new_finance: FinanceWithID) -> None:
+async def check_update_finance(
+    new_finance: FinanceWithID, conn: AsyncConnection
+) -> None:
     """Check that updating a finance row is allowed."""
     if new_finance.date_to <= new_finance.date_from:
         raise HTTPException(status_code=400, detail="date_to <= date_from")
@@ -97,8 +116,10 @@ async def check_update_finance(new_finance: FinanceWithID) -> None:
     if new_finance.amount < 0:
         raise HTTPException(status_code=400, detail="amount < 0")
 
-    old_finance_row = await database.fetch_one(
-        select(finance).where(finance.c.id == new_finance.id)
+    old_finance_row = (
+        (await conn.execute(select(finance).where(finance.c.id == new_finance.id)))
+        .mappings()
+        .first()
     )
     assert old_finance_row
     old_finance = FinanceWithID(**dict(old_finance_row))
@@ -107,7 +128,7 @@ async def check_update_finance(new_finance: FinanceWithID) -> None:
         raise HTTPException(status_code=400, detail="Subscription IDs should match")
 
     query = select(cost_recovery_log).order_by(desc(cost_recovery_log.c.month))
-    last_cost_recovery = await database.fetch_one(query)
+    last_cost_recovery = (await conn.execute(query)).mappings().first()
     if last_cost_recovery:
         last_cost_recovery_dict = {**dict(last_cost_recovery)}
         last_recovery_month = last_cost_recovery_dict["month"]
@@ -141,14 +162,15 @@ async def update_finance(
     finance_id: int,
     new_finance: FinanceWithID,
     user: UserRBAC = Depends(token_admin_verified),
+    conn: AsyncConnection = Depends(get_async_connection),
 ) -> Any:
     """Update an existing Finance record."""
     assert finance_id == new_finance.id
 
-    await check_update_finance(new_finance)
+    await check_update_finance(new_finance, conn)
 
-    async with database.transaction():
-        await database.execute(
+    async with conn.begin_nested():
+        await conn.execute(
             update(finance)
             .where(finance.c.id == finance_id)
             .where(finance.c.subscription_id == new_finance.subscription_id)
@@ -160,10 +182,16 @@ async def update_finance(
 
 @router.get("/finances/{finance_id}", response_model=FinanceWithID)
 async def get_finance(
-    finance_id: int, _: UserRBAC = Depends(token_admin_verified)
+    finance_id: int,
+    _: UserRBAC = Depends(token_admin_verified),
+    conn: AsyncConnection = Depends(get_async_connection),
 ) -> FinanceWithID:
     """Returns a Finance if given a finance table ID."""
-    row = await database.fetch_one(select(finance).where(finance.c.id == finance_id))
+    row = (
+        (await conn.execute(select(finance).where(finance.c.id == finance_id)))
+        .mappings()
+        .first()
+    )
     if not row:
         raise HTTPException(status_code=404, detail="Finance not found")
     return FinanceWithID(**dict(row))
@@ -174,10 +202,13 @@ async def delete_finance(
     finance_id: int,
     subscription: SubscriptionItem,
     _: UserRBAC = Depends(token_admin_verified),
+    conn: AsyncConnection = Depends(get_async_connection),
 ) -> FinanceWithID:
     """Deletes a Finance record."""
-    finance_row = await database.fetch_one(
-        select(finance).where(finance.c.id == finance_id)
+    finance_row = (
+        (await conn.execute(select(finance).where(finance.c.id == finance_id)))
+        .mappings()
+        .first()
     )
 
     # Check that we recognise this finance row
@@ -189,10 +220,15 @@ async def delete_finance(
         raise HTTPException(status_code=404, detail="Subscription ID does not match")
 
     try:
-        await database.execute(delete(finance).where(finance.c.id == finance_id))
-    except ForeignKeyViolationError:
-        # This is almost certainly the reason and is a more helpful message
-        raise HTTPException(status_code=409, detail="Costs have already been recovered")
+        await conn.execute(delete(finance).where(finance.c.id == finance_id))
+    except IntegrityError as exc:
+        sqlstate = getattr(exc.orig, "sqlstate", None)
+        if sqlstate == "23503":
+            # Foreign key violation; this finance row has related cost_recovery rows.
+            raise HTTPException(
+                status_code=409, detail="Costs have already been recovered"
+            ) from exc
+        raise
 
     return FinanceWithID(**dict(finance_row))
 

@@ -11,7 +11,7 @@ from sqlalchemy import insert
 from rctab.constants import EMAIL_TYPE_SUB_APPROVAL
 from rctab.crud import accounting_models
 from rctab.crud.auth import token_admin_verified
-from rctab.crud.models import database
+from rctab.db import AsyncConnection, get_async_connection
 from rctab.routers.accounting import send_emails
 from rctab.routers.accounting.desired_states import refresh_desired_states
 from rctab.routers.accounting.routes import (
@@ -104,15 +104,14 @@ def check_negative_approval(
         )
 
 
-async def check_approval(approval: Approval) -> None:
+async def check_approval(conn: AsyncConnection, approval: Approval) -> None:
     """Checks whether approval is valid."""
     # Get complete summary of subscription
-    subscription_summary = await get_subscriptions_summary(sub_id=approval.sub_id)
-
-    # Get the first row (should only be one)
-    # pylint: disable=protected-access
-    subscription_summary = SubscriptionSummary(**subscription_summary[0]._mapping)
-    # pylint: enable=protected-access
+    result = await conn.execute(get_subscriptions_summary(sub_id=approval.sub_id))
+    subscription_summary_row = result.mappings().first()
+    if subscription_summary_row is None:
+        raise HTTPException(status_code=404, detail="Subscription not found")
+    subscription_summary = SubscriptionSummary(**dict(subscription_summary_row))
 
     current_date = datetime.date.today()
 
@@ -148,30 +147,34 @@ async def check_approval(approval: Approval) -> None:
 
 @router.get("/approvals", response_model=List[ApprovalListItem])
 async def get_subscription_approvals(
-    subscription: SubscriptionItem, _: UserRBAC = Depends(token_admin_verified)
+    subscription: SubscriptionItem,
+    _: UserRBAC = Depends(token_admin_verified),
+    conn: AsyncConnection = Depends(get_async_connection),
 ) -> List[ApprovalListItem]:
     """Returns a list approvals for a subscription."""
-    rows = await get_approvals(subscription.sub_id)
+    rows = (await conn.execute(get_approvals(subscription.sub_id))).mappings().all()
     return [ApprovalListItem(**dict(x)) for x in rows]
 
 
 @router.post("/approve", status_code=200)
 async def post_approval(
-    approval: Approval, user: UserRBAC = Depends(token_admin_verified)
+    approval: Approval,
+    user: UserRBAC = Depends(token_admin_verified),
+    conn: AsyncConnection = Depends(get_async_connection),
 ) -> Any:
     """Creates a new approval.
 
     If the allocate flag is on, a corresponding allocation entry is created as well.
     """
-    await check_approval(approval)
+    await check_approval(conn, approval)
 
-    async with database.transaction():
+    async with conn.begin_nested():
         if approval.force:
             ticket = approval.ticket + " (forced)"
         else:
             ticket = approval.ticket
 
-        await database.execute(
+        await conn.execute(
             insert(accounting_models.approvals),
             {
                 "subscription_id": approval.sub_id,
@@ -185,7 +188,7 @@ async def post_approval(
         )
 
         if approval.allocate:
-            await database.execute(
+            await conn.execute(
                 insert(accounting_models.allocations),
                 {
                     "subscription_id": approval.sub_id,
@@ -197,7 +200,7 @@ async def post_approval(
             )
 
     await send_emails.send_generic_email(
-        database,
+        conn,
         approval.sub_id,
         "new_approval.html",
         "New approval for your Azure subscription:",
@@ -205,6 +208,6 @@ async def post_approval(
         approval.model_dump(),
     )
 
-    await refresh_desired_states(user.oid, [approval.sub_id])
+    await refresh_desired_states(conn, user.oid, [approval.sub_id])
 
     return {"status": "success", "detail": "approval created"}

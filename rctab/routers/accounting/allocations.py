@@ -8,7 +8,7 @@ from sqlalchemy import insert
 
 from rctab.crud import accounting_models
 from rctab.crud.auth import token_admin_verified
-from rctab.crud.models import database
+from rctab.db import AsyncConnection, get_async_connection
 from rctab.routers.accounting import send_emails
 from rctab.routers.accounting.desired_states import refresh_desired_states
 from rctab.routers.accounting.routes import (
@@ -20,15 +20,13 @@ from rctab.routers.accounting.routes import (
 )
 
 
-async def check_allocation(allocation: Allocation) -> None:
+async def check_allocation(conn: AsyncConnection, allocation: Allocation) -> None:
     """Check whether allocation is valid."""
-    # Get complete summary of subscription
-    subscription_summary = await get_subscriptions_summary(sub_id=allocation.sub_id)
-
-    # Get the first row (should only be one)
-    # pylint: disable=protected-access
-    subscription_summary = SubscriptionSummary(**subscription_summary[0]._mapping)
-    # pylint: enable=protected-access
+    result = await conn.execute(get_subscriptions_summary(sub_id=allocation.sub_id))
+    subscription_summary_row = result.mappings().first()
+    if subscription_summary_row is None:
+        raise HTTPException(status_code=404, detail="Subscription not found")
+    subscription_summary = SubscriptionSummary(**dict(subscription_summary_row))
 
     if not subscription_summary.approved_to:
         raise HTTPException(
@@ -71,13 +69,15 @@ async def check_allocation(allocation: Allocation) -> None:
 
 @router.post("/topup")
 async def post_subscription_allocation(
-    allocation: Allocation, user: UserRBAC = Depends(token_admin_verified)
+    allocation: Allocation,
+    user: UserRBAC = Depends(token_admin_verified),
+    conn: AsyncConnection = Depends(get_async_connection),
 ) -> Any:
     """Create a new allocation."""
-    await check_allocation(allocation)
+    await check_allocation(conn, allocation)
 
-    async with database.transaction():
-        await database.execute(
+    async with conn.begin_nested():
+        await conn.execute(
             insert(accounting_models.allocations),
             {
                 "subscription_id": allocation.sub_id,
@@ -89,7 +89,7 @@ async def post_subscription_allocation(
         )
 
     await send_emails.send_generic_email(
-        database,
+        conn,
         allocation.sub_id,
         "new_allocation.html",
         "New allocation for your Azure subscription:",
@@ -97,7 +97,7 @@ async def post_subscription_allocation(
         allocation.model_dump(),
     )
 
-    await refresh_desired_states(user.oid, [allocation.sub_id])
+    await refresh_desired_states(conn, user.oid, [allocation.sub_id])
 
     return {
         "status": "success",
@@ -107,8 +107,10 @@ async def post_subscription_allocation(
 
 @router.get("/allocations", response_model=List[AllocationListItem])
 async def get_subscription_allocations(
-    subscription: SubscriptionItem, _: UserRBAC = Depends(token_admin_verified)
+    subscription: SubscriptionItem,
+    _: UserRBAC = Depends(token_admin_verified),
+    conn: AsyncConnection = Depends(get_async_connection),
 ) -> List[AllocationListItem]:
     """Return a list of allocations for a subscription."""
-    rows = await get_allocations(subscription.sub_id)
+    rows = (await conn.execute(get_allocations(subscription.sub_id))).mappings().all()
     return [AllocationListItem(**dict(x)) for x in rows]

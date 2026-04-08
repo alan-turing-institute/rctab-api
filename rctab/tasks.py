@@ -20,7 +20,7 @@ from celery.signals import after_setup_logger, after_setup_task_logger
 from opencensus.ext.azure.log_exporter import AzureLogHandler
 
 from rctab.constants import ADMIN_OID
-from rctab.crud.models import database
+from rctab.db import ENGINE
 from rctab.logutils import CustomDimensionsFilter
 from rctab.routers.accounting.abolishment import abolish_subscriptions
 from rctab.routers.accounting.summary_emails import (
@@ -80,16 +80,13 @@ def setup_task_logger(logger: Any, *_: Any, **__: Any) -> None:  # type: ignore[
 
 async def send() -> None:
     """Connect to the database and send the daily summary email."""
-    await database.connect()
-    try:
+    async with ENGINE.begin() as conn:
         recipients = get_settings().admin_email_recipients
         if recipients:
-            time_last_summary_email = await get_timestamp_last_summary_email()
-            await send_summary_email(recipients, time_last_summary_email)
+            time_last_summary_email = await get_timestamp_last_summary_email(conn)
+            await send_summary_email(recipients, conn, time_last_summary_email)
         else:
             my_logger.warning("No recipients for summary email found")
-    finally:
-        await database.disconnect()
 
 
 @celery_app.task
@@ -100,11 +97,8 @@ def run_send_summary_email() -> None:
 
 async def abolish() -> None:
     """Connect to the database and run the abolish function."""
-    await database.connect()
-    try:
-        await abolish_subscriptions(UUID(ADMIN_OID))
-    finally:
-        await database.disconnect()
+    async with ENGINE.begin() as conn:
+        await abolish_subscriptions(conn, UUID(ADMIN_OID))
 
 
 @celery_app.task

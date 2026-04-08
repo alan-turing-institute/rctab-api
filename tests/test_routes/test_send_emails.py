@@ -1,4 +1,4 @@
-# pylint: disable=too-many-lines
+# pylint: disable=too-many-lines,redefined-outer-name
 import random
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Generator
@@ -7,12 +7,11 @@ from uuid import UUID
 
 import pytest
 import pytest_mock
-from asyncpg import Record
-from databases import Database
 from jinja2 import Environment, PackageLoader, StrictUndefined
 from pytest_mock import MockerFixture
 from rctab_models.models import AllUsage, RoleAssignment, SubscriptionState, Usage
 from sqlalchemy import insert, select
+from sqlalchemy.ext.asyncio.engine import AsyncConnection
 from sqlalchemy.sql import Select
 
 from rctab.constants import (
@@ -115,7 +114,7 @@ def jinja2_environment() -> Generator[Environment, None, None]:
 @pytest.mark.asyncio
 async def test_usage_emails(
     mocker: pytest_mock.MockerFixture,
-    test_db: Database,  # pylint: disable=redefined-outer-name
+    test_db: AsyncConnection,  # pylint: disable=redefined-outer-name
 ) -> None:
     """Test that we send the right emails to the right Azure users."""
 
@@ -183,7 +182,7 @@ async def test_usage_emails(
     mock_refresh = AsyncMock()
     mocker.patch("rctab.routers.accounting.usage.refresh_desired_states", mock_refresh)
 
-    resp = await post_usage(post_data, {"": ""})
+    resp = await post_usage(post_data, {"": ""}, test_db)
 
     assert resp.status == "successfully uploaded 3 rows"
 
@@ -284,7 +283,7 @@ def test_no_sendgrid_api_key(mocker: MockerFixture) -> None:
 
 @pytest.mark.asyncio
 async def test_get_sub_email_recipients(
-    test_db: Database,  # pylint: disable=redefined-outer-name
+    test_db: AsyncConnection,  # pylint: disable=redefined-outer-name
     mocker: MockerFixture,
 ) -> None:
     subscription_id = UUID(int=random.randint(0, (2**32) - 1))
@@ -367,7 +366,8 @@ async def test_get_sub_email_recipients(
 
 @pytest.mark.asyncio
 async def test_send_generic_emails(
-    test_db: Database, mocker: MockerFixture  # pylint: disable=redefined-outer-name
+    test_db: AsyncConnection,
+    mocker: MockerFixture,  # pylint: disable=redefined-outer-name
 ) -> None:
     approved_to = date.today() + timedelta(days=10)
     subscription_id = await create_subscription(
@@ -448,14 +448,14 @@ async def test_send_generic_emails(
     email_query = select(accounting_models.emails).where(
         accounting_models.emails.c.type == EMAIL_TYPE_SUB_APPROVAL
     )
-    email_results = await test_db.fetch_all(email_query)
-    email_list = [tuple(x) for x in email_results]
+    email_list = (await test_db.execute(email_query)).mappings().all()
     assert len(email_list) == 1
 
 
 @pytest.mark.asyncio
 async def test_send_generic_emails_no_name(
-    test_db: Database, mocker: MockerFixture  # pylint: disable=redefined-outer-name
+    test_db: AsyncConnection,
+    mocker: MockerFixture,  # pylint: disable=redefined-outer-name
 ) -> None:
     """Test that we can handle subscriptions without names."""
 
@@ -528,7 +528,8 @@ async def test_send_generic_emails_no_name(
 
 @pytest.mark.asyncio
 async def test_send_generic_emails_no_recipients(
-    test_db: Database, mocker: MockerFixture  # pylint: disable=redefined-outer-name
+    test_db: AsyncConnection,
+    mocker: MockerFixture,  # pylint: disable=redefined-outer-name
 ) -> None:
     subscription_id = UUID(int=55)
 
@@ -625,7 +626,8 @@ async def test_send_generic_emails_no_recipients(
 
 @pytest.mark.asyncio
 async def test_check_subs_nearing_expiry(
-    test_db: Database, mocker: MockerFixture  # pylint: disable=redefined-outer-name
+    test_db: AsyncConnection,
+    mocker: MockerFixture,  # pylint: disable=redefined-outer-name
 ) -> None:
     one_day = await create_subscription(
         test_db,
@@ -682,7 +684,8 @@ async def test_check_subs_nearing_expiry(
 
 @pytest.mark.asyncio
 async def test_check_for_overbudget_subs(
-    test_db: Database, mocker: MockerFixture  # pylint: disable=redefined-outer-name
+    test_db: AsyncConnection,
+    mocker: MockerFixture,  # pylint: disable=redefined-outer-name
 ) -> None:
     sub_1 = await create_subscription(
         test_db,
@@ -737,12 +740,12 @@ async def test_check_for_overbudget_subs(
 
 @pytest.mark.asyncio
 async def test_get_most_recent_emails(
-    test_db: Database,  # pylint: disable=redefined-outer-name
+    test_db: AsyncConnection,  # pylint: disable=redefined-outer-name
 ) -> None:
     """Check that we can get the most recent email for a subscription."""
 
-    async def fetch_one_or_fail(query: Select) -> Record:
-        row = await test_db.fetch_one(query)
+    async def fetch_one_or_fail(query: Select) -> Any:
+        row = (await test_db.execute(query)).mappings().first()
         if not row:
             raise RuntimeError("No row returned")
         return row
@@ -793,7 +796,7 @@ async def test_get_most_recent_emails(
     )
 
     email_query = send_emails.sub_time_based_emails()
-    rows = await test_db.fetch_all(email_query)
+    rows = (await test_db.execute(email_query)).mappings().all()
     assert len(rows) == 1
     assert rows[0]["subscription_id"] == seven_days
     assert rows[0]["time_created"] == sub_time + timedelta(days=2)
@@ -801,7 +804,8 @@ async def test_get_most_recent_emails(
 
 @pytest.mark.asyncio
 async def test_send_expiry_looming_emails(
-    test_db: Database, mocker: MockerFixture  # pylint: disable=redefined-outer-name
+    test_db: AsyncConnection,
+    mocker: MockerFixture,  # pylint: disable=redefined-outer-name
 ) -> None:
     seven_days = await create_subscription(
         test_db,
@@ -837,7 +841,8 @@ async def test_send_expiry_looming_emails(
 
 @pytest.mark.asyncio
 async def test_send_overbudget_emails(
-    test_db: Database, mocker: MockerFixture  # pylint: disable=redefined-outer-name
+    test_db: AsyncConnection,
+    mocker: MockerFixture,  # pylint: disable=redefined-outer-name
 ) -> None:
     sub_1 = await create_subscription(
         test_db,
@@ -884,7 +889,8 @@ async def test_send_overbudget_emails(
 
 @pytest.mark.asyncio
 async def test_expiry_looming_doesnt_resend(
-    test_db: Database, mocker: MockerFixture  # pylint: disable=redefined-outer-name
+    test_db: AsyncConnection,
+    mocker: MockerFixture,  # pylint: disable=redefined-outer-name
 ) -> None:
     """Check that we take no action if not necessary."""
 
@@ -1089,7 +1095,8 @@ def test_should_send_expiry_email(mocker: MockerFixture) -> None:
 
 @pytest.mark.asyncio
 async def test_usage_email_context_manager(
-    test_db: Database, mocker: MockerFixture  # pylint: disable=redefined-outer-name
+    test_db: AsyncConnection,
+    mocker: MockerFixture,  # pylint: disable=redefined-outer-name
 ) -> None:
     subscription_ids = []
     # These should be 20 below each threshold
@@ -1150,7 +1157,8 @@ async def test_usage_email_context_manager(
 
 @pytest.mark.asyncio
 async def test_catches_params_missing(
-    test_db: Database, mocker: MockerFixture  # pylint: disable=redefined-outer-name
+    test_db: AsyncConnection,
+    mocker: MockerFixture,  # pylint: disable=redefined-outer-name
 ) -> None:
     """If the key email params are missing, we should log instead."""
 
@@ -1198,9 +1206,9 @@ async def test_catches_params_missing(
     last_row_query = select(accounting_models.failed_emails).order_by(
         accounting_models.failed_emails.c.id.desc()
     )
-    last_row_result = await test_db.fetch_one(last_row_query)
+    last_row_result = (await test_db.execute(last_row_query)).mappings().first()
     assert last_row_result is not None
-    last_row = {x: last_row_result[x] for x in last_row_result}
+    last_row = dict(last_row_result)
 
     # check log message for row added
     mock_logger.error.assert_called_with(
@@ -1226,7 +1234,7 @@ async def test_catches_params_missing(
 
 @pytest.mark.asyncio
 async def test_get_new_subscriptions_since(
-    test_db: Database,  # pylint: disable=redefined-outer-name
+    test_db: AsyncConnection,  # pylint: disable=redefined-outer-name
 ) -> None:
     todays_subscription_id = UUID(int=random.randint(0, (2**32) - 1))
     yesterdays_subscription_id = UUID(int=random.randint(0, (2**32) - 1))
@@ -1263,7 +1271,7 @@ async def test_get_new_subscriptions_since(
 
 @pytest.mark.asyncio
 async def test_get_status_changes_since(
-    test_db: Database,  # pylint: disable=redefined-outer-name
+    test_db: AsyncConnection,  # pylint: disable=redefined-outer-name
 ) -> None:
     test_subscription_id = UUID(int=random.randint(0, (2**32) - 1))
     await test_db.execute(
@@ -1313,7 +1321,7 @@ async def test_get_status_changes_since(
 
 @pytest.mark.asyncio
 async def test_get_emails_sent_since(
-    test_db: Database,  # pylint: disable=redefined-outer-name
+    test_db: AsyncConnection,  # pylint: disable=redefined-outer-name
 ) -> None:
     test_subscription_id = UUID(int=random.randint(0, (2**32) - 1))
     another_test_subscription_id = UUID(int=random.randint(0, (2**32) - 1))
@@ -1445,7 +1453,7 @@ async def test_get_emails_sent_since(
 
 @pytest.mark.asyncio
 async def test_get_finance_entries_since(
-    test_db: Database,  # pylint: disable=redefined-outer-name
+    test_db: AsyncConnection,  # pylint: disable=redefined-outer-name
 ) -> None:
     test_subscription_id = await create_subscription(
         test_db, current_state=SubscriptionState("Enabled")
@@ -1530,8 +1538,9 @@ async def test_get_finance_entries_since(
 
 @pytest.mark.asyncio
 async def test_prepare_summary_email(
-    test_db: Database,  # pylint: disable=redefined-outer-name
+    test_db: AsyncConnection,  # pylint: disable=redefined-outer-name
 ) -> None:
+    time_since = datetime.now(timezone.utc) - timedelta(minutes=10)
     test_subscription_id = UUID(int=random.randint(0, (2**32) - 1))
     another_test_subscription_id = UUID(int=random.randint(0, (2**32) - 1))
     yet_another_test_subscription_id = UUID(int=random.randint(0, (2**32) - 1))
@@ -1587,12 +1596,19 @@ async def test_prepare_summary_email(
         ),
     )
 
-    summary_data = await prepare_summary_email(
-        test_db, datetime.now(timezone.utc) - timedelta(seconds=5)
-    )
-
-    assert len(summary_data["new_subscriptions"]) == 3  # number of new subscriptions
-    assert sorted([x["name"] for x in summary_data["new_subscriptions"]]) == sorted(
+    summary_data = await prepare_summary_email(test_db, time_since)
+    test_sub_ids = {
+        test_subscription_id,
+        another_test_subscription_id,
+        yet_another_test_subscription_id,
+    }
+    new_subscriptions = [
+        x
+        for x in summary_data["new_subscriptions"]
+        if x["subscription_id"] in test_sub_ids
+    ]
+    assert len(new_subscriptions) == 3
+    assert sorted([x["name"] for x in new_subscriptions]) == sorted(
         [
             "my test subscription",
             "my other test subscription",
@@ -1610,13 +1626,15 @@ async def test_prepare_summary_email(
         ),
     )
 
-    summary_data = await prepare_summary_email(
-        test_db, datetime.now(timezone.utc) - timedelta(seconds=5)
-    )
-
-    assert len(summary_data["status_changes"]) == 1
-    assert summary_data["status_changes"][0]["old_status"]["state"] == "Enabled"
-    assert summary_data["status_changes"][0]["new_status"]["state"] == "Disabled"
+    summary_data = await prepare_summary_email(test_db, time_since)
+    first_changes = [
+        x
+        for x in summary_data["status_changes"]
+        if x["new_status"].get("subscription_id") == yet_another_test_subscription_id
+    ]
+    assert len(first_changes) == 1
+    assert first_changes[0]["old_status"]["state"] == "Enabled"
+    assert first_changes[0]["new_status"]["state"] == "Disabled"
 
     await test_db.execute(
         subscription_details.insert().values(),
@@ -1627,13 +1645,17 @@ async def test_prepare_summary_email(
         ),
     )
 
-    summary_data = await prepare_summary_email(
-        test_db, datetime.now(timezone.utc) - timedelta(seconds=5)
-    )
-    assert len(summary_data["status_changes"]) == 2
-    changes_another_test = [
+    summary_data = await prepare_summary_email(test_db, time_since)
+    status_changes = [
         x
         for x in summary_data["status_changes"]
+        if x["new_status"].get("subscription_id")
+        in (yet_another_test_subscription_id, another_test_subscription_id)
+    ]
+    assert len(status_changes) == 2
+    changes_another_test = [
+        x
+        for x in status_changes
         if x["new_status"].get("subscription_id") == another_test_subscription_id
     ]
 
@@ -1686,13 +1708,16 @@ async def test_prepare_summary_email(
     summary_data = await prepare_summary_email(
         test_db, datetime.now(timezone.utc) - timedelta(seconds=5)
     )
-    assert len(summary_data["new_approvals_and_allocations"][0]["approvals"]) == 2
-    assert sum(summary_data["new_approvals_and_allocations"][0]["approvals"]) == 150
-    assert (
-        summary_data["new_approvals_and_allocations"][0]["details"]["name"]
-        == "my test subscription"
-    )
-    assert sum(summary_data["new_approvals_and_allocations"][0]["allocations"]) == 80
+    allocations_and_approvals = [
+        x
+        for x in summary_data["new_approvals_and_allocations"]
+        if x["details"]["subscription_id"] == test_subscription_id
+    ]
+    assert len(allocations_and_approvals) == 1
+    assert len(allocations_and_approvals[0]["approvals"]) == 2
+    assert sum(allocations_and_approvals[0]["approvals"]) == 150
+    assert allocations_and_approvals[0]["details"]["name"] == "my test subscription"
+    assert sum(allocations_and_approvals[0]["allocations"]) == 80
 
     # add some test data to emails table
     await test_db.execute(
@@ -1719,14 +1744,18 @@ async def test_prepare_summary_email(
     summary_data = await prepare_summary_email(
         test_db, datetime.now(timezone.utc) - timedelta(seconds=5)
     )
-
-    assert len(summary_data["notifications_sent"]) == 1
-    assert summary_data["notifications_sent"][0]["emails_sent"][0]["type"] == "welcome"
+    notifications_sent = [
+        x
+        for x in summary_data["notifications_sent"]
+        if x["subscription_id"] == test_subscription_id
+    ]
+    assert len(notifications_sent) == 1
+    assert notifications_sent[0]["emails_sent"][0]["type"] == "welcome"
 
 
 @pytest.mark.asyncio
 async def test_get_allocations_since(
-    test_db: Database,  # pylint: disable=redefined-outer-name
+    test_db: AsyncConnection,  # pylint: disable=redefined-outer-name
 ) -> None:
     time_since_last_summary_email = datetime.now(timezone.utc) - timedelta(days=1)
     # make new subscription
@@ -1814,7 +1843,7 @@ async def test_get_allocations_since(
 
 @pytest.mark.asyncio
 async def test_get_approvals_since(
-    test_db: Database,  # pylint: disable=redefined-outer-name
+    test_db: AsyncConnection,  # pylint: disable=redefined-outer-name
 ) -> None:
     time_since_last_summary_email = datetime.now(timezone.utc) - timedelta(days=1)
     test_subscription = await create_subscription(

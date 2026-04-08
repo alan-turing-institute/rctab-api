@@ -61,7 +61,7 @@ def create_subscription_detail(
 ) -> Response:
     """Create a subscription detail record."""
     return client.post(
-        "accounting" + "/all-status",
+        "accounting/all-status",
         content=AllSubscriptionStatus(
             status_list=[
                 SubscriptionStatus(

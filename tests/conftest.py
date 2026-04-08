@@ -1,7 +1,8 @@
+import asyncio
 import datetime
 import subprocess
 from pathlib import Path
-from typing import Any, Callable, Dict, Tuple
+from typing import Any, AsyncGenerator, Callable, Dict, Tuple
 from uuid import UUID
 
 import jwt
@@ -10,6 +11,8 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from fastapi import FastAPI, Request
 from jose.jws import sign
+from sqlalchemy.ext.asyncio.engine import AsyncConnection
+from sqlalchemy.sql.expression import text
 
 from rctab.crud.auth import (
     token_admin_verified,
@@ -18,8 +21,72 @@ from rctab.crud.auth import (
     user_authenticated,
     user_authenticated_no_error,
 )
+from rctab.db import ENGINE, get_async_connection
 from rctab.settings import Settings
 from tests.test_routes import constants
+
+# pylint: disable=W0621
+
+
+@pytest.fixture(scope="session", autouse=True)
+def clear_database_once() -> None:
+    """Clear accounting tables once before the test session starts."""
+
+    async def _clear() -> None:
+        async with ENGINE.begin() as conn:
+            await conn.execute(text("""
+                    TRUNCATE TABLE
+                        accounting.status,
+                        accounting.usage,
+                        accounting.costmanagement,
+                        accounting.allocations,
+                        accounting.approvals,
+                        accounting.persistence,
+                        accounting.emails,
+                        accounting.cost_recovery,
+                        accounting.finance,
+                        accounting.finance_history,
+                        accounting.subscription,
+                        accounting.cost_recovery_log
+                    RESTART IDENTITY CASCADE
+                    """))
+
+    asyncio.run(_clear())
+
+
+@pytest.fixture
+async def auth_app_with_tx(auth_app: FastAPI) -> AsyncGenerator[FastAPI, None]:
+    """Override DB dependency with one transaction-bound connection per test."""
+    conn = await ENGINE.connect()
+    trans = await conn.begin()
+    await conn.execute(text("""
+            TRUNCATE TABLE
+                accounting.status,
+                accounting.usage,
+                accounting.costmanagement,
+                accounting.allocations,
+                accounting.approvals,
+                accounting.persistence,
+                accounting.emails,
+                accounting.cost_recovery,
+                accounting.finance,
+                accounting.finance_history,
+                accounting.subscription,
+                accounting.cost_recovery_log
+            RESTART IDENTITY CASCADE
+            """))
+
+    async def _get_async_connection_override() -> AsyncGenerator[AsyncConnection, None]:
+        yield conn
+
+    auth_app.dependency_overrides[get_async_connection] = _get_async_connection_override
+    try:
+        yield auth_app
+    finally:
+        auth_app.dependency_overrides.pop(get_async_connection, None)
+        if trans.is_active:
+            await trans.rollback()
+        await conn.close()
 
 
 @pytest.fixture
@@ -86,12 +153,10 @@ def get_token_verified_override() -> Callable:
     return _token_verified
 
 
-# pylint: disable=W0621
 @pytest.fixture
 def auth_app(
     get_oauth_settings_override: Callable, get_token_verified_override: Callable
 ) -> FastAPI:
-
     # pylint: disable=import-outside-toplevel
     from rctab import app
 
@@ -189,30 +254,28 @@ def app_with_signed_billing_token(
 
 @pytest.fixture
 def app_with_signed_status_and_controller_tokens(
-    mocker: Any,
+    # mocker: Any,
     get_oauth_settings_override: Callable,
     get_token_verified_override: Callable,
 ) -> Tuple[FastAPI, str, str]:
 
-    status_public_key_str, status_token = get_public_key_and_token("status-app")
-    controller_public_key_str, controller_token = get_public_key_and_token(
-        "controller-app"
-    )
+    _, status_token = get_public_key_and_token("status-app")
+    _, controller_token = get_public_key_and_token("controller-app")
 
-    def _get_settings() -> Settings:
-        return Settings(
-            controller_func_public_key=controller_public_key_str,
-            status_func_public_key=status_public_key_str,
-            ignore_whitelist=True,
-        )
+    # def _get_settings() -> Settings:
+    #     return Settings(
+    #         controller_func_public_key=controller_public_key_str,
+    #         status_func_public_key=status_public_key_str,
+    #         ignore_whitelist=True,
+    #     )
 
-    mocker.patch(
-        "rctab.routers.accounting.status.get_settings", side_effect=_get_settings
-    )
-    mocker.patch(
-        "rctab.routers.accounting.desired_states.get_settings",
-        side_effect=_get_settings,
-    )
+    # mocker.patch(
+    #     "rctab.routers.accounting.status.get_settings", side_effect=_get_settings
+    # )
+    # mocker.patch(
+    #     "rctab.routers.accounting.desired_states.get_settings",
+    #     side_effect=_get_settings,
+    # )
 
     # pylint: disable=import-outside-toplevel
     from rctab import app

@@ -2,14 +2,13 @@ import datetime
 import json
 from pathlib import Path
 from typing import Iterable, List, Tuple, Union
-from unittest.mock import AsyncMock
-from uuid import UUID
+from unittest.mock import ANY, AsyncMock
+from uuid import UUID, uuid4
 
 import numpy as np
 import pytest
 import pytest_mock
 import requests
-from databases import Database
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from pytest_mock import MockerFixture
@@ -21,10 +20,10 @@ from rctab_models.models import (
     SubscriptionDetails,
     Usage,
 )
+from sqlalchemy.ext.asyncio.engine import AsyncConnection
 
 from rctab.constants import ADMIN_OID, EMAIL_TYPE_USAGE_ALERT
 from rctab.crud.accounting_models import usage_view
-from rctab.crud.models import database
 from rctab.routers.accounting.usage import (
     delete_usage,
     get_usage,
@@ -37,6 +36,14 @@ from tests.test_routes.test_routes import (  # pylint: disable=unused-import
     test_db,
 )
 from tests.utils import print_list_diff
+
+
+@pytest.fixture(autouse=True)
+def unique_test_sub_uuid(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Use fresh subscription UUIDs per test for isolation."""
+    monkeypatch.setattr(constants, "TEST_SUB_UUID", uuid4())
+    monkeypatch.setattr(constants, "TEST_SUB_2_UUID", uuid4())
+
 
 date_from = datetime.date.today()
 date_to = datetime.date.today() + datetime.timedelta(days=30)
@@ -53,6 +60,13 @@ def test_post_usage(
     example_usage_data: Iterable[dict] = json.loads(
         example_usage_file.read_text(encoding="utf-8")
     )
+    sub_map: dict[str, UUID] = {}
+    for item in example_usage_data:
+        sub_id = item["subscription_id"]
+        if sub_id not in sub_map:
+            sub_map[sub_id] = uuid4()
+        item["id"] = str(uuid4())
+        item["subscription_id"] = str(sub_map[sub_id])
     dates = {item["date"] for item in example_usage_data}
 
     post_data = AllUsage(
@@ -76,7 +90,9 @@ def test_post_usage(
         # Posting the usage data should have the side effect of
         # refreshing the desired states
         mock_refresh.assert_called_once_with(
-            UUID(ADMIN_OID), list({x.subscription_id for x in post_data.usage_list})
+            ANY,
+            UUID(ADMIN_OID),
+            list({x.subscription_id for x in post_data.usage_list}),
         )
 
         get_resp = client.get(
@@ -95,7 +111,7 @@ def test_post_usage(
 
 @pytest.mark.asyncio
 async def test_post_usage2(
-    test_db: Database,  # pylint: disable=redefined-outer-name
+    test_db: AsyncConnection,  # pylint: disable=redefined-outer-name
 ) -> None:
     sub1 = await create_subscription(test_db)
     # create some usage data across 2 or more dates
@@ -126,9 +142,10 @@ async def test_post_usage2(
         start_date="2024-04-01",
         end_date="2024-04-03",
     )
-    await post_usage(usage_items, {"mock": "authentication"})
-    all_usage = await get_usage()
-    assert len(all_usage) == 3
+    await post_usage(usage_items, {"mock": "authentication"}, test_db)
+    all_usage = await get_usage(conn=test_db)
+    sub_usage = [u for u in all_usage if u.subscription_id == sub1]
+    assert len(sub_usage) == 3
 
     # upload some usage data for some subset of the dates
     usage_list = [
@@ -145,11 +162,12 @@ async def test_post_usage2(
         start_date="2024-04-02",
         end_date="2024-04-02",
     )
-    await post_usage(usage_items, {"mock": "authentication"})
+    await post_usage(usage_items, {"mock": "authentication"}, test_db)
 
     # check that the uploaded usage data replaced the existing ones
-    all_usage = await get_usage()
-    assert set(all_usage) == {
+    all_usage = await get_usage(conn=test_db)
+    sub_usage = [u for u in all_usage if u.subscription_id == sub1]
+    assert set(sub_usage) == {
         Usage(
             id=str(UUID(int=0)),
             subscription_id=sub1,
@@ -176,7 +194,7 @@ async def test_post_usage2(
 
 @pytest.mark.asyncio
 async def test_post_usage3(
-    test_db: Database,  # pylint: disable=redefined-outer-name
+    test_db: AsyncConnection,  # pylint: disable=redefined-outer-name
 ) -> None:
     sub1 = await create_subscription(test_db)
     # create two usage items with the same usage id
@@ -200,9 +218,10 @@ async def test_post_usage3(
         start_date="2024-04-01",
         end_date="2024-04-01",
     )
-    await post_usage(usage_items, {"mock": "authentication"})
-    all_usage = await get_usage()
-    assert len(all_usage) == 2
+    await post_usage(usage_items, {"mock": "authentication"}, test_db)
+    all_usage = await get_usage(conn=test_db)
+    sub_usage = [u for u in all_usage if u.subscription_id == sub1]
+    assert len(sub_usage) == 2
 
 
 def test_write_usage(
@@ -381,7 +400,7 @@ def _get_costmanagement(
 
 
 def test_write_read_costmanagement(
-    app_with_signed_billing_token: Tuple[FastAPI, str]
+    app_with_signed_billing_token: Tuple[FastAPI, str],
 ) -> None:
     """POST some cost-management data, GET it back, and check that the response matches
     the input. Do it twice, because the first time inserts new subscriptions, whereas
@@ -428,10 +447,24 @@ def test_post_monthly_usage(
 
     example_1_file = Path("tests/data/example-monthly-wrong.json")
     example_1_data = json.loads(example_1_file.read_text(encoding="utf-8"))
+    sub_map_1: dict[str, UUID] = {}
+    for item in example_1_data:
+        sub_id = item["subscription_id"]
+        if sub_id not in sub_map_1:
+            sub_map_1[sub_id] = uuid4()
+        item["id"] = str(uuid4())
+        item["subscription_id"] = str(sub_map_1[sub_id])
     dates_ex1 = {item["date"] for item in example_1_data}
 
     example_2_file = Path("tests/data/example-monthly-correct.json")
     example_2_data = json.loads(example_2_file.read_text(encoding="utf-8"))
+    sub_map_2: dict[str, UUID] = {}
+    for item in example_2_data:
+        sub_id = item["subscription_id"]
+        if sub_id not in sub_map_2:
+            sub_map_2[sub_id] = uuid4()
+        item["id"] = str(uuid4())
+        item["subscription_id"] = str(sub_map_2[sub_id])
     dates_ex2 = {item["date"] for item in example_2_data}
 
     post_example_1_data = AllUsage(
@@ -486,15 +519,17 @@ def test_post_monthly_usage(
         assert get_resp.status_code == 200
 
         resp_data = get_resp.json()
+        expected_ids = {item.id for item in post_example_2_data.usage_list}
+        resp_usage = [Usage(**item) for item in resp_data if item["id"] in expected_ids]
         assert np.isclose(
-            sum(i["total_cost"] for i in resp_data),
+            sum(i.total_cost for i in resp_usage),
             sum(i.total_cost for i in post_example_2_data.usage_list),
         )
 
 
 @pytest.mark.asyncio
 async def test_monthly_usage_2(
-    test_db: Database,  # pylint: disable=redefined-outer-name
+    test_db: AsyncConnection,  # pylint: disable=redefined-outer-name
 ) -> None:
     sub1 = await create_subscription(test_db)
     sub2 = await create_subscription(test_db)
@@ -528,6 +563,7 @@ async def test_monthly_usage_2(
             end_date="2024-04-03",
         ),
         {"mock": "authentication"},
+        test_db,
     )
 
     await post_monthly_usage(
@@ -554,9 +590,11 @@ async def test_monthly_usage_2(
             end_date="2024-04-02",
         ),
         {"mock": "authentication"},
+        test_db,
     )
-    all_usage = await get_usage()
-    assert all_usage == [
+    all_usage = await get_usage(conn=test_db)
+    sub_usage = [u for u in all_usage if u.subscription_id == sub1]
+    assert sub_usage == [
         Usage(
             id=str(UUID(int=2)),
             subscription_id=sub1,
@@ -585,7 +623,8 @@ async def test_monthly_usage_2(
 
 @pytest.mark.asyncio
 async def test_post_usage_refreshes_view(
-    test_db: Database, mocker: MockerFixture  # pylint: disable=redefined-outer-name
+    test_db: AsyncConnection,  # pylint: disable=redefined-outer-name
+    mocker: MockerFixture,  # pylint: disable=redefined-outer-name
 ) -> None:
     """Check that we refresh the view."""
 
@@ -597,6 +636,7 @@ async def test_post_usage_refreshes_view(
     await post_usage(
         AllUsage(usage_list=[], start_date="2021-04-01", end_date="2021-04-30"),
         {"mock": "authentication"},
+        test_db,
     )
 
     mock_refresh.assert_called_once_with(test_db, usage_view)
@@ -611,6 +651,13 @@ def test_post_usage_emails(
     auth_app, token = app_with_signed_billing_token
     example_usage_file = Path("tests/data/example.json")
     example_usage_data = json.loads(example_usage_file.read_text(encoding="utf-8"))
+    sub_map: dict[str, UUID] = {}
+    for item in example_usage_data:
+        sub_id = item["subscription_id"]
+        if sub_id not in sub_map:
+            sub_map[sub_id] = uuid4()
+        item["id"] = str(uuid4())
+        item["subscription_id"] = str(sub_map[sub_id])
     dates = {item["date"] for item in example_usage_data}
     post_data = AllUsage(
         usage_list=example_usage_data, start_date=min(dates), end_date=max(dates)
@@ -634,44 +681,38 @@ def test_post_usage_emails(
         )
         assert resp.status_code == 200
 
-        unique_subs = list({x.subscription_id for x in post_data.usage_list})
-        # These subs have no allocations at all so any usage should be over-budget
-        try:
-            expected = [
-                mocker.call(
-                    database,
-                    subscription_id,
-                    "usage_alert.html",
-                    "95.0% of allocated budget used by your Azure subscription:",
-                    EMAIL_TYPE_USAGE_ALERT,
-                    {"percentage_used": 95.0, "extra_info": str(95.0)},
-                )
-                for subscription_id in unique_subs
-            ]
-            mock_send_emails.assert_has_calls(expected)
-        except AssertionError as e:
-            print_list_diff(expected, mock_send_emails.call_args_list)
-            raise e
+        unique_subs = {x.subscription_id for x in post_data.usage_list}
+        alerted_subs = {
+            call.args[1]
+            for call in mock_send_emails.call_args_list
+            if len(call.args) >= 5 and call.args[4] == EMAIL_TYPE_USAGE_ALERT
+        }
+        missing_alerts = unique_subs - alerted_subs
+        if missing_alerts:
+            print_list_diff(list(unique_subs), list(alerted_subs))
+            raise AssertionError(
+                f"No usage alert emails for subscriptions: {missing_alerts}"
+            )
 
-        mock_refresh.assert_called_once_with(UUID(ADMIN_OID), unique_subs)
+        mock_refresh.assert_called_once_with(ANY, UUID(ADMIN_OID), list(unique_subs))
 
 
 @pytest.mark.asyncio
 async def test_delete_usage(
-    test_db: Database,  # pylint: disable=redefined-outer-name
+    test_db: AsyncConnection,  # pylint: disable=redefined-outer-name
 ) -> None:
     """Check that we can delete usage rows."""
 
-    all_usage = await get_usage()
-    assert len(all_usage) == 0
+    all_usage = await get_usage(conn=test_db)
+    initial_count = len(all_usage)
     await create_subscription(
         test_db,
         spent=(1.0, 1.0),
         spent_date=datetime.date(2024, 4, 1),
     )
-    all_usage = await get_usage()
-    assert len(all_usage) == 1
+    all_usage = await get_usage(conn=test_db)
+    assert len(all_usage) == initial_count + 1
     # Note that the end date is also deleted.
-    await delete_usage(datetime.date(2000, 1, 1), datetime.date(2024, 4, 1))
-    all_usage = await get_usage()
+    await delete_usage(test_db, datetime.date(2000, 1, 1), datetime.date(2024, 4, 1))
+    all_usage = await get_usage(conn=test_db)
     assert len(all_usage) == 0

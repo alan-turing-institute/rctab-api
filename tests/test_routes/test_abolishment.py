@@ -2,10 +2,10 @@ from datetime import date, timedelta
 from uuid import UUID
 
 import pytest
-from databases import Database
 from pytest_mock import MockerFixture
 from rctab_models.models import SubscriptionState
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio.engine import AsyncConnection
 
 from rctab.crud.accounting_models import subscription_details
 from rctab.routers.accounting.abolishment import (
@@ -23,7 +23,7 @@ from tests.test_routes.test_routes import (  # pylint: disable=unused-import
 
 
 async def create_expired_subscription(
-    test_db: Database,  # pylint: disable=redefined-outer-name
+    test_db: AsyncConnection,  # pylint: disable=redefined-outer-name
 ) -> UUID:
     """
     Creates a subscription which has been inactive for more than 90 days.
@@ -56,21 +56,23 @@ async def create_expired_subscription(
 
 @pytest.mark.asyncio
 async def test_abolishment(
-    test_db: Database,  # pylint: disable=redefined-outer-name
+    test_db: AsyncConnection,  # pylint: disable=redefined-outer-name
     mocker: MockerFixture,
 ) -> None:
 
     # Testing get_inactive_subs
     expired_sub_id = await create_expired_subscription(test_db)
 
-    inactive_subs = await get_inactive_subs()
+    inactive_subs = await get_inactive_subs(test_db)
 
     assert inactive_subs
     assert len(inactive_subs) == 1
     assert inactive_subs[0] == expired_sub_id
 
     # Testing adjust_budgets_to_zero
-    adjustments = await adjust_budgets_to_zero(constants.ADMIN_UUID, inactive_subs)
+    adjustments = await adjust_budgets_to_zero(
+        test_db, constants.ADMIN_UUID, inactive_subs
+    )
 
     assert adjustments
     assert len(adjustments) == 1
@@ -78,9 +80,9 @@ async def test_abolishment(
     assert adjustments[0]["allocation"] == 30.0
     assert adjustments[0]["approval"] == 10.0
 
-    sub_query = get_subscriptions_summary(execute=False).alias()
+    sub_query = get_subscriptions_summary().alias()
     summary_qr = select(sub_query).where(sub_query.c.subscription_id == expired_sub_id)
-    summary = await test_db.fetch_all(summary_qr)
+    summary = (await test_db.execute(summary_qr)).mappings().all()
 
     assert summary
     assert len(summary) == 1
@@ -90,11 +92,11 @@ async def test_abolishment(
         assert row["abolished"] is False
 
     # Testing set_abolished_flag
-    await set_abolished_flag(inactive_subs)
+    await set_abolished_flag(test_db, inactive_subs)
 
-    sub_query = get_subscriptions_summary(execute=False).alias()
+    sub_query = get_subscriptions_summary().alias()
     summary_qr = select(sub_query).where(sub_query.c.subscription_id == expired_sub_id)
-    summary = await test_db.fetch_all(summary_qr)
+    summary = (await test_db.execute(summary_qr)).mappings().all()
 
     assert summary
     assert len(summary) == 1
@@ -108,7 +110,7 @@ async def test_abolishment(
     )
     mock_send_email.return_value = 200
 
-    await send_abolishment_email(email_recipients, adjustments)
+    await send_abolishment_email(test_db, email_recipients, adjustments)
 
     mock_send_email.assert_called_with(
         "Abolishment of subscriptions",
@@ -129,11 +131,11 @@ async def test_abolishment(
 
 @pytest.mark.asyncio
 async def test_abolishment_no_allocation(
-    test_db: Database,  # pylint: disable=redefined-outer-name
+    test_db: AsyncConnection,  # pylint: disable=redefined-outer-name
 ) -> None:
 
     sub_id = await create_subscription(test_db, spent=(1.0, 1.0))
 
-    adjustments = await adjust_budgets_to_zero(constants.ADMIN_UUID, [sub_id])
+    adjustments = await adjust_budgets_to_zero(test_db, constants.ADMIN_UUID, [sub_id])
 
     assert len(adjustments) == 1

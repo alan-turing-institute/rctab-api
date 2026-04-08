@@ -1,5 +1,4 @@
-"""Fetch rows from the failed_emails tale and remove.
-"""
+"""Fetch rows from the failed_emails tale and remove."""
 
 import argparse
 import os

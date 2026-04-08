@@ -4,11 +4,11 @@ from datetime import date, timedelta
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-import sqlalchemy
 from fastapi import Depends, HTTPException
 from pydantic import BaseModel
 from rctab_models.models import CostRecovery, UserRBAC
-from sqlalchemy import and_, between, desc, func, insert, select
+from sqlalchemy import Date, and_, between, cast, desc, func, insert, select
+from sqlalchemy.ext.asyncio.engine import AsyncConnection
 
 from rctab.constants import ADMIN_OID
 from rctab.crud.accounting_models import (
@@ -18,7 +18,7 @@ from rctab.crud.accounting_models import (
     usage,
 )
 from rctab.crud.auth import token_admin_verified
-from rctab.crud.models import database
+from rctab.db import get_async_connection
 from rctab.routers.accounting.routes import router
 from rctab.routers.accounting.usage import authenticate_usage_app
 
@@ -59,15 +59,24 @@ def validate_month(
 
 
 async def calc_cost_recovery(
-    recovery_month: CostRecoveryMonth, commit_transaction: bool, admin: UUID
+    recovery_month: CostRecoveryMonth,
+    commit_transaction: bool,
+    admin: UUID,
+    conn: AsyncConnection,
 ) -> List[CostRecovery]:
     """Calculates the cost recovery for a given period.
 
     Cost recovery must have been calculated for all previous months
     but not for this month.
     """
-    last_recovered_day = await database.fetch_one(
-        select(cost_recovery_log).order_by(desc(cost_recovery_log.c.month))
+    last_recovered_day = (
+        (
+            await conn.execute(
+                select(cost_recovery_log).order_by(desc(cost_recovery_log.c.month))
+            )
+        )
+        .mappings()
+        .first()
     )
     last_recovered_month = (
         CostRecoveryMonth(first_day=last_recovered_day["month"])
@@ -77,37 +86,47 @@ async def calc_cost_recovery(
     if commit_transaction:
         validate_month(recovery_month, last_recovered_month)
 
-    transaction = await database.transaction()
+    transaction = await conn.begin_nested()
     try:
-
         cost_recovery_ids = []
 
         # We're only interested in subscriptions if they have a finance record
         subscription_ids = [
             r["sub_id"]
-            for r in await database.fetch_all(
-                select(func.distinct(finance.c.subscription_id).label("sub_id")).where(
-                    between(
-                        recovery_month.first_day, finance.c.date_from, finance.c.date_to
+            for r in (
+                await conn.execute(
+                    select(
+                        func.distinct(finance.c.subscription_id).label("sub_id")
+                    ).where(
+                        between(
+                            recovery_month.first_day,
+                            finance.c.date_from,
+                            finance.c.date_to,
+                        )
                     )
                 )
             )
+            .mappings()
+            .all()
         ]
 
         for subscription_id in subscription_ids:
-
-            usage_row = await database.fetch_one(
-                select(func.sum(usage.c.total_cost).label("the_sum"))
-                .where(
-                    func.date_trunc(
-                        "month", sqlalchemy.cast(usage.c.date, sqlalchemy.Date)
-                    )
-                    == func.date_trunc(
-                        "month",
-                        sqlalchemy.cast(recovery_month.first_day, sqlalchemy.Date),
+            usage_row = (
+                (
+                    await conn.execute(
+                        select(func.sum(usage.c.total_cost).label("the_sum"))
+                        .where(
+                            func.date_trunc("month", cast(usage.c.date, Date))
+                            == func.date_trunc(
+                                "month",
+                                cast(recovery_month.first_day, Date),
+                            )
+                        )
+                        .where(usage.c.subscription_id == subscription_id)
                     )
                 )
-                .where(usage.c.subscription_id == subscription_id)
+                .mappings()
+                .first()
             )
             # This should always return a row, though the_sum can be NULL
             assert usage_row
@@ -115,28 +134,39 @@ async def calc_cost_recovery(
             usage_recharged = 0
 
             # The lower the value of priority, the higher importance
-            finance_periods = await database.fetch_all(
-                select(finance)
-                .where(
-                    and_(
-                        between(
-                            recovery_month.first_day,
-                            finance.c.date_from,
-                            finance.c.date_to,
-                        ),
-                        finance.c.subscription_id == subscription_id,
+            finance_periods = (
+                (
+                    await conn.execute(
+                        select(finance)
+                        .where(
+                            and_(
+                                between(
+                                    recovery_month.first_day,
+                                    finance.c.date_from,
+                                    finance.c.date_to,
+                                ),
+                                finance.c.subscription_id == subscription_id,
+                            )
+                        )
+                        .order_by(finance.c.priority)
                     )
                 )
-                .order_by(finance.c.priority)
+                .mappings()
+                .all()
             )
 
             # We divide the usage between the eligible finance periods
             for finance_period in finance_periods:
-
-                cost_recovery_row = await database.fetch_one(
-                    select(func.sum(cost_recovery.c.amount).label("the_sum")).where(
-                        cost_recovery.c.finance_id == finance_period["id"]
+                cost_recovery_row = (
+                    (
+                        await conn.execute(
+                            select(
+                                func.sum(cost_recovery.c.amount).label("the_sum")
+                            ).where(cost_recovery.c.finance_id == finance_period["id"])
+                        )
                     )
+                    .mappings()
+                    .first()
                 )
 
                 # This should always return a row, though the_sum can be NULL
@@ -155,33 +185,45 @@ async def calc_cost_recovery(
                 # has been recharged
                 usage_recharged += recoverable_amount
 
-                cost_recovery_id = await database.execute(
-                    insert(
-                        cost_recovery,
-                    ),
-                    {
-                        "subscription_id": finance_period["subscription_id"],
-                        "month": recovery_month.first_day,
-                        "finance_code": finance_period["finance_code"],
-                        "amount": recoverable_amount,
-                        "date_recovered": None,
-                        "finance_id": finance_period["id"],
-                        "admin": admin,
-                    },
-                )
+                cost_recovery_id = (
+                    await conn.execute(
+                        insert(cost_recovery)
+                        .values(
+                            {
+                                "subscription_id": finance_period["subscription_id"],
+                                "month": recovery_month.first_day,
+                                "finance_code": finance_period["finance_code"],
+                                "amount": recoverable_amount,
+                                "date_recovered": None,
+                                "finance_id": finance_period["id"],
+                                "admin": admin,
+                            }
+                        )
+                        .returning(cost_recovery.c.id)
+                    )
+                ).scalar_one()
                 cost_recovery_ids.append(cost_recovery_id)
 
-        inserted_rows = await database.fetch_all(
-            select(cost_recovery).where(cost_recovery.c.id.in_(cost_recovery_ids))
+        inserted_rows = (
+            (
+                await conn.execute(
+                    select(cost_recovery).where(
+                        cost_recovery.c.id.in_(cost_recovery_ids)
+                    )
+                )
+            )
+            .mappings()
+            .all()
         )
 
         # Note that we patch CostRecovery as a unit testing hack
         cost_recoveries = [CostRecovery(**dict(cr)) for cr in inserted_rows]
 
         if commit_transaction:
-            await database.execute(
-                insert(cost_recovery_log),
-                {"month": recovery_month.first_day, "admin": admin},
+            await conn.execute(
+                insert(cost_recovery_log).values(
+                    {"month": recovery_month.first_day, "admin": admin}
+                )
             )
             await transaction.commit()
         else:
@@ -189,7 +231,7 @@ async def calc_cost_recovery(
 
         return cost_recoveries
 
-    except BaseException:
+    except Exception:
         await transaction.rollback()
         raise
 
@@ -198,10 +240,14 @@ async def calc_cost_recovery(
 async def calc_cost_recovery_app(
     recovery_period: CostRecoveryMonth,
     _: Dict[str, str] = Depends(authenticate_usage_app),
+    conn: AsyncConnection = Depends(get_async_connection),
 ) -> Any:
     """Route for the usage app to trigger cost recovery calculation."""
     await calc_cost_recovery(
-        recovery_period, commit_transaction=True, admin=UUID(ADMIN_OID)
+        recovery_period,
+        commit_transaction=True,
+        admin=UUID(ADMIN_OID),
+        conn=conn,
     )
 
     return {"status": "success", "detail": "cost recovery calculated"}
@@ -209,11 +255,16 @@ async def calc_cost_recovery_app(
 
 @router.post("/cli-cost-recovery", response_model=List[CostRecovery])
 async def post_calc_cost_recovery_cli(
-    recovery_month: CostRecoveryMonth, user: UserRBAC = Depends(token_admin_verified)
+    recovery_month: CostRecoveryMonth,
+    user: UserRBAC = Depends(token_admin_verified),
+    conn: AsyncConnection = Depends(get_async_connection),
 ) -> List[CostRecovery]:
     """Route for the CLI to trigger cost recovery calculation."""
     rows = await calc_cost_recovery(
-        recovery_month, commit_transaction=True, admin=user.oid
+        recovery_month,
+        commit_transaction=True,
+        admin=user.oid,
+        conn=conn,
     )
 
     return [CostRecovery(**dict(x)) for x in rows]
@@ -221,11 +272,16 @@ async def post_calc_cost_recovery_cli(
 
 @router.get("/cli-cost-recovery", response_model=List[CostRecovery])
 async def get_calc_cost_recovery_cli(
-    recovery_month: CostRecoveryMonth, user: UserRBAC = Depends(token_admin_verified)
+    recovery_month: CostRecoveryMonth,
+    user: UserRBAC = Depends(token_admin_verified),
+    conn: AsyncConnection = Depends(get_async_connection),
 ) -> List[CostRecovery]:
     """Route for the CLI to do a dry-run of the cost recovery calculation."""
     rows = await calc_cost_recovery(
-        recovery_month, commit_transaction=False, admin=user.oid
+        recovery_month,
+        commit_transaction=False,
+        admin=user.oid,
+        conn=conn,
     )
 
     return [CostRecovery(**dict(x)) for x in rows]
