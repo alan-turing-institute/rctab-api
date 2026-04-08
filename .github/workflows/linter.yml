@@ -40,6 +40,10 @@ jobs:
           path: .venv
           key: venv-${{ runner.os }}-${{ steps.full-python-version.outputs.version }}-${{ hashFiles('**/poetry.lock') }}
 
+      - name: Upgrade pip
+        shell: bash
+        run: poetry run pip install --upgrade pip
+
       - name: Check poetry.lock consistency
         shell: bash
         run: poetry check --lock
@@ -48,12 +52,10 @@ jobs:
         shell: bash
         run: poetry install --all-extras
 
-      - name: Upgrade pip
-        shell: bash
-        run: poetry run pip install --upgrade pip
-
       - name: Ready the MyPy Cache
         shell: bash
         run: mkdir .mypy_cache
 
       - uses: pre-commit/action@v3.0.1
+        with:
+          extra_args: --verbose
