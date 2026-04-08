@@ -38,7 +38,7 @@ dependencies = [
 
 
 [tool.poetry.group.dev.dependencies]
-black = "^24.3.0"
+black = "^26.3.1"
 devtools = { extras = ["pygments"], version = "^0.8.0" }
 flake8 = "^3.8.4"
 genbadge = "^1.1.1"
