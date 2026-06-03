@@ -60,7 +60,7 @@ async def create_subscription(
 ) -> UUID:
     """Convenience function for testing.
 
-    db: a databases Database
+    db: An AsyncConnection
     always_on: if None then no row in persistence
     current_state: if None then no row in subscription_details
     allocated_amount: if None then no row in allocations
@@ -165,7 +165,7 @@ def make_async_execute(
 
 @pytest.mark.asyncio
 async def test_refresh_desired_states_disable(
-    test_db: Database, mocker: MockerFixture
+    test_db: AsyncConnection, mocker: MockerFixture
 ) -> None:
     """Check that refresh_desired_states disables when it should."""
     # pylint: disable=singleton-comparison
@@ -205,6 +205,7 @@ async def test_refresh_desired_states_disable(
     not_always_on_sub_id = await create_subscription(test_db, always_on=None)
 
     await refresh_desired_states(
+        test_db,
         constants.ADMIN_UUID,
         [
             no_approval_sub_id,
@@ -215,10 +216,10 @@ async def test_refresh_desired_states_disable(
         ],
     )
 
-    rows = await test_db.fetch_all(select(status).order_by(status.c.subscription_id))
+    rows = await test_db.execute(select(status).order_by(status.c.subscription_id))
     disabled_subscriptions = [
         (row["subscription_id"], row["reason"])
-        for row in rows
+        for row in rows.mappings()
         if row["active"] is False
     ]
     disabled_subscriptions_set = set(disabled_subscriptions)
@@ -236,7 +237,7 @@ async def test_refresh_desired_states_disable(
 
 @pytest.mark.asyncio
 async def test_refresh_desired_states_enable(
-    test_db: Database, mocker: MockerFixture
+    test_db: AsyncConnection, mocker: MockerFixture
 ) -> None:
     """Check that refresh_desired_states enables when it should."""
     # pylint: disable=singleton-comparison
@@ -284,14 +285,15 @@ async def test_refresh_desired_states_enable(
     # Q) Can we presume that status, persistence, approvals and allocations
     #    are made during subscription creation?
     await refresh_desired_states(
+        test_db,
         constants.ADMIN_UUID,
         [always_on_sub_id, no_allocation_sub_id, currently_disabled_sub_id],
     )
 
-    rows = await test_db.fetch_all(select(status).order_by(status.c.subscription_id))
+    rows = await test_db.execute(select(status).order_by(status.c.subscription_id))
 
     enabled_subscriptions = [
-        row["subscription_id"] for row in rows if row["active"] is True
+        row["subscription_id"] for row in rows.mappings() if row["active"] is True
     ]
     enabled_subscriptions_set = set(enabled_subscriptions)
 
@@ -306,7 +308,7 @@ async def test_refresh_desired_states_enable(
 
 @pytest.mark.asyncio
 async def test_refresh_desired_states_doesnt_duplicate(
-    test_db: Database, mocker: MockerFixture
+    test_db: AsyncConnection, mocker: MockerFixture
 ) -> None:
     """Check that refresh_desired_states only inserts when necessary."""
     # pylint: disable=singleton-comparison
@@ -352,6 +354,7 @@ async def test_refresh_desired_states_doesnt_duplicate(
     # Note: here we check that, by default, refresh_desired_states()
     # will refresh all subscriptions
     await refresh_desired_states(
+        test_db,
         constants.ADMIN_UUID,
     )
 
@@ -371,16 +374,16 @@ async def test_refresh_desired_states_doesnt_duplicate(
         )
     )
 
-    rows = await test_db.fetch_all(latest_status)
+    rows = await test_db.execute(latest_status)
     enabled_subscriptions = [
-        row["subscription_id"] for row in rows if row["active"] is True
+        row["subscription_id"] for row in rows.mappings() if row["active"] is True
     ]
     assert enabled_subscriptions == [
         always_on_sub_id,
     ]
 
     disabled_subscriptions = [
-        row["subscription_id"] for row in rows if row["active"] is False
+        row["subscription_id"] for row in rows.mappings() if row["active"] is False
     ]
     assert disabled_subscriptions == [
         over_budget_sub_id,
@@ -388,7 +391,7 @@ async def test_refresh_desired_states_doesnt_duplicate(
 
 
 @pytest.mark.asyncio
-async def test_get_subscription_id(test_db: Database) -> None:
+async def test_get_subscription_id(test_db: AsyncConnection) -> None:
     """The returned statement should select nothing, a single ID or raise."""
     # Check that we get None if there isn't a match.
     result = await get_subscription_id(test_db, "some display name")
@@ -413,9 +416,12 @@ async def test_get_subscription_id(test_db: Database) -> None:
             role_assignments=(),
         ).model_dump(),
     )
-    result = await get_subscription_id(test_db, "My-Subscription-Name")
+
+    # The old name should not work any more.
+    result = await get_subscription_id(test_db, "a subscription")
     assert result == []
 
+    # The new name should work.
     result = await get_subscription_id(test_db, "New-Subscription-Name")
     assert result == [sub1]
 

@@ -1,10 +1,11 @@
-import pytest
 from typing import Tuple
+from uuid import UUID
 
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from rctab_models.models import BillingStatus, SubscriptionDetails, SubscriptionState
 from httpx import ASGITransport, AsyncClient
+from rctab_models.models import BillingStatus, SubscriptionDetails, SubscriptionState
 
 from rctab.routers.accounting.routes import PREFIX
 from tests.test_routes import api_calls, constants
@@ -112,7 +113,7 @@ def test_get_subscription_id(
     app_with_signed_status_and_controller_tokens: Tuple[FastAPI, str, str],
 ) -> None:
     """Returns a subscription id, given a subscription name."""
-    (auth_app, status_token, _) = app_with_signed_status_and_controller_tokens
+    auth_app, status_token, _ = app_with_signed_status_and_controller_tokens
 
     with TestClient(auth_app) as client:
         # Check the scenario with no matches.
