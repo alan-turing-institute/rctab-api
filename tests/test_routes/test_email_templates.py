@@ -5,6 +5,7 @@ from typing import Any, AsyncGenerator, Dict, Generator
 from uuid import UUID
 
 import pytest
+import pytest_asyncio
 from jinja2 import Environment, PackageLoader, StrictUndefined
 from rctab_models.models import (
     Allocation,
@@ -31,7 +32,7 @@ from tests.test_routes.test_routes import (  # pylint: disable=unused-import
 # pylint: disable=unexpected-keyword-arg
 
 
-@pytest.fixture()
+@pytest_asyncio.fixture()
 async def subscription_summary(
     test_db: AsyncConnection,
 ) -> AsyncGenerator[Dict[str, Any], None]:

@@ -1,7 +1,7 @@
 # from asyncio import sleep
 from typing import AsyncGenerator
 
-import pytest
+import pytest_asyncio
 from sqlalchemy.ext.asyncio.engine import AsyncConnection
 from sqlalchemy.sql.expression import text
 
@@ -10,7 +10,7 @@ from rctab.db import ENGINE
 # from rctab.settings import get_settings
 
 
-@pytest.fixture(scope="function")
+@pytest_asyncio.fixture(scope="function")
 async def no_rollback_test_db() -> AsyncGenerator[AsyncConnection, None]:
     """Connect before & disconnect after each test."""
 
