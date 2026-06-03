@@ -232,10 +232,7 @@ async def get_usage(
 ) -> List[Usage]:
     """Get all usage data."""
     usage_query = select(accounting_models.usage)
-    rows = [dict(x) for x in (await conn.execute(usage_query)).mappings().all()]
-    result = [Usage(**x) for x in rows]
-
-    return result
+    return [Usage(**x) for x in (await conn.execute(usage_query)).mappings()]
 
 
 @router.post("/all-cm-usage", response_model=TmpReturnStatus)
@@ -276,6 +273,4 @@ async def get_cm_usage(
 ) -> List[CMUsage]:
     """Get all cost-management data."""
     cm_query = select(accounting_models.costmanagement)
-    rows = [dict(x) for x in (await conn.execute(cm_query)).mappings().all()]
-    result = [CMUsage(**x) for x in rows]
-    return result
+    return [CMUsage(**x) for x in (await conn.execute(cm_query)).mappings()]

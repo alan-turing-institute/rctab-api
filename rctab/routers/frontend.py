@@ -101,11 +101,9 @@ async def check_user_on_subscription(
     """Check whether a user has a role assignment on the subscription."""
     query = get_subscription_details(subscription_id)
     cursor = await conn.execute(query)
-    row = cursor.first()
+    row = cursor.mappings().first()
     if row:
-        role_assignments = row._mapping[  # pylint: disable=protected-access
-            "role_assignments"
-        ]
+        role_assignments = row["role_assignments"]
         if role_assignments:
             for item in role_assignments:
                 if RoleAssignment(**item).mail == username:
@@ -161,8 +159,8 @@ async def home(
     # Get all subscription data
     # pylint: disable=unexpected-keyword-arg
     all_subscription_data = [
-        SubscriptionDetails(**i._mapping)  # pylint: disable=protected-access
-        for i in await get_subscriptions_with_disable(conn)
+        SubscriptionDetails(**i)
+        for i in (await get_subscriptions_with_disable(conn)).mappings()
     ]
 
     # What you see depends on if you are an admin (see everything) or not (see only subscriptions you are on)
@@ -236,45 +234,51 @@ async def subscription_details(
         raise InsufficientPrivilegesException
 
     all_approvals = [
-        ApprovalListItem(**i._mapping)  # pylint: disable=protected-access
-        for i in await conn.execute(get_approvals(subscription_id))
+        ApprovalListItem(**i)
+        for i in (await conn.execute(get_approvals(subscription_id))).mappings()
     ]
 
     all_allocations = [
-        AllocationListItem(**i._mapping)  # pylint: disable=protected-access
-        for i in await conn.execute(
-            get_allocations(subscription_id)  # pylint: disable=unexpected-keyword-arg
-        )
+        AllocationListItem(**i)
+        for i in (
+            await conn.execute(
+                get_allocations(
+                    subscription_id
+                )  # pylint: disable=unexpected-keyword-arg
+            )
+        ).mappings()
     ]
     # pylint: disable=line-too-long
 
     all_finance = [
-        FinanceListItem(**i._mapping)  # pylint: disable=protected-access
-        for i in await conn.execute(
-            get_finance(subscription_id)  # pylint: disable=unexpected-keyword-arg
-        )
+        FinanceListItem(**i)
+        for i in (
+            await conn.execute(
+                get_finance(subscription_id)  # pylint: disable=unexpected-keyword-arg
+            )
+        ).mappings()
     ]
     # pylint: disable=line-too-long
 
     all_costrecovery = [
-        CostRecovery(**i._mapping)  # pylint: disable=protected-access
-        for i in await conn.execute(
-            get_costrecovery(subscription_id)  # pylint: disable=unexpected-keyword-arg
-        )
+        CostRecovery(**i)
+        for i in (
+            await conn.execute(
+                get_costrecovery(
+                    subscription_id
+                )  # pylint: disable=unexpected-keyword-arg
+            )
+        ).mappings()
     ]
 
     cursor = await get_subscriptions_with_disable(conn, subscription_id)
-    subscription_details_info = cursor.first()
+    subscription_details_info = cursor.mappings().first()
     if not subscription_details_info:
         raise HTTPException(
             status_code=404, detail=f"Subscription {subscription_id} not found"
         )
 
-    role_assignments = (
-        subscription_details_info._mapping[  # pylint: disable=protected-access
-            "role_assignments"
-        ]
-    )
+    role_assignments = subscription_details_info["role_assignments"]
 
     all_rbac_assignments = (
         [RoleAssignment(**i) for i in role_assignments] if role_assignments else []
@@ -384,12 +388,14 @@ async def subscription_details_1(
             },
         )
     all_usage = [
-        Usage(**i._mapping)  # pylint: disable=protected-access
-        for i in await conn.execute(
-            get_usage(
-                subscription_id, timeperiod
-            )  # pylint: disable=unexpected-keyword-arg
-        )
+        Usage(**i)
+        for i in (
+            await conn.execute(
+                get_usage(
+                    subscription_id, timeperiod
+                )  # pylint: disable=unexpected-keyword-arg
+            )
+        ).mappings()
     ]
     # pylint: disable=line-too-long
     if len(all_usage) > 0:

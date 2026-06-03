@@ -2,7 +2,7 @@
 
 import datetime
 import uuid
-from typing import List, Optional, Union
+from typing import List, Optional, Sequence, Union
 from uuid import UUID
 
 from fastapi import APIRouter
@@ -517,7 +517,9 @@ def get_subscription_name(sub_id: Optional[UUID] = None) -> Select:
     )
 
 
-async def get_subscription_id(conn: AsyncConnection, display_name: str) -> list[UUID]:
+async def get_subscription_id(
+    conn: AsyncConnection, display_name: str
+) -> Sequence[UUID]:
     """Get the subscription ID(s) from a display name."""
     details = subscription_details  # alias for brevity
 
@@ -535,4 +537,4 @@ async def get_subscription_id(conn: AsyncConnection, display_name: str) -> list[
         )
     )
 
-    return list(results)
+    return results.all()

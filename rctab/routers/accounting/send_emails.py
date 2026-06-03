@@ -5,7 +5,17 @@ from contextlib import AbstractAsyncContextManager
 from datetime import date, datetime, timedelta, timezone
 from itertools import groupby
 from types import TracebackType
-from typing import Any, AsyncContextManager, Dict, List, Mapping, Optional, Tuple, Type
+from typing import (
+    Any,
+    AsyncContextManager,
+    Dict,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    Type,
+)
 from uuid import UUID
 
 from jinja2 import Environment, PackageLoader, exceptions
@@ -41,7 +51,6 @@ from rctab.settings import get_settings
 
 # pylint: disable=too-many-arguments
 # pylint: disable=unexpected-keyword-arg
-# pylint: disable=protected-access
 
 logger = logging.getLogger(__name__)
 
@@ -52,10 +61,10 @@ async def _fetch_one(conn: AsyncConnection, query: Any) -> Optional[RowMapping]:
     return result.mappings().first()
 
 
-async def _fetch_all(conn: AsyncConnection, query: Any) -> List[RowMapping]:
+async def _fetch_all(conn: AsyncConnection, query: Any) -> Sequence[RowMapping]:
     """Execute a query and return all rows as mappings."""
     result = await conn.execute(query)
-    return list(result.mappings().all())
+    return result.mappings().all()
 
 
 async def _execute(conn: AsyncConnection, statement: Any) -> Any:
@@ -694,7 +703,7 @@ async def send_status_change_emails(
 
 async def get_new_subscriptions_since(
     database: AsyncConnection, since_this_datetime: datetime
-) -> List:
+) -> Sequence[RowMapping]:
     """Returns a list of all the subscriptions created since the provided datetime."""
     subscription_query = select(subscription).where(
         subscription.c.time_created > since_this_datetime
