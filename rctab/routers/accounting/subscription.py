@@ -1,6 +1,6 @@
 """Create and fetch subscriptions."""
 
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Sequence
 from uuid import UUID
 
 from fastapi import Depends, HTTPException
@@ -77,7 +77,7 @@ async def get_sub_id(
     display_name: str,
     _: UserRBAC = Depends(token_admin_verified),
     conn: AsyncConnection = Depends(get_async_connection),
-) -> list[UUID]:
+) -> Sequence[UUID]:
     """Get the subscription ID given a display name."""
     results = await get_subscription_id(conn, display_name)
     return results
