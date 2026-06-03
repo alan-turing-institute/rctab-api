@@ -56,25 +56,8 @@ def clear_database_once() -> None:
 
 @pytest.fixture
 async def auth_app_with_tx(auth_app: FastAPI) -> AsyncGenerator[FastAPI, None]:
-    """Override DB dependency with one transaction-bound connection per test."""
+    """Override DB dependency with one connection per test."""
     conn = await ENGINE.connect()
-    trans = await conn.begin()
-    await conn.execute(text("""
-            TRUNCATE TABLE
-                accounting.status,
-                accounting.usage,
-                accounting.costmanagement,
-                accounting.allocations,
-                accounting.approvals,
-                accounting.persistence,
-                accounting.emails,
-                accounting.cost_recovery,
-                accounting.finance,
-                accounting.finance_history,
-                accounting.subscription,
-                accounting.cost_recovery_log
-            RESTART IDENTITY CASCADE
-            """))
 
     async def _get_async_connection_override() -> AsyncGenerator[AsyncConnection, None]:
         yield conn
@@ -84,8 +67,6 @@ async def auth_app_with_tx(auth_app: FastAPI) -> AsyncGenerator[FastAPI, None]:
         yield auth_app
     finally:
         auth_app.dependency_overrides.pop(get_async_connection, None)
-        if trans.is_active:
-            await trans.rollback()
         await conn.close()
 
 

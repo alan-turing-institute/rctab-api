@@ -4,8 +4,6 @@ from typing import Any, List, Optional
 from uuid import UUID
 
 from fastapi import Depends, HTTPException
-
-# from psycopg2 import IntegrityError
 from rctab_models.models import SubscriptionDetails, UserRBAC
 from sqlalchemy import insert
 from sqlalchemy.exc import IntegrityError
