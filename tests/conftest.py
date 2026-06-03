@@ -28,7 +28,7 @@ from tests.test_routes import constants
 # pylint: disable=W0621
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope="function", autouse=True)
 def clear_database_once() -> None:
     """Clear accounting tables once before the test session starts."""
 
@@ -254,28 +254,30 @@ def app_with_signed_billing_token(
 
 @pytest.fixture
 def app_with_signed_status_and_controller_tokens(
-    # mocker: Any,
+    mocker: Any,
     get_oauth_settings_override: Callable,
     get_token_verified_override: Callable,
 ) -> Tuple[FastAPI, str, str]:
 
-    _, status_token = get_public_key_and_token("status-app")
-    _, controller_token = get_public_key_and_token("controller-app")
+    status_public_key_str, status_token = get_public_key_and_token("status-app")
+    controller_public_key_str, controller_token = get_public_key_and_token(
+        "controller-app"
+    )
 
-    # def _get_settings() -> Settings:
-    #     return Settings(
-    #         controller_func_public_key=controller_public_key_str,
-    #         status_func_public_key=status_public_key_str,
-    #         ignore_whitelist=True,
-    #     )
+    def _get_settings() -> Settings:
+        return Settings(
+            controller_func_public_key=controller_public_key_str,
+            status_func_public_key=status_public_key_str,
+            ignore_whitelist=True,
+        )
 
-    # mocker.patch(
-    #     "rctab.routers.accounting.status.get_settings", side_effect=_get_settings
-    # )
-    # mocker.patch(
-    #     "rctab.routers.accounting.desired_states.get_settings",
-    #     side_effect=_get_settings,
-    # )
+    mocker.patch(
+        "rctab.routers.accounting.status.get_settings", side_effect=_get_settings
+    )
+    mocker.patch(
+        "rctab.routers.accounting.desired_states.get_settings",
+        side_effect=_get_settings,
+    )
 
     # pylint: disable=import-outside-toplevel
     from rctab import app

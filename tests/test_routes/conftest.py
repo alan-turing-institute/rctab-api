@@ -14,8 +14,10 @@ from tests.test_routes import constants
 @pytest.fixture(scope="session")
 def event_loop() -> Generator[AbstractEventLoop, None, None]:
     """Overrides pytest's default function-scoped event loop."""
-    loop = asyncio.get_event_loop()
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
     yield loop
+    asyncio.set_event_loop(None)
     loop.close()
 
 
