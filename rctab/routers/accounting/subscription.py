@@ -76,8 +76,10 @@ async def post_subscription(
 
 @router.get("/subscription-id")
 async def get_sub_id(
-    display_name: str, _: UserRBAC = Depends(token_admin_verified)
+    display_name: str,
+    _: UserRBAC = Depends(token_admin_verified),
+    conn: AsyncConnection = Depends(get_async_connection),
 ) -> list[UUID]:
     """Get the subscription ID given a display name."""
-    results = await get_subscription_id(database, display_name)
+    results = await get_subscription_id(conn, display_name)
     return results

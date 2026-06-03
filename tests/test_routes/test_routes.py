@@ -374,16 +374,18 @@ async def test_refresh_desired_states_doesnt_duplicate(
         )
     )
 
-    rows = await test_db.execute(latest_status)
+    results = await test_db.execute(latest_status)
+    rows = results.mappings().fetchall()
+
     enabled_subscriptions = [
-        row["subscription_id"] for row in rows.mappings() if row["active"] is True
+        row["subscription_id"] for row in rows if row["active"] is True
     ]
     assert enabled_subscriptions == [
         always_on_sub_id,
     ]
 
     disabled_subscriptions = [
-        row["subscription_id"] for row in rows.mappings() if row["active"] is False
+        row["subscription_id"] for row in rows if row["active"] is False
     ]
     assert disabled_subscriptions == [
         over_budget_sub_id,
