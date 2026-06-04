@@ -9,7 +9,7 @@ import psycopg2
 from psycopg2 import sql
 
 # Set up Global anonymous dictionary
-ANONYMOUSDICT = {}
+ANONYMOUSDICT: dict[str, dict[str, str]] = {}
 USERCOUNTER = {"counter": 0}
 
 

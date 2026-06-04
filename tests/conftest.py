@@ -7,6 +7,7 @@ from uuid import UUID
 
 import jwt
 import pytest
+import pytest_asyncio
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from fastapi import FastAPI, Request
@@ -54,7 +55,7 @@ def clear_database_once() -> None:
     asyncio.run(_clear())
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def auth_app_with_tx(auth_app: FastAPI) -> AsyncGenerator[FastAPI, None]:
     """Override DB dependency with one connection per test."""
     conn = await ENGINE.connect()

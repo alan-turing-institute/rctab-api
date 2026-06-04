@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock
 from uuid import UUID
 
 import pytest
+import pytest_asyncio
 from mypy_extensions import KwArg, VarArg
 from pytest_mock import MockerFixture
 from rctab_models.models import (
@@ -36,7 +37,7 @@ from rctab.routers.accounting.routes import get_subscription_id
 from tests.test_routes import constants
 
 
-@pytest.fixture(scope="function")
+@pytest_asyncio.fixture(scope="function")
 async def test_db() -> AsyncGenerator[AsyncConnection, None]:
     """Connect before & disconnect after each test."""
     conn = await ENGINE.connect()
