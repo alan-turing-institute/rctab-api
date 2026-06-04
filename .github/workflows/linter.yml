@@ -56,4 +56,8 @@ jobs:
         shell: bash
         run: mkdir .mypy_cache
 
+      - name: mypie
+        shell: bash
+        run: mypy --show-traceback rctab
+
       - uses: pre-commit/action@v3.0.1
