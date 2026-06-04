@@ -30,7 +30,10 @@ repos:
         types: ['python']
       - id: mypy
         name: MyPy
-        entry: poetry run mypy --show-traceback --verbose
+        entry: poetry run mypy --show-traceback
+        pass_filenames: false
+        args:
+          - rctab
         language: system
         types: ['python']
       - id: pylint
