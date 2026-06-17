@@ -7,7 +7,6 @@ from uuid import UUID
 
 from rctab_models.models import DEFAULT_CURRENCY, SubscriptionState
 from sqlalchemy import and_, func, insert, select
-from sqlalchemy.engine import RowMapping
 
 from rctab.constants import ABOLISHMENT_ADJUSTMENT_MSG, ADJUSTMENT_DELTA
 from rctab.crud.accounting_models import allocations as allocations_table
@@ -69,7 +68,7 @@ async def get_inactive_subs(conn: AsyncConnection) -> list[UUID]:
             )
         )
     )
-    rows: list[RowMapping] = list(result.mappings().all())
+    rows = result.mappings().all()
     return [row["subscription_id"] for row in rows]
 
 

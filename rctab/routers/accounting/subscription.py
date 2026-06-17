@@ -1,11 +1,9 @@
 """Create and fetch subscriptions."""
 
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Sequence
 from uuid import UUID
 
 from fastapi import Depends, HTTPException
-
-# from psycopg2 import IntegrityError
 from rctab_models.models import SubscriptionDetails, UserRBAC
 from sqlalchemy import insert
 from sqlalchemy.exc import IntegrityError
@@ -15,6 +13,7 @@ from rctab.crud.auth import token_admin_verified
 from rctab.db import AsyncConnection, get_async_connection
 from rctab.routers.accounting.routes import (
     SubscriptionItem,
+    get_subscription_id,
     get_subscriptions_with_disable,
     router,
 )
@@ -71,3 +70,14 @@ async def post_subscription(
         "status": "success",
         "detail": f"Added subscription {subscription.sub_id} to RCTab",
     }
+
+
+@router.get("/subscription-id")
+async def get_sub_id(
+    display_name: str,
+    _: UserRBAC = Depends(token_admin_verified),
+    conn: AsyncConnection = Depends(get_async_connection),
+) -> Sequence[UUID]:
+    """Get the subscription ID given a display name."""
+    results = await get_subscription_id(conn, display_name)
+    return results

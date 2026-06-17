@@ -2,16 +2,20 @@
 import random
 from datetime import date, timedelta
 from typing import Any, AsyncGenerator, Callable, Coroutine, Optional, Tuple
+from unittest.mock import AsyncMock
 from uuid import UUID
 
 import pytest
+import pytest_asyncio
 from mypy_extensions import KwArg, VarArg
+from pytest_mock import MockerFixture
 from rctab_models.models import (
     RoleAssignment,
     SubscriptionState,
     SubscriptionStatus,
     Usage,
 )
+from sqlalchemy import and_, func, select
 from sqlalchemy.engine import ResultProxy
 from sqlalchemy.engine.base import Engine
 from sqlalchemy.ext.asyncio.engine import AsyncConnection
@@ -21,16 +25,19 @@ from rctab.crud.accounting_models import (
     approvals,
     persistence,
     refresh_materialised_view,
+    status,
     subscription,
     subscription_details,
     usage,
     usage_view,
 )
 from rctab.db import ENGINE
+from rctab.routers.accounting.desired_states import refresh_desired_states
+from rctab.routers.accounting.routes import get_subscription_id
 from tests.test_routes import constants
 
 
-@pytest.fixture(scope="function")
+@pytest_asyncio.fixture(scope="function")
 async def test_db() -> AsyncGenerator[AsyncConnection, None]:
     """Connect before & disconnect after each test."""
     conn = await ENGINE.connect()
@@ -54,7 +61,7 @@ async def create_subscription(
 ) -> UUID:
     """Convenience function for testing.
 
-    db: a databases Database
+    db: An AsyncConnection
     always_on: if None then no row in persistence
     current_state: if None then no row in subscription_details
     allocated_amount: if None then no row in allocations
@@ -155,3 +162,277 @@ def make_async_execute(
         return connection.execute(*args, **kwargs)  # type: ignore
 
     return async_execute
+
+
+@pytest.mark.asyncio
+async def test_refresh_desired_states_disable(
+    test_db: AsyncConnection, mocker: MockerFixture
+) -> None:
+    """Check that refresh_desired_states disables when it should."""
+    # pylint: disable=singleton-comparison
+
+    mock_send_email = AsyncMock()
+    mocker.patch(
+        "rctab.routers.accounting.send_emails.send_generic_email", mock_send_email
+    )
+
+    no_approval_sub_id = await create_subscription(
+        test_db, always_on=False, current_state=SubscriptionState("Enabled")
+    )
+
+    expired_yesterday_sub_id = await create_subscription(
+        test_db,
+        always_on=False,
+        current_state=SubscriptionState("Enabled"),
+        approved=(100.0, date.today() - timedelta(days=1)),
+    )
+
+    over_budget_sub_id = await create_subscription(
+        test_db,
+        always_on=False,
+        current_state=SubscriptionState("Enabled"),
+        approved=(100.0, date.today() + timedelta(days=1)),
+        spent=(101.0, 0),
+    )
+
+    over_time_and_over_budget_sub_id = await create_subscription(
+        test_db,
+        always_on=False,
+        current_state=SubscriptionState("Enabled"),
+        approved=(100.0, date.today() - timedelta(days=1)),
+        spent=(101.0, 0),
+    )
+
+    not_always_on_sub_id = await create_subscription(test_db, always_on=None)
+
+    await refresh_desired_states(
+        test_db,
+        constants.ADMIN_UUID,
+        [
+            no_approval_sub_id,
+            expired_yesterday_sub_id,
+            over_budget_sub_id,
+            not_always_on_sub_id,
+            over_time_and_over_budget_sub_id,
+        ],
+    )
+
+    rows = await test_db.execute(select(status).order_by(status.c.subscription_id))
+    disabled_subscriptions = [
+        (row["subscription_id"], row["reason"])
+        for row in rows.mappings()
+        if row["active"] is False
+    ]
+    disabled_subscriptions_set = set(disabled_subscriptions)
+
+    # The subscription_ids are generated at random so we can't use list comparisons
+    assert len(disabled_subscriptions) == len(disabled_subscriptions_set)
+    assert disabled_subscriptions_set == {
+        (no_approval_sub_id, "EXPIRED"),
+        (expired_yesterday_sub_id, "EXPIRED"),
+        (over_budget_sub_id, "OVER_BUDGET"),
+        (not_always_on_sub_id, "EXPIRED"),
+        (over_time_and_over_budget_sub_id, "OVER_BUDGET_AND_EXPIRED"),
+    }
+
+
+@pytest.mark.asyncio
+async def test_refresh_desired_states_enable(
+    test_db: AsyncConnection, mocker: MockerFixture
+) -> None:
+    """Check that refresh_desired_states enables when it should."""
+    # pylint: disable=singleton-comparison
+
+    mock_send_email = AsyncMock()
+    mocker.patch(
+        "rctab.routers.accounting.send_emails.send_generic_email", mock_send_email
+    )
+
+    # Allocations default to 0, not NULL, so we don't expect this
+    # sub to be disabled since 0 usage is not > 0 allocated budget
+    no_allocation_sub_id = await create_subscription(
+        test_db,
+        always_on=False,
+        current_state=SubscriptionState("Disabled"),
+        approved=(100.0, date.today() + timedelta(days=1)),
+    )
+
+    always_on_sub_id = await create_subscription(
+        test_db,
+        always_on=True,
+        current_state=SubscriptionState("Disabled"),
+        approved=(100.0, date.today() - timedelta(days=1)),
+        spent=(101.0, 0),
+    )
+
+    # E.g. we have just allocated more budget
+    currently_disabled_sub_id = await create_subscription(
+        test_db,
+        always_on=False,
+        current_state=SubscriptionState("Disabled"),
+        approved=(200.0, date.today() + timedelta(days=1)),
+        allocated_amount=200.0,
+        spent=(101.0, 0),
+    )
+    await test_db.execute(
+        status.insert().values(),
+        dict(
+            subscription_id=str(currently_disabled_sub_id),
+            admin=str(constants.ADMIN_UUID),
+            active=False,
+        ),
+    )
+
+    # Q) Can we presume that status, persistence, approvals and allocations
+    #    are made during subscription creation?
+    await refresh_desired_states(
+        test_db,
+        constants.ADMIN_UUID,
+        [always_on_sub_id, no_allocation_sub_id, currently_disabled_sub_id],
+    )
+
+    rows = await test_db.execute(select(status).order_by(status.c.subscription_id))
+
+    enabled_subscriptions = [
+        row["subscription_id"] for row in rows.mappings() if row["active"] is True
+    ]
+    enabled_subscriptions_set = set(enabled_subscriptions)
+
+    # The subscription_ids are generated at random so we can't use list comparisons
+    assert len(enabled_subscriptions) == len(enabled_subscriptions_set)
+    assert enabled_subscriptions_set == {
+        always_on_sub_id,
+        no_allocation_sub_id,
+        currently_disabled_sub_id,
+    }
+
+
+# here
+@pytest.mark.asyncio
+async def test_refresh_desired_states_doesnt_duplicate(
+    test_db: AsyncConnection, mocker: MockerFixture
+) -> None:
+    """Check that refresh_desired_states only inserts when necessary."""
+    # pylint: disable=singleton-comparison
+
+    always_on_sub_id = await create_subscription(
+        test_db,
+        always_on=True,
+        current_state=SubscriptionState("Disabled"),
+        approved=(100.0, date.today() - timedelta(days=1)),
+        spent=(101.0, 0),
+    )
+    await test_db.execute(
+        status.insert().values(),
+        dict(
+            subscription_id=str(always_on_sub_id),
+            admin=str(constants.ADMIN_UUID),
+            active=True,
+        ),
+    )
+
+    # We want this subscription to stay disabled.
+    over_budget_sub_id = await create_subscription(
+        test_db,
+        always_on=False,
+        current_state=SubscriptionState("Enabled"),
+        approved=(100.0, date.today() + timedelta(days=1)),
+        spent=(101.0, 0),
+    )
+    await test_db.execute(
+        status.insert().values(),
+        dict(
+            subscription_id=str(over_budget_sub_id),
+            admin=str(constants.ADMIN_UUID),
+            active=False,
+        ),
+    )
+
+    mock_send_email = AsyncMock()
+    mocker.patch(
+        "rctab.routers.accounting.send_emails.send_generic_email", mock_send_email
+    )
+
+    # Note: here we check that, by default, refresh_desired_states()
+    # will refresh all subscriptions
+    await refresh_desired_states(
+        test_db,
+        constants.ADMIN_UUID,
+    )
+
+    latest_status_id = (
+        select(status.c.subscription_id, func.max(status.c.id).label("max_id"))
+        .group_by(status.c.subscription_id)
+        .alias()
+    )
+
+    latest_status = select(status.c.subscription_id, status.c.active).select_from(
+        status.join(
+            latest_status_id,
+            and_(
+                status.c.subscription_id == latest_status_id.c.subscription_id,
+                status.c.id == latest_status_id.c.max_id,
+            ),
+        )
+    )
+
+    results = await test_db.execute(latest_status)
+    rows = results.mappings().fetchall()
+
+    enabled_subscriptions = [
+        row["subscription_id"] for row in rows if row["active"] is True
+    ]
+    assert enabled_subscriptions == [
+        always_on_sub_id,
+    ]
+
+    disabled_subscriptions = [
+        row["subscription_id"] for row in rows if row["active"] is False
+    ]
+    assert disabled_subscriptions == [
+        over_budget_sub_id,
+    ]
+
+
+@pytest.mark.asyncio
+async def test_get_subscription_id(test_db: AsyncConnection) -> None:
+    """The returned statement should select nothing, a single ID or raise."""
+    # Check that we get None if there isn't a match.
+    result = await get_subscription_id(test_db, "some display name")
+    assert result == []
+
+    # Check things work for a single subscription_details entry.
+    sub1 = await create_subscription(
+        test_db,
+        # Note create_subscription has a hard-coded display name.
+        current_state=SubscriptionState.ENABLED,
+    )
+    result = await get_subscription_id(test_db, "a subscription")
+    assert result == [sub1]
+
+    # Check a single subscription with > 1 name entry.
+    await test_db.execute(
+        subscription_details.insert().values(),
+        SubscriptionStatus(
+            subscription_id=sub1,
+            state=SubscriptionState.ENABLED,
+            display_name="New-Subscription-Name",
+            role_assignments=(),
+        ).model_dump(),
+    )
+
+    # The old name should not work any more.
+    result = await get_subscription_id(test_db, "a subscription")
+    assert result == []
+
+    # The new name should work.
+    result = await get_subscription_id(test_db, "New-Subscription-Name")
+    assert result == [sub1]
+
+    # Check two subscriptions with the same name
+    # (note I don't know whether Azure allows this).
+    sub1 = await create_subscription(test_db, current_state=SubscriptionState.ENABLED)
+    sub2 = await create_subscription(test_db, current_state=SubscriptionState.ENABLED)
+
+    result = await get_subscription_id(test_db, "a subscription")
+    assert result in ([sub1, sub2], [sub2, sub1])

@@ -3,6 +3,7 @@ from asyncio import AbstractEventLoop
 from typing import Any, AsyncGenerator, Generator
 
 import pytest
+import pytest_asyncio
 from sqlalchemy import delete, insert, text
 from sqlalchemy.ext.asyncio.engine import AsyncConnection
 
@@ -14,12 +15,14 @@ from tests.test_routes import constants
 @pytest.fixture(scope="session")
 def event_loop() -> Generator[AbstractEventLoop, None, None]:
     """Overrides pytest's default function-scoped event loop."""
-    loop = asyncio.get_event_loop()
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
     yield loop
+    asyncio.set_event_loop(None)
     loop.close()
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest_asyncio.fixture(scope="session", autouse=True)
 async def setup_test_data() -> AsyncGenerator[None, None]:
     # Insert async setup code here
     # Ensure pooled connections created in other test loops are dropped first.

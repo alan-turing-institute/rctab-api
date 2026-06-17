@@ -76,11 +76,9 @@ async def check_user_access(
     ).where(user_rbac.c.oid == oid)
 
     result = await conn.execute(statement)
-    user_status = result.first()
+    user_status = result.mappings().first()
     if user_status:
-        # pylint: disable=protected-access
-        return UserRBAC(**user_status._mapping)
-        # pylint: enable=protected-access
+        return UserRBAC(**user_status)
 
     # If we have a username put it in RBAC table
     if username:

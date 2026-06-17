@@ -1,6 +1,5 @@
 import random
 from datetime import date
-from typing import Tuple
 from unittest.mock import ANY, AsyncMock
 from uuid import UUID
 
@@ -35,12 +34,11 @@ async def fetch_all(conn: AsyncConnection, query: Select) -> list[dict]:
 
 
 def test_cost_recovery_app_route(
-    app_with_signed_billing_token: Tuple[FastAPI, str],
+    auth_app: FastAPI,
     mocker: MockerFixture,
 ) -> None:
     """Check we can cost-recover a month."""
 
-    auth_app, token = app_with_signed_billing_token
     with TestClient(auth_app) as client:
 
         mock = AsyncMock()
@@ -50,7 +48,6 @@ def test_cost_recovery_app_route(
         result = client.post(
             PREFIX + "/app-cost-recovery",
             content=recovery_period.model_dump_json(),
-            headers={"authorization": "Bearer " + token},
         )
 
         mock.assert_called_once_with(

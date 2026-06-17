@@ -2,7 +2,7 @@
 
 import datetime
 import uuid
-from typing import List, Optional, Union
+from typing import List, Optional, Sequence, Union
 from uuid import UUID
 
 from fastapi import APIRouter
@@ -515,3 +515,26 @@ def get_subscription_name(sub_id: Optional[UUID] = None) -> Select:
     return select(subscription_details.c.display_name.label("name")).where(
         subscription_details.c.subscription_id == sub_id
     )
+
+
+async def get_subscription_id(
+    conn: AsyncConnection, display_name: str
+) -> Sequence[UUID]:
+    """Get the subscription ID(s) from a display name."""
+    details = subscription_details  # alias for brevity
+
+    subq = select(
+        details.c.subscription_id,
+        details.c.display_name,
+        func.row_number()
+        .over(partition_by=details.c.subscription_id, order_by=details.c.id.desc())
+        .label("rank"),
+    ).alias("subq")
+
+    results = await conn.scalars(
+        select(subq.c.subscription_id).where(
+            (subq.c.rank == 1) & (subq.c.display_name == display_name)
+        )
+    )
+
+    return results.all()

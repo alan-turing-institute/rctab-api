@@ -1,14 +1,9 @@
 import asyncio
-import datetime
-import subprocess
-from pathlib import Path
-from typing import Any, AsyncGenerator, Callable, Dict, Tuple
+from typing import Any, AsyncGenerator, Callable, Dict, Generator
 from uuid import UUID
 
-import jwt
 import pytest
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import rsa
+import pytest_asyncio
 from fastapi import FastAPI, Request
 from jose.jws import sign
 from sqlalchemy.ext.asyncio.engine import AsyncConnection
@@ -22,13 +17,15 @@ from rctab.crud.auth import (
     user_authenticated_no_error,
 )
 from rctab.db import ENGINE, get_async_connection
-from rctab.settings import Settings
+from rctab.routers.accounting.desired_states import authenticate_app
+from rctab.routers.accounting.status import authenticate_status_app
+from rctab.routers.accounting.usage import authenticate_usage_app
 from tests.test_routes import constants
 
 # pylint: disable=W0621
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope="function", autouse=True)
 def clear_database_once() -> None:
     """Clear accounting tables once before the test session starts."""
 
@@ -54,27 +51,10 @@ def clear_database_once() -> None:
     asyncio.run(_clear())
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def auth_app_with_tx(auth_app: FastAPI) -> AsyncGenerator[FastAPI, None]:
-    """Override DB dependency with one transaction-bound connection per test."""
+    """Override DB dependency with one connection per test."""
     conn = await ENGINE.connect()
-    trans = await conn.begin()
-    await conn.execute(text("""
-            TRUNCATE TABLE
-                accounting.status,
-                accounting.usage,
-                accounting.costmanagement,
-                accounting.allocations,
-                accounting.approvals,
-                accounting.persistence,
-                accounting.emails,
-                accounting.cost_recovery,
-                accounting.finance,
-                accounting.finance_history,
-                accounting.subscription,
-                accounting.cost_recovery_log
-            RESTART IDENTITY CASCADE
-            """))
 
     async def _get_async_connection_override() -> AsyncGenerator[AsyncConnection, None]:
         yield conn
@@ -84,8 +64,6 @@ async def auth_app_with_tx(auth_app: FastAPI) -> AsyncGenerator[FastAPI, None]:
         yield auth_app
     finally:
         auth_app.dependency_overrides.pop(get_async_connection, None)
-        if trans.is_active:
-            await trans.rollback()
         await conn.close()
 
 
@@ -156,167 +134,23 @@ def get_token_verified_override() -> Callable:
 @pytest.fixture
 def auth_app(
     get_oauth_settings_override: Callable, get_token_verified_override: Callable
-) -> FastAPI:
+) -> Generator[FastAPI, None, None]:
     # pylint: disable=import-outside-toplevel
     from rctab import app
 
-    # Override all authentication for tests
-    app.dependency_overrides = {}
-    app.dependency_overrides[user_authenticated] = get_oauth_settings_override()
-    app.dependency_overrides[user_authenticated_no_error] = (
-        get_oauth_settings_override()
-    )
-    app.dependency_overrides[token_verified] = get_token_verified_override()
-    app.dependency_overrides[token_user_verified] = get_token_verified_override()
-    app.dependency_overrides[token_admin_verified] = get_token_verified_override()
-
-    return app
-
-
-def get_public_key_and_token(app_name: str) -> Tuple[str, str]:
-    """Sign a JWT with private key and mock get_settings with public key field"""
-    token_claims: Dict[str, Any] = {"sub": app_name}
-    access_token_expires = datetime.timedelta(minutes=10)
-
-    expire = datetime.datetime.now(datetime.UTC) + access_token_expires
-    token_claims.update({"exp": expire})
-
-    private_key = rsa.generate_private_key(
-        public_exponent=65537,
-        key_size=2048,
-    )
-
-    public_key = private_key.public_key()
-    public_key_str = public_key.public_bytes(
-        encoding=serialization.Encoding.OpenSSH,
-        format=serialization.PublicFormat.OpenSSH,
-    ).decode("utf-8")
-
-    token = jwt.encode(token_claims, private_key, algorithm="RS256")  # type: ignore
-    return public_key_str, token
-
-
-# pylint: disable=redefined-outer-name
-@pytest.fixture
-def app_with_signed_billing_token(
-    tmp_path: Path,
-    mocker: Any,
-    get_oauth_settings_override: Callable,
-    get_token_verified_override: Callable,
-) -> Tuple[FastAPI, str]:
-    """Sign a JWT with private key and mock get_settings with public key field"""
-    private_key = tmp_path / "key"
-    public_key = tmp_path / "key.pub"
-
-    # Create a public and private_key
-    _ = subprocess.check_output(
-        ["ssh-keygen", "-t", "rsa", "-f", private_key, "-N", ""],
-        universal_newlines=True,
-    )
-
-    assert private_key.exists()
-    assert public_key.exists()
-
-    private_key_text = private_key.read_text()
-    private_key_bytes = serialization.load_ssh_private_key(  # type: ignore
-        private_key_text.encode(), password=b""
-    )
-
-    # Create jwt
-    token_claims: Dict[str, Any] = {"sub": "usage-app"}
-    access_token_expires = datetime.timedelta(minutes=10)
-
-    expire = datetime.datetime.now(datetime.UTC) + access_token_expires
-    token_claims.update({"exp": expire})
-
-    token = jwt.encode(token_claims, private_key_bytes, algorithm="RS256")  # type: ignore
-
-    def _get_settings() -> Settings:
-        return Settings(
-            usage_func_public_key=str(public_key.read_text()), ignore_whitelist=True
-        )
-
-    mocker.patch(
-        "rctab.routers.accounting.usage.get_settings", side_effect=_get_settings
-    )
-    # pylint: disable=import-outside-toplevel
-    from rctab import app
-
-    # Override all authentication for tests
-    app.dependency_overrides = {}
-    app.dependency_overrides[user_authenticated] = get_oauth_settings_override()
-    app.dependency_overrides[token_verified] = get_token_verified_override()
-    app.dependency_overrides[token_user_verified] = get_token_verified_override()
-    app.dependency_overrides[token_admin_verified] = get_token_verified_override()
-
-    return app, token
-
-
-@pytest.fixture
-def app_with_signed_status_and_controller_tokens(
-    # mocker: Any,
-    get_oauth_settings_override: Callable,
-    get_token_verified_override: Callable,
-) -> Tuple[FastAPI, str, str]:
-
-    _, status_token = get_public_key_and_token("status-app")
-    _, controller_token = get_public_key_and_token("controller-app")
-
-    # def _get_settings() -> Settings:
-    #     return Settings(
-    #         controller_func_public_key=controller_public_key_str,
-    #         status_func_public_key=status_public_key_str,
-    #         ignore_whitelist=True,
-    #     )
-
-    # mocker.patch(
-    #     "rctab.routers.accounting.status.get_settings", side_effect=_get_settings
-    # )
-    # mocker.patch(
-    #     "rctab.routers.accounting.desired_states.get_settings",
-    #     side_effect=_get_settings,
-    # )
-
-    # pylint: disable=import-outside-toplevel
-    from rctab import app
-
-    # Override all authentication for tests
-    app.dependency_overrides = {}
-    app.dependency_overrides[user_authenticated] = get_oauth_settings_override()
-    app.dependency_overrides[token_verified] = get_token_verified_override()
-    app.dependency_overrides[token_user_verified] = get_token_verified_override()
-    app.dependency_overrides[token_admin_verified] = get_token_verified_override()
-
-    return app, status_token, controller_token
-
-
-@pytest.fixture
-def app_with_signed_status_token(
-    mocker: Any,
-    get_oauth_settings_override: Callable,
-    get_token_verified_override: Callable,
-) -> Tuple[FastAPI, str]:
-
-    status_public_key_str, status_token = get_public_key_and_token("status-app")
-
-    def _get_settings() -> Settings:
-        return Settings(
-            status_func_public_key=status_public_key_str, ignore_whitelist=True
-        )
-
-    mocker.patch(
-        "rctab.routers.accounting.status.get_settings", side_effect=_get_settings
-    )
-
-    # pylint: disable=import-outside-toplevel
-    from rctab import app
+    async def bypass_app_token() -> Dict[str, str]:
+        return {}
 
     # Override all authentication for tests
     app.dependency_overrides = {
         user_authenticated: get_oauth_settings_override(),
+        user_authenticated_no_error: get_oauth_settings_override(),
         token_verified: get_token_verified_override(),
         token_user_verified: get_token_verified_override(),
         token_admin_verified: get_token_verified_override(),
+        authenticate_status_app: bypass_app_token,
+        authenticate_usage_app: bypass_app_token,
+        authenticate_app: bypass_app_token,
     }
-
-    return app, status_token
+    yield app
+    app.dependency_overrides = {}

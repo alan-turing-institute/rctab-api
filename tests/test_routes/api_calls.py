@@ -53,7 +53,6 @@ def create_subscription(client: TestClient, subscription_id: UUID) -> Response:
 
 def create_subscription_detail(
     client: TestClient,
-    token: str,
     subscription_id: UUID,
     state: SubscriptionState,
     role_assignments: Optional[Tuple[RoleAssignment, ...]] = (),
@@ -72,7 +71,6 @@ def create_subscription_detail(
                 )
             ]
         ).model_dump_json(),
-        headers={"authorization": "Bearer " + token},
     )
 
 
@@ -128,7 +126,6 @@ def create_allocation(
 
 def create_usage(
     client: TestClient,
-    token: str,
     subscription_id: UUID,
     cost: float = 0.0,
     amortised_cost: float = 0.0,
@@ -178,5 +175,4 @@ def create_usage(
     return client.post(
         "usage/all-usage",
         content=post_data.model_dump_json(),
-        headers={"authorization": "Bearer " + token},
     )
