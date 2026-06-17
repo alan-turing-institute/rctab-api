@@ -1,4 +1,3 @@
-from typing import Tuple
 from uuid import UUID
 
 import pytest
@@ -68,11 +67,9 @@ async def test_post_subscription_twice(
 
 
 def test_get_subscription_summary(
-    app_with_signed_status_and_controller_tokens: Tuple[FastAPI, str, str],
+    auth_app: FastAPI,
 ) -> None:
     """Get subscription information"""
-    auth_app, status_token, _ = app_with_signed_status_and_controller_tokens
-
     expected_details = SubscriptionDetails(
         subscription_id=constants.TEST_SUB_UUID,
         name="sub display name",
@@ -97,7 +94,6 @@ def test_get_subscription_summary(
 
         result = api_calls.create_subscription_detail(
             client,
-            status_token,
             constants.TEST_SUB_UUID,
             SubscriptionState.ENABLED,
             role_assignments=(),
@@ -110,11 +106,9 @@ def test_get_subscription_summary(
 
 # here
 def test_get_subscription_id(
-    app_with_signed_status_and_controller_tokens: Tuple[FastAPI, str, str],
+    auth_app: FastAPI,
 ) -> None:
     """Returns a subscription id, given a subscription name."""
-    auth_app, status_token, _ = app_with_signed_status_and_controller_tokens
-
     with TestClient(auth_app) as client:
         # Check the scenario with no matches.
         result = client.get(
@@ -131,7 +125,6 @@ def test_get_subscription_id(
 
         api_calls.create_subscription_detail(
             client=client,
-            token=status_token,
             subscription_id=constants.TEST_SUB_UUID,
             state=SubscriptionState.ENABLED,
             display_name="MyDisplayName",
@@ -151,7 +144,6 @@ def test_get_subscription_id(
 
         api_calls.create_subscription_detail(
             client=client,
-            token=status_token,
             subscription_id=constants.TEST_SUB_2_UUID,
             state=SubscriptionState.ENABLED,
             display_name="MyDisplayName",

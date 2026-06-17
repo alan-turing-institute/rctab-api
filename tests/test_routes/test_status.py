@@ -1,5 +1,5 @@
 import datetime
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List
 from unittest.mock import ANY, AsyncMock
 from uuid import UUID, uuid4
 
@@ -43,12 +43,10 @@ def unique_test_sub_uuid(monkeypatch: pytest.MonkeyPatch) -> None:
 )
 @given(st.lists(st.builds(SubscriptionStatus), min_size=2, max_size=20, unique=True))
 def test_post_status(
-    app_with_signed_status_token: Tuple[FastAPI, str],
+    auth_app: FastAPI,
     mocker: pytest_mock.MockerFixture,
     status_list: List[SubscriptionStatus],
 ) -> None:
-    auth_app, token = app_with_signed_status_token
-
     with TestClient(auth_app) as client:
         all_status = AllSubscriptionStatus(status_list=status_list)
 
@@ -65,7 +63,6 @@ def test_post_status(
         resp = client.post(
             "accounting/all-status",
             content=all_status.model_dump_json().encode("utf-8"),
-            headers={"authorization": "Bearer " + token},
         )
         assert resp.status_code == 200
 
@@ -79,7 +76,6 @@ def test_post_status(
         resp = client.post(
             "accounting/all-status",
             content=all_status.model_dump_json(),
-            headers={"authorization": "Bearer " + token},
         )
         assert resp.status_code == 200
 

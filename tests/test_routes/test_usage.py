@@ -1,7 +1,7 @@
 import datetime
 import json
 from pathlib import Path
-from typing import Iterable, List, Tuple, Union
+from typing import Iterable, List, Union
 from unittest.mock import ANY, AsyncMock
 from uuid import UUID, uuid4
 
@@ -51,10 +51,9 @@ TICKET = "T001-12"
 
 
 def test_post_usage(
-    app_with_signed_billing_token: Tuple[FastAPI, str],
+    auth_app: FastAPI,
     mocker: pytest_mock.MockerFixture,
 ) -> None:
-    auth_app, token = app_with_signed_billing_token
     example_usage_file = Path("tests/data/example.json")
 
     example_usage_data: Iterable[dict] = json.loads(
@@ -82,7 +81,6 @@ def test_post_usage(
         resp = client.post(
             "usage/all-usage",
             content=post_data.model_dump_json().encode("utf-8"),
-            headers={"authorization": "Bearer " + token},
         )
 
         assert resp.status_code == 200
@@ -97,7 +95,6 @@ def test_post_usage(
 
         get_resp = client.get(
             "usage/all-usage",
-            headers={"authorization": "Bearer " + token},
         )
 
         assert get_resp.status_code == 200
@@ -224,10 +221,7 @@ async def test_post_usage3(
     assert len(sub_usage) == 2
 
 
-def test_write_usage(
-    app_with_signed_billing_token: Tuple[FastAPI, str], mocker: MockerFixture
-) -> None:
-    auth_app, token = app_with_signed_billing_token
+def test_write_usage(auth_app: FastAPI, mocker: MockerFixture) -> None:
     expected_details = SubscriptionDetails(
         subscription_id=constants.TEST_SUB_UUID,
         approved_from=date_from,
@@ -273,7 +267,6 @@ def test_write_usage(
         assert (
             api_calls.create_usage(
                 client,
-                token,
                 constants.TEST_SUB_UUID,
                 cost=50.0,
                 date=datetime.datetime(2024, 2, 2),
@@ -284,7 +277,6 @@ def test_write_usage(
         assert (
             api_calls.create_usage(
                 client,
-                token,
                 constants.TEST_SUB_UUID,
                 cost=20.00,
                 date=datetime.datetime(2024, 2, 3),
@@ -295,7 +287,6 @@ def test_write_usage(
         assert (
             api_calls.create_usage(
                 client,
-                token,
                 constants.TEST_SUB_UUID,
                 cost=5.340,
                 date=datetime.datetime(2024, 2, 4),
@@ -306,10 +297,7 @@ def test_write_usage(
         api_calls.assert_subscription_status(client, expected_details)
 
 
-def test_greater_budget(
-    app_with_signed_billing_token: Tuple[FastAPI, str], mocker: MockerFixture
-) -> None:
-    auth_app, token = app_with_signed_billing_token
+def test_greater_budget(auth_app: FastAPI, mocker: MockerFixture) -> None:
     expected_details = SubscriptionDetails(
         subscription_id=constants.TEST_SUB_UUID,
         approved_from=date_from,
@@ -355,7 +343,6 @@ def test_greater_budget(
         assert (
             api_calls.create_usage(
                 client,
-                token,
                 constants.TEST_SUB_UUID,
                 cost=100.0,
                 date=datetime.datetime(2024, 2, 2),
@@ -366,7 +353,6 @@ def test_greater_budget(
         assert (
             api_calls.create_usage(
                 client,
-                token,
                 constants.TEST_SUB_UUID,
                 cost=50.0,
                 date=datetime.datetime(2024, 2, 3),
@@ -379,34 +365,29 @@ def test_greater_budget(
 
 def _post_costmanagement(
     client: Union[requests.Session, TestClient],
-    token: str,
     data: List[CMUsage],
 ) -> requests.Response:
     all_usage = AllCMUsage(cm_usage_list=data)
     post_client = client.post(
         "/usage/all-cm-usage",
-        headers={"authorization": "Bearer " + token},
         content=all_usage.model_dump_json().encode("utf-8"),
     )  # type: ignore
     return post_client  # type: ignore
 
 
 def _get_costmanagement(
-    client: Union[requests.Session, TestClient], token: str
+    client: Union[requests.Session, TestClient],
 ) -> requests.Response:
-    return client.get(
-        "/usage/all-cm-usage", headers={"authorization": "Bearer " + token}
-    )  # type: ignore
+    return client.get("/usage/all-cm-usage")  # type: ignore
 
 
 def test_write_read_costmanagement(
-    app_with_signed_billing_token: Tuple[FastAPI, str],
+    auth_app: FastAPI,
 ) -> None:
     """POST some cost-management data, GET it back, and check that the response matches
     the input. Do it twice, because the first time inserts new subscriptions, whereas
     the second updates existing ones.
     """
-    auth_app, token = app_with_signed_billing_token
     end_date = datetime.datetime.now().date()
     start_date = end_date - datetime.timedelta(days=364)
     sub_data_in = [
@@ -429,9 +410,9 @@ def test_write_read_costmanagement(
     ]
     with TestClient(auth_app) as client:
         for _ in range(2):
-            response = _post_costmanagement(client, token, sub_data_in)
+            response = _post_costmanagement(client, sub_data_in)
             assert response.status_code == 200
-            response = _get_costmanagement(client, token)
+            response = _get_costmanagement(client)
             assert response.status_code == 200
             sub_data_out = response.json()
             sub_data_out = [CMUsage(**d) for d in sub_data_out]
@@ -440,11 +421,9 @@ def test_write_read_costmanagement(
 
 
 def test_post_monthly_usage(
-    app_with_signed_billing_token: Tuple[FastAPI, str],
+    auth_app: FastAPI,
     mocker: pytest_mock.MockerFixture,
 ) -> None:
-    auth_app, token = app_with_signed_billing_token
-
     example_1_file = Path("tests/data/example-monthly-wrong.json")
     example_1_data = json.loads(example_1_file.read_text(encoding="utf-8"))
     sub_map_1: dict[str, UUID] = {}
@@ -488,7 +467,6 @@ def test_post_monthly_usage(
             )
             .model_dump_json()
             .encode("utf-8"),
-            headers={"authorization": "Bearer " + token},
         )
 
         assert resp.status_code == 400
@@ -497,7 +475,6 @@ def test_post_monthly_usage(
         resp = client.post(
             "usage/monthly-usage",
             content=post_example_1_data.model_dump_json().encode("utf-8"),
-            headers={"authorization": "Bearer " + token},
         )
 
         assert resp.status_code == 400
@@ -506,14 +483,12 @@ def test_post_monthly_usage(
         resp = client.post(
             "usage/monthly-usage",
             content=post_example_2_data.model_dump_json().encode("utf-8"),
-            headers={"authorization": "Bearer " + token},
         )
 
         assert resp.status_code == 200
 
         get_resp = client.get(
             "usage/all-usage",
-            headers={"authorization": "Bearer " + token},
         )
 
         assert get_resp.status_code == 200
@@ -643,12 +618,11 @@ async def test_post_usage_refreshes_view(
 
 
 def test_post_usage_emails(
-    app_with_signed_billing_token: Tuple[FastAPI, str],
+    auth_app: FastAPI,
     mocker: pytest_mock.MockerFixture,
 ) -> None:
     """Check that we send the correct emails."""
 
-    auth_app, token = app_with_signed_billing_token
     example_usage_file = Path("tests/data/example.json")
     example_usage_data = json.loads(example_usage_file.read_text(encoding="utf-8"))
     sub_map: dict[str, UUID] = {}
@@ -677,7 +651,6 @@ def test_post_usage_emails(
         resp = client.post(
             "usage/all-usage",
             content=post_data.model_dump_json().encode("utf-8"),
-            headers={"authorization": "Bearer " + token},
         )
         assert resp.status_code == 200
 

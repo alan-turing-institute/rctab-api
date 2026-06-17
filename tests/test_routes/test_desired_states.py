@@ -222,9 +222,6 @@ async def test_desired_states_disabled(
         "rctab.routers.accounting.desired_states.refresh_desired_states", mock_refresh
     )
 
-    auth_app.dependency_overrides[desired_states.authenticate_app] = lambda: {
-        "sub": "controller-app"
-    }
     auth_app.dependency_overrides[get_async_connection] = _get_async_connection_override
 
     async with AsyncClient(
@@ -295,9 +292,6 @@ async def test_desired_states_enabled(
         "rctab.routers.accounting.desired_states.refresh_desired_states", mock_refresh
     )
 
-    auth_app.dependency_overrides[desired_states.authenticate_app] = lambda: {
-        "sub": "controller-app"
-    }
     auth_app.dependency_overrides[get_async_connection] = _get_async_connection_override
 
     async with AsyncClient(
