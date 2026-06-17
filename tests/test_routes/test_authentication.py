@@ -12,9 +12,6 @@ def no_auth_overrides() -> None:
     app.dependency_overrides = {}
 
 
-# --- token_admin_verified routes ---
-
-
 @pytest.mark.asyncio
 async def test_topup_requires_auth() -> None:
     async with AsyncClient(
@@ -166,9 +163,6 @@ async def test_get_all_cm_usage_requires_auth() -> None:
     ) as client:
         response = await client.get("/accounting/all-cm-usage")
     assert response.status_code == 401
-
-
-# --- app-token routes (authenticate_status_app / authenticate_usage_app / authenticate_app) ---
 
 
 @pytest.mark.asyncio
