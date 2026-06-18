@@ -2,6 +2,7 @@
 
 ![docker-deploy](https://github.com/alan-turing-institute/rctab-api/actions/workflows/deploy.yml/badge.svg)
 ![tests](https://github.com/alan-turing-institute/rctab-api/actions/workflows/test.yml/badge.svg)
+[![Coverage badge](https://raw.githubusercontent.com/alan-turing-institute/rctab-api/python-coverage-comment-action-data/badge.svg)](https://github.com/alan-turing-institute/rctab-api/tree/python-coverage-comment-action-data)
 ![linter](https://github.com/alan-turing-institute/rctab-api/actions/workflows/linter.yml/badge.svg)
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit)](https://github.com/pre-commit/pre-commit)
 [![Documentation Status](https://readthedocs.org/projects/rctab-api/badge/?version=latest)](https://rctab-api.readthedocs.io/en/latest/?badge=latest)
