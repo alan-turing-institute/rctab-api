@@ -2,7 +2,6 @@
 
 import os
 from importlib import metadata
-from unittest.mock import patch
 
 import sphinx_rtd_theme
 
@@ -18,19 +17,18 @@ os.environ["DB_HOST"] = "localhost"
 os.environ["DB_PASSWORD"] = "notarealpassword"
 os.environ["DB_USER"] = "the_username"
 
-# Since there won't be a real database during the docs build.
-with patch("databases.Database"):
-    # pylint: disable=wrong-import-position
-    import rctab
+# Importing before setting env vars would cause a Settings error.
+# pylint: disable=wrong-import-position
+import rctab
 
 # pylint: enable=wrong-import-position
 
 # General configuration
 
 project = "rctab-api"
-author = "The Alan Turing Institute's Research Computing Team"
+author = "The Alan Turing Institute's"
 # pylint: disable=redefined-builtin
-copyright = f"2025, {author}"
+copyright = f"2026, {author}"
 # pylint: enable=redefined-builtin
 
 version = metadata.version(rctab.__package__)
