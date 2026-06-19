@@ -14,10 +14,19 @@ env:
   # FastAPI session secret.
   SESSION_SECRET: some_secret
 
+# Least-privilege default; the test job overrides with the scopes it needs.
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+
+    # For python-coverage-comment-action: PR comment + push to data branch.
+    permissions:
+      contents: write
+      pull-requests: write
 
     strategy:
       matrix:
@@ -55,6 +64,12 @@ jobs:
         shell: bash
         run: |
           scripts/runtests.sh -c routes -s
+
+      # Combined main + routes coverage is complete here.
+      - name: Publish coverage comment and badge
+        uses: py-cov-action/python-coverage-comment-action@v3
+        with:
+          GITHUB_TOKEN: ${{ github.token }}
 
       - name: Check DB downgrade
         shell: bash

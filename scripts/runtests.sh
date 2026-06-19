@@ -170,10 +170,12 @@ poetry run alembic upgrade head
 # Run tests
 export TESTING=true
 if [ "$TEST_CONFIGURATION" = "main" ]; then
-    CONFIGURATION_ARGS=(--hypothesis-show-statistics --cov-report term-missing --cov rctab --ignore tests/test_routes/)
+    # Collect a clean baseline but don't report yet.
+    CONFIGURATION_ARGS=(--hypothesis-show-statistics --cov-report= --cov rctab --ignore tests/test_routes/)
     poetry run pytest "${EXTRA_ARGS[@]}" "${CONFIGURATION_ARGS[@]}"
 elif [ "$TEST_CONFIGURATION" = "routes" ]; then
-    CONFIGURATION_ARGS=(./tests/test_routes/)
+    # Append to "main" coverage and print the combined report.
+    CONFIGURATION_ARGS=(--cov-append --cov-report term-missing --cov rctab ./tests/test_routes/)
     poetry run pytest "${EXTRA_ARGS[@]}" "${CONFIGURATION_ARGS[@]}"
 elif [ "$TEST_CONFIGURATION" = "migrations" ]; then
     poetry run alembic upgrade head
