@@ -179,7 +179,7 @@ elif [ "$TEST_CONFIGURATION" = "routes" ]; then
     poetry run pytest "${EXTRA_ARGS[@]}" "${CONFIGURATION_ARGS[@]}"
 elif [ "$TEST_CONFIGURATION" = "migrations" ]; then
     poetry run alembic upgrade head
-    poetry run alembic downgrade b65796c99771
+    poetry run alembic downgrade base
     poetry run alembic upgrade head
 else
     poetry run pytest "${EXTRA_ARGS[@]}"
