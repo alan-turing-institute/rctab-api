@@ -19,6 +19,7 @@ from sqlalchemy.dialects.postgresql import DOUBLE_PRECISION, ENUM, JSONB, UUID
 from sqlalchemy.sql import func
 from sqlalchemy.sql.expression import text
 
+from rctab.crud.locks import LockNames, advisory_lock
 from rctab.crud.models import metadata
 from rctab.db import AsyncConnection
 
@@ -242,18 +243,22 @@ usage = Table(
 async def refresh_materialised_view(
     connection: AsyncConnection, view: Table, concurrently: bool = False
 ) -> None:
-    """Refresh a materialised view."""
-    await connection.execute(
-        text(
-            """
-            REFRESH MATERIALIZED VIEW {concurrently} {schema}.{view};
-            """.format(
-                concurrently="CONCURRENTLY" if concurrently else "",
-                view=view.name,
-                schema=view.schema,
+    """Refresh a materialised view with advisory lock protection."""
+    # Use advisory lock to prevent concurrent refreshes of the same view
+    lock_name = f"{LockNames.MATERIALIZED_VIEW_REFRESH}_{view.schema}_{view.name}"
+
+    async with advisory_lock(connection, lock_name):
+        await connection.execute(
+            text(
+                """
+                REFRESH MATERIALIZED VIEW {concurrently} {schema}.{view};
+                """.format(
+                    concurrently="CONCURRENTLY" if concurrently else "",
+                    view=view.name,
+                    schema=view.schema,
+                )
             )
         )
-    )
 
 
 usage_view = Table(

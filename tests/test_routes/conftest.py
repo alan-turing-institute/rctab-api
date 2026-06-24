@@ -1,6 +1,7 @@
 import asyncio
 from asyncio import AbstractEventLoop
 from typing import Any, AsyncGenerator, Generator
+from unittest.mock import AsyncMock, patch
 
 import pytest
 import pytest_asyncio
@@ -98,3 +99,24 @@ async def clean_up(conn: AsyncConnection) -> None:
         "cost_recovery_log",
     ):
         await conn.execute(text(f"truncate table accounting.{table_name} cascade"))
+
+
+@pytest.fixture(autouse=True)
+def mock_advisory_locks() -> Generator[None, None, None]:
+    """Automatically mock advisory locks for all route tests to prevent blocking."""
+    # Mock the advisory lock context managers to be no-ops
+    mock_context = AsyncMock()
+    mock_context.__aenter__ = AsyncMock(return_value=None)
+    mock_context.__aexit__ = AsyncMock(return_value=None)
+
+    with (
+        patch(
+            "rctab.routers.accounting.usage.advisory_lock", return_value=mock_context
+        ),
+        patch(
+            "rctab.routers.accounting.cost_recovery.advisory_lock_nowait",
+            return_value=mock_context,
+        ),
+        patch("rctab.crud.accounting_models.advisory_lock", return_value=mock_context),
+    ):
+        yield

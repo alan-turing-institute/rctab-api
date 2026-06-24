@@ -18,6 +18,7 @@ from rctab.crud.accounting_models import (
     usage,
 )
 from rctab.crud.auth import token_admin_verified
+from rctab.crud.locks import LockNames, advisory_lock_nowait
 from rctab.db import get_async_connection
 from rctab.routers.accounting.routes import router
 from rctab.routers.accounting.usage import authenticate_usage_app
@@ -243,12 +244,18 @@ async def calc_cost_recovery_app(
     conn: AsyncConnection = Depends(get_async_connection),
 ) -> Any:
     """Route for the usage app to trigger cost recovery calculation."""
-    await calc_cost_recovery(
-        recovery_period,
-        commit_transaction=True,
-        admin=UUID(ADMIN_OID),
-        conn=conn,
+    # Use advisory lock to prevent concurrent cost recovery for the same month
+    lock_name = LockNames.cost_recovery_by_month(
+        recovery_period.first_day.year, recovery_period.first_day.month
     )
+
+    async with advisory_lock_nowait(conn, lock_name):
+        await calc_cost_recovery(
+            recovery_period,
+            commit_transaction=True,
+            admin=UUID(ADMIN_OID),
+            conn=conn,
+        )
 
     return {"status": "success", "detail": "cost recovery calculated"}
 
@@ -260,12 +267,18 @@ async def post_calc_cost_recovery_cli(
     conn: AsyncConnection = Depends(get_async_connection),
 ) -> List[CostRecovery]:
     """Route for the CLI to trigger cost recovery calculation."""
-    rows = await calc_cost_recovery(
-        recovery_month,
-        commit_transaction=True,
-        admin=user.oid,
-        conn=conn,
+    # Use advisory lock to prevent concurrent cost recovery for the same month
+    lock_name = LockNames.cost_recovery_by_month(
+        recovery_month.first_day.year, recovery_month.first_day.month
     )
+
+    async with advisory_lock_nowait(conn, lock_name):
+        rows = await calc_cost_recovery(
+            recovery_month,
+            commit_transaction=True,
+            admin=user.oid,
+            conn=conn,
+        )
 
     return [CostRecovery(**dict(x)) for x in rows]
 
