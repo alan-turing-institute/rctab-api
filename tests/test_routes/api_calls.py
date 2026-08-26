@@ -16,6 +16,7 @@ from rctab_models.models import (
 )
 
 from rctab.routers.accounting.routes import PREFIX
+from tests.test_routes.constants import JSON_HEADERS
 
 # pylint: disable=too-many-arguments
 
@@ -71,6 +72,7 @@ def create_subscription_detail(
                 )
             ]
         ).model_dump_json(),
+        headers=JSON_HEADERS,
     )
 
 
@@ -175,4 +177,5 @@ def create_usage(
     return client.post(
         "usage/all-usage",
         content=post_data.model_dump_json(),
+        headers=JSON_HEADERS,
     )

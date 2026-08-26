@@ -1,6 +1,10 @@
 import uuid
 from typing import Final
 
+# httpx's `content=` (unlike `json=`) does not set a Content-Type header,
+# and FastAPI requires "application/json" to parse the body as a model.
+JSON_HEADERS: Final = {"Content-Type": "application/json"}
+
 ADMIN_UUID: Final = uuid.UUID("a75693be-1d36-11ec-9621-0242ac130002")
 ADMIN_NAME: Final = "Tester"
 ADMIN_DICT: Final = {"admin": ADMIN_UUID}

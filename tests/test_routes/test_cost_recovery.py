@@ -48,6 +48,7 @@ def test_cost_recovery_app_route(
         result = client.post(
             PREFIX + "/app-cost-recovery",
             content=recovery_period.model_dump_json(),
+            headers=constants.JSON_HEADERS,
         )
 
         mock.assert_called_once_with(
@@ -80,6 +81,7 @@ def test_cost_recovery_cli_route(
         result = client.post(
             PREFIX + "/cli-cost-recovery",
             content=recovery_period.model_dump_json(),
+            headers=constants.JSON_HEADERS,
         )
 
         mock.assert_called_once_with(
@@ -109,6 +111,7 @@ def test_cost_recovery_cli_route_dry_run(
             "GET",
             PREFIX + "/cli-cost-recovery",
             content=recovery_period.model_dump_json(),
+            headers=constants.JSON_HEADERS,
         )
 
         mock.assert_called_once_with(
