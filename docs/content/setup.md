@@ -85,7 +85,7 @@ Note that these are only suitable for getting a development environment up and r
 Never add  `.env` nor `.auth.env` to version control and do not use the default credentials in a real deployment.
 For the full explanation of the auth settings, see [Application Registration](#application-registration).
 
-[//]: # (If you wish to send email notifications, set up a SendGrid account and then replace `{YOUR_SENDGRID_KEY} with a SendGrid API key.)
+<!-- If you wish to send email notifications, set up a SendGrid account and then replace `{YOUR_SENDGRID_KEY}` with a SendGrid API key. -->
 
 ### Run Natively
 
@@ -276,7 +276,7 @@ For it to work, you will need to change the dummy `TENANT_ID`, `CLIENT_ID` and `
 If you are joining an existing RCTab project, someone will have already registered an application with Azure Active Directory (AD).
 In that case, whoever registered the application will need to share the Azure AD Tenant ID, the Application ID (a.k.a. Client ID) and Client Secret with you.
 
-If an application hasn't already been registered, Microsoft's instructions are [here](https://docs.microsoft.com/en-us/azure/active-directory/develop/quickstart-register-app#configure-platform-settings).
+If an application hasn't already been registered, see Microsoft's [instructions for registering an application](https://docs.microsoft.com/en-us/azure/active-directory/develop/quickstart-register-app#configure-platform-settings).
 Your organisation should already have an AD Tenant ID, the Application ID will be given to you during the registration process, and you will need to generate a Client Secret.
 
 ## Accounting Routes

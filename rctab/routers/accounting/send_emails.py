@@ -49,7 +49,7 @@ from rctab.routers.accounting.routes import (
 )
 from rctab.settings import get_settings
 
-# pylint: disable=too-many-arguments
+# pylint: disable=too-many-arguments, too-many-positional-arguments
 # pylint: disable=unexpected-keyword-arg
 
 logger = logging.getLogger(__name__)

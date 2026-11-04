@@ -19,10 +19,49 @@ report:
       vulnerabilities:
         64459:
           reason: Python wide vulnerability.
-          expires: '2025-12-12'
+          expires: '2027-05-04'
         64396:
           reason: Python wide vulnerability.
-          expires: '2025-12-12'
+          expires: '2027-05-04'
+        SFTY-20261023-10299:
+          reason: filelock is dev-only and Safety itself pins filelock<4.0.
+          expires: '2027-05-04'
+        SFTY-20261023-16869:
+          reason: filelock is dev-only and Safety itself pins filelock<4.0.
+          expires: '2027-05-04'
+        SFTY-20261023-24590:
+          reason: filelock is dev-only and Safety itself pins filelock<4.0.
+          expires: '2027-05-04'
+        SFTY-20261020-18367:
+          reason: filelock is dev-only and Safety itself pins filelock<4.0.
+          expires: '2027-05-04'
+        SFTY-20261020-34461:
+          reason: filelock is dev-only and Safety itself pins filelock<4.0.
+          expires: '2027-05-04'
+        SFTY-20261020-13394:
+          reason: filelock is dev-only and Safety itself pins filelock<4.0.
+          expires: '2027-05-04'
+        SFTY-20261020-91319:
+          reason: filelock is dev-only and Safety itself pins filelock<4.0.
+          expires: '2027-05-04'
+        SFTY-20261020-81101:
+          reason: filelock is dev-only and Safety itself pins filelock<4.0.
+          expires: '2027-05-04'
+        SFTY-20261017-57659:
+          reason: filelock is dev-only and Safety itself pins filelock<4.0.
+          expires: '2027-05-04'
+        SFTY-20261017-54654:
+          reason: filelock is dev-only and Safety itself pins filelock<4.0.
+          expires: '2027-05-04'
+        SFTY-20261020-25530:
+          reason: filelock is dev-only and Safety itself pins filelock<4.0.
+          expires: '2027-05-04'
+        SFTY-20261017-72390:
+          reason: filelock is dev-only and Safety itself pins filelock<4.0.
+          expires: '2027-05-04'
+        SFTY-20261020-11422:
+          reason: filelock is dev-only and Safety itself pins filelock<4.0.
+          expires: '2027-05-04'
         51668:
           reason: We cannot currently use SQL Alchemy v2.
           expires: '2025-12-12'

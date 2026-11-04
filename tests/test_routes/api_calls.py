@@ -4,7 +4,7 @@ from uuid import UUID, uuid4
 
 from devtools import debug
 from fastapi.testclient import TestClient
-from httpx import Response
+from httpx2 import Response
 from rctab_models.models import (
     AllSubscriptionStatus,
     AllUsage,
@@ -18,7 +18,7 @@ from rctab_models.models import (
 from rctab.routers.accounting.routes import PREFIX
 from tests.test_routes.constants import JSON_HEADERS
 
-# pylint: disable=too-many-arguments
+# pylint: disable=too-many-arguments, too-many-positional-arguments
 
 
 def assert_subscription_status(
