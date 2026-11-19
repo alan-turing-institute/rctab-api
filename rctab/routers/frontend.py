@@ -5,12 +5,12 @@ import logging
 from typing import Dict, Final, List, Optional
 from uuid import UUID
 
+import jwt
 import pandas as pd
 import plotly.express as px
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapimsal import RequiresLoginException, UserIdentityToken
 from jinja2 import Environment, PackageLoader, select_autoescape
-from jose import jwt
 from pydantic import BaseModel, EmailStr, ValidationError
 from rctab_models.models import (
     AllocationListItem,
@@ -132,7 +132,9 @@ async def home(
         )
 
     # Get the username from cached token
-    token_claims = jwt.get_unverified_claims(user.token["access_token"])
+    token_claims = jwt.decode(
+        user.token["access_token"], options={"verify_signature": False}
+    )
     user_name = token_claims["name"]
 
     try:
@@ -210,7 +212,9 @@ async def subscription_details(
         )
 
     # Get the username from cached token
-    user_name = jwt.get_unverified_claims(user.token["access_token"])["name"]
+    user_name = jwt.decode(
+        user.token["access_token"], options={"verify_signature": False}
+    )["name"]
 
     # Check the users access status
     access_status = await check_user_access(
@@ -349,7 +353,7 @@ async def subscription_details_1(
         return templates.TemplateResponse(request=request, name="index.html")
 
     # Get the username from cached token
-    # user_name = jwt.get_unverified_claims(user.token["access_token"])["name"]
+    # user_name = jwt.decode(user.token["access_token"], options={"verify_signature": False})["name"]
 
     # Check the users access status
     access_status = await check_user_access(

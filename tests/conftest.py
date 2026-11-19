@@ -2,10 +2,10 @@ import asyncio
 from typing import Any, AsyncGenerator, Callable, Dict, Generator
 from uuid import UUID
 
+import jwt
 import pytest
 import pytest_asyncio
 from fastapi import FastAPI, Request
-from jose.jws import sign
 from sqlalchemy.ext.asyncio.engine import AsyncConnection
 from sqlalchemy.sql.expression import text
 
@@ -88,12 +88,12 @@ def get_oauth_settings_override() -> Callable:
 
             async def __call__(self, request: Request) -> Dict[str, str]:
                 user_token = {
-                    "access_token": sign(
+                    "access_token": jwt.encode(
                         {
                             "name": "dummy_username",
                             "unique_name": "dummy_username@dummyorg.com",
                         },
-                        "secret",
+                        "a-test-secret-that-is-long-enough-for-hs256",
                         algorithm="HS256",
                     )
                 }
