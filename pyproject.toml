@@ -40,7 +40,7 @@ dependencies = [
 
 [tool.poetry.group.dev.dependencies]
 black = "^26.3.1"
-devtools = { extras = ["pygments"], version = "^0.8.0" }
+devtools = { extras = ["pygments"], version = "^0.13.0" }
 flake8 = "^7.3.0"
 genbadge = "^1.1.1"
 httpie = "^3.2.3"
@@ -60,7 +60,7 @@ pytest-asyncio = "^1.4.0"
 pytest-cov = "^7.1.0"
 pytest-mock = "^3.15.1"
 types-requests = "^2.32.0.20240602"
-pyre-check = "^0.9.25"
+pyre-check = "^0.10.0"
 coverage = "^7.9.2"
 
 [project.optional-dependencies]
