@@ -190,7 +190,8 @@ async def test_render_home_page(
     )
     mocker.patch("rctab.routers.frontend.check_user_access", mock_check_access)
 
-    await home(mock_request, mock_user, test_db)
+    result = await home(mock_request, mock_user, test_db)
+    assert "<title>RCTab - Home</title>" in bytes(result.body).decode("utf-8")
 
 
 @pytest.mark.asyncio
@@ -255,7 +256,10 @@ async def test_render_details_page(
     )
     mocker.patch("rctab.routers.frontend.check_user_access", mock_check_access)
 
-    await subscription_details_page(subscription_id, mock_request, mock_user, test_db)
+    result = await subscription_details_page(
+        subscription_id, mock_request, mock_user, test_db
+    )
+    assert "<title>RCTab - Details</title>" in bytes(result.body).decode("utf-8")
 
 
 @pytest.mark.asyncio

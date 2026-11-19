@@ -81,6 +81,7 @@ def test_post_usage(
         resp = client.post(
             "usage/all-usage",
             content=post_data.model_dump_json().encode("utf-8"),
+            headers=constants.JSON_HEADERS,
         )
 
         assert resp.status_code == 200
@@ -371,6 +372,7 @@ def _post_costmanagement(
     post_client = client.post(
         "/usage/all-cm-usage",
         content=all_usage.model_dump_json().encode("utf-8"),
+        headers=constants.JSON_HEADERS,
     )  # type: ignore
     return post_client  # type: ignore
 
@@ -467,6 +469,7 @@ def test_post_monthly_usage(
             )
             .model_dump_json()
             .encode("utf-8"),
+            headers=constants.JSON_HEADERS,
         )
 
         assert resp.status_code == 400
@@ -475,6 +478,7 @@ def test_post_monthly_usage(
         resp = client.post(
             "usage/monthly-usage",
             content=post_example_1_data.model_dump_json().encode("utf-8"),
+            headers=constants.JSON_HEADERS,
         )
 
         assert resp.status_code == 400
@@ -483,6 +487,7 @@ def test_post_monthly_usage(
         resp = client.post(
             "usage/monthly-usage",
             content=post_example_2_data.model_dump_json().encode("utf-8"),
+            headers=constants.JSON_HEADERS,
         )
 
         assert resp.status_code == 200
@@ -651,6 +656,7 @@ def test_post_usage_emails(
         resp = client.post(
             "usage/all-usage",
             content=post_data.model_dump_json().encode("utf-8"),
+            headers=constants.JSON_HEADERS,
         )
         assert resp.status_code == 200
 

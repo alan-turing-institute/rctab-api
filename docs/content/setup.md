@@ -85,7 +85,7 @@ Note that these are only suitable for getting a development environment up and r
 Never add  `.env` nor `.auth.env` to version control and do not use the default credentials in a real deployment.
 For the full explanation of the auth settings, see [Application Registration](#application-registration).
 
-[//]: # (If you wish to send email notifications, set up a SendGrid account and then replace `{YOUR_SENDGRID_KEY} with a SendGrid API key.)
+<!-- If you wish to send email notifications, set up a SendGrid account and then replace `{YOUR_SENDGRID_KEY}` with a SendGrid API key. -->
 
 ### Run Natively
 

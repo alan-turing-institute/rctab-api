@@ -30,7 +30,7 @@ jobs:
 
     strategy:
       matrix:
-        python_version: ['3.11']
+        python_version: ['3.14']
 
     services:
       redis:
@@ -82,7 +82,7 @@ jobs:
 
     strategy:
       matrix:
-        python_version: ['3.11']
+        python_version: ['3.14']
 
     steps:
       - name: Checkout

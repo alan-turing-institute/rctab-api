@@ -3,6 +3,7 @@
 {{ super() }}
 <script charset="utf-8" src="https://cdn.plot.ly/plotly-2.20.0.min.js"></script>
 <script type="text/javascript" charset="utf8" src="{{ url_for('static', path='scripts/usage_data.js') }}"></script>
+{% block title %}Details{% endblock %}
 {% endblock %}
 
 {% block noaccess %}

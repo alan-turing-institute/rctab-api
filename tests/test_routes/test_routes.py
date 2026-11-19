@@ -50,7 +50,7 @@ async def test_db() -> AsyncGenerator[AsyncConnection, None]:
         await conn.close()
 
 
-async def create_subscription(
+async def create_subscription(  # pylint: disable=too-many-positional-arguments
     db: AsyncConnection,
     always_on: Optional[bool] = None,
     current_state: Optional[SubscriptionState] = None,
