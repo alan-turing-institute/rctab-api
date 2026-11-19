@@ -5,6 +5,9 @@ repos:
     hooks:
       - id: safety
         name: Safety
-        entry: poetry run safety --stage cicd scan --policy-file .safety-policy.yml
+        # Runs in its own environment so that safety's dependencies (e.g. its
+        # filelock<4 pin) don't end up in, and get reported against, ours
+        entry: safety --stage cicd scan --policy-file .safety-policy.yml
         pass_filenames: false
-        language: system
+        language: python
+        additional_dependencies: ["safety==3.8.1"]
