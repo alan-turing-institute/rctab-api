@@ -31,7 +31,7 @@
 | rctab/routers/accounting/subscription.py    |       30 |        0 |    100% |           |
 | rctab/routers/accounting/summary\_emails.py |       41 |        3 |     93% |28-29, 100 |
 | rctab/routers/accounting/usage.py           |      112 |       15 |     87% |     44-74 |
-| rctab/routers/frontend.py                   |      145 |       55 |     62% |53-75, 108-110, 124, 168, 174-181, 206, 277, 348-421 |
+| rctab/routers/frontend.py                   |      145 |       55 |     62% |53-75, 108-110, 124, 170, 176-183, 208, 281, 352-425 |
 | rctab/settings.py                           |       56 |        1 |     98% |       119 |
 | rctab/tasks.py                              |       54 |       10 |     81% |60-65, 73-78, 95, 107 |
 | rctab/utils.py                              |        5 |        0 |    100% |           |
