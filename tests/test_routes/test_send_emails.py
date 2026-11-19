@@ -1421,7 +1421,8 @@ async def test_get_emails_sent_since(
     )
     emails_another_test_sub = list(
         filter(
-            lambda l: l["subscription_id"] == another_test_subscription_id, emails_sent
+            lambda row: row["subscription_id"] == another_test_subscription_id,
+            emails_sent,
         )
     )
     assert emails_another_test_sub[0]["emails_sent"][0]["extra_info"] == "75.0"
@@ -1440,12 +1441,13 @@ async def test_get_emails_sent_since(
         another_test_subscription_id,
     ]
     emails_test_sub = list(
-        filter(lambda l: l["subscription_id"] == test_subscription_id, emails_sent)
+        filter(lambda row: row["subscription_id"] == test_subscription_id, emails_sent)
     )
     assert len(emails_test_sub[0]["emails_sent"]) == 1
     emails_another_test_sub = list(
         filter(
-            lambda l: l["subscription_id"] == another_test_subscription_id, emails_sent
+            lambda row: row["subscription_id"] == another_test_subscription_id,
+            emails_sent,
         )
     )
     assert len(emails_another_test_sub[0]["emails_sent"]) == 2

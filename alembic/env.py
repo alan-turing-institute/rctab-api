@@ -36,7 +36,13 @@ target_metadata = metadata
 # ... etc.
 
 SchemaType = Literal[
-    "schema", "table", "column", "index", "unique_constraint", "foreign_key_constraint"
+    "schema",
+    "table",
+    "column",
+    "index",
+    "unique_constraint",
+    "foreign_key_constraint",
+    "check_constraint",
 ]
 
 
