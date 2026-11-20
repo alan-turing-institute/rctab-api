@@ -66,6 +66,14 @@ repos:
             scripts
           )
   - repo: https://github.com/pre-commit/mirrors-eslint
-    rev: 'v8.56.0'
+    rev: 'v10.15.0'
     hooks:
       - id: eslint
+        # Same as the mirror's own setting, but Renovate only updates
+        # additional_dependencies for hooks that declare their language
+        language: node
+        # eslint.config.cjs requires these, so they must be installed with eslint
+        additional_dependencies:
+          - eslint@10.15.0
+          - "@eslint/js@10.0.1"
+          - globals@17.14.0
