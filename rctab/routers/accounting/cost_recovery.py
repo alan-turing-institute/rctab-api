@@ -18,7 +18,7 @@ from rctab.crud.accounting_models import (
     usage,
 )
 from rctab.crud.auth import token_admin_verified
-from rctab.crud.locks import LockNames, advisory_lock_nowait
+from rctab.crud.locks import LockNames, try_advisory_xact_lock
 from rctab.db import get_async_connection
 from rctab.routers.accounting.routes import router
 from rctab.routers.accounting.usage import authenticate_usage_app
@@ -70,6 +70,12 @@ async def calc_cost_recovery(
     Cost recovery must have been calculated for all previous months
     but not for this month.
     """
+    if commit_transaction:
+        # Stop concurrent requests from recovering the same month twice. The
+        # lock is held until this request's transaction commits, by which time
+        # our cost_recovery_log row is visible to the next request.
+        await try_advisory_xact_lock(conn, LockNames.COST_RECOVERY)
+
     last_recovered_day = (
         (
             await conn.execute(
@@ -244,18 +250,12 @@ async def calc_cost_recovery_app(
     conn: AsyncConnection = Depends(get_async_connection),
 ) -> Any:
     """Route for the usage app to trigger cost recovery calculation."""
-    # Use advisory lock to prevent concurrent cost recovery for the same month
-    lock_name = LockNames.cost_recovery_by_month(
-        recovery_period.first_day.year, recovery_period.first_day.month
+    await calc_cost_recovery(
+        recovery_period,
+        commit_transaction=True,
+        admin=UUID(ADMIN_OID),
+        conn=conn,
     )
-
-    async with advisory_lock_nowait(conn, lock_name):
-        await calc_cost_recovery(
-            recovery_period,
-            commit_transaction=True,
-            admin=UUID(ADMIN_OID),
-            conn=conn,
-        )
 
     return {"status": "success", "detail": "cost recovery calculated"}
 
@@ -267,18 +267,12 @@ async def post_calc_cost_recovery_cli(
     conn: AsyncConnection = Depends(get_async_connection),
 ) -> List[CostRecovery]:
     """Route for the CLI to trigger cost recovery calculation."""
-    # Use advisory lock to prevent concurrent cost recovery for the same month
-    lock_name = LockNames.cost_recovery_by_month(
-        recovery_month.first_day.year, recovery_month.first_day.month
+    rows = await calc_cost_recovery(
+        recovery_month,
+        commit_transaction=True,
+        admin=user.oid,
+        conn=conn,
     )
-
-    async with advisory_lock_nowait(conn, lock_name):
-        rows = await calc_cost_recovery(
-            recovery_month,
-            commit_transaction=True,
-            admin=user.oid,
-            conn=conn,
-        )
 
     return [CostRecovery(**dict(x)) for x in rows]
 

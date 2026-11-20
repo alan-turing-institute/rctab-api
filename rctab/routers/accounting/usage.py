@@ -21,7 +21,7 @@ from rctab.constants import ADMIN_OID
 from rctab.crud import accounting_models
 from rctab.crud.accounting_models import refresh_materialised_view, usage_view
 from rctab.crud.auth import token_admin_verified
-from rctab.crud.locks import LockNames, advisory_lock
+from rctab.crud.locks import LockNames, advisory_xact_lock
 from rctab.crud.utils import insert_subscriptions_if_not_exists
 from rctab.db import AsyncConnection, get_async_connection
 from rctab.routers.accounting.desired_states import refresh_desired_states
@@ -158,38 +158,36 @@ async def post_monthly_usage(
         len(all_usage.usage_list),
     )
 
-    # Use advisory lock to prevent concurrent monthly usage uploads for the same date range
-    lock_name = LockNames.usage_upload_by_date_range(str(date_min), str(date_max))
-    async with advisory_lock(conn, lock_name):
-        async with conn.begin_nested():
+    # Serialise usage uploads until this request's transaction commits.
+    await advisory_xact_lock(conn, LockNames.USAGE_UPLOAD)
 
-            logger.info(
-                "Post monthly usage deleting existing usage data for %s - %s",
-                date_min,
-                date_max,
-            )
+    async with conn.begin_nested():
 
-            # Delete all usage for the time period to have a blank slate.
-            query_del = (
-                accounting_models.usage.delete()
-                .where(accounting_models.usage.c.date >= date_min)
-                .where(accounting_models.usage.c.date <= date_max)
-            )
-            await conn.execute(query_del)
+        logger.info(
+            "Post monthly usage deleting existing usage data for %s - %s",
+            date_min,
+            date_max,
+        )
 
-            logger.info(
-                "Post monthly usage inserting new subscriptions if they don't exist"
-            )
+        # Delete all usage for the time period to have a blank slate.
+        query_del = (
+            accounting_models.usage.delete()
+            .where(accounting_models.usage.c.date >= date_min)
+            .where(accounting_models.usage.c.date <= date_max)
+        )
+        await conn.execute(query_del)
 
-            unique_subscriptions = list(
-                {i.subscription_id for i in all_usage.usage_list}
-            )
+        logger.info(
+            "Post monthly usage inserting new subscriptions if they don't exist"
+        )
 
-            await insert_subscriptions_if_not_exists(unique_subscriptions, conn)
+        unique_subscriptions = list({i.subscription_id for i in all_usage.usage_list})
 
-            logger.info("Post monthly usage inserting monthly usage data")
+        await insert_subscriptions_if_not_exists(unique_subscriptions, conn)
 
-            await insert_usage(conn, all_usage)
+        logger.info("Post monthly usage inserting monthly usage data")
+
+        await insert_usage(conn, all_usage)
 
     # Note that we don't refresh the desired states here as we don't
     # want to trigger excess emails.
@@ -210,25 +208,22 @@ async def post_usage(
     """Write some usage data to the database."""
     post_start = datetime.datetime.now()
 
-    # Use advisory lock to prevent concurrent usage uploads for the same date range
-    lock_name = LockNames.usage_upload_by_date_range(
-        str(all_usage.start_date), str(all_usage.end_date)
-    )
+    # Serialise usage uploads until this request's transaction commits.
+    await advisory_xact_lock(conn, LockNames.USAGE_UPLOAD)
 
-    async with advisory_lock(conn, lock_name):
-        async with UsageEmailContextManager(conn):
+    async with UsageEmailContextManager(conn):
 
-            async with conn.begin_nested():
-                unique_subscriptions = list(
-                    {i.subscription_id for i in all_usage.usage_list}
-                )
-                await delete_usage(conn, all_usage.start_date, all_usage.end_date)
+        async with conn.begin_nested():
+            unique_subscriptions = list(
+                {i.subscription_id for i in all_usage.usage_list}
+            )
+            await delete_usage(conn, all_usage.start_date, all_usage.end_date)
 
-                await insert_subscriptions_if_not_exists(unique_subscriptions, conn)
+            await insert_subscriptions_if_not_exists(unique_subscriptions, conn)
 
-                await insert_usage(conn, all_usage)
+            await insert_usage(conn, all_usage)
 
-        await refresh_desired_states(conn, UUID(ADMIN_OID), unique_subscriptions)
+    await refresh_desired_states(conn, UUID(ADMIN_OID), unique_subscriptions)
 
     logger.info("POSTing usage took %s", datetime.datetime.now() - post_start)
 
