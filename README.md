@@ -15,7 +15,7 @@
 | rctab/db.py                                 |       13 |        0 |    100% |           |
 | rctab/debug.py                              |        4 |        4 |      0% |       3-8 |
 | rctab/exceptions.py                         |        1 |        0 |    100% |           |
-| rctab/logutils.py                           |       21 |       10 |     52% |16-17, 21-25, 41-46 |
+| rctab/logutils.py                           |       35 |        0 |    100% |           |
 | rctab/main.py                               |       81 |        7 |     91% |107, 154-155, 161, 170, 178, 184 |
 | rctab/routers/\_\_init\_\_.py               |        0 |        0 |    100% |           |
 | rctab/routers/accounting/\_\_init\_\_.py    |        2 |        0 |    100% |           |
@@ -34,9 +34,9 @@
 | rctab/routers/accounting/usage.py           |      115 |       15 |     87% |     45-75 |
 | rctab/routers/frontend.py                   |      145 |       55 |     62% |53-75, 108-110, 124, 170, 176-183, 208, 281, 352-425 |
 | rctab/settings.py                           |       56 |        1 |     98% |       119 |
-| rctab/tasks.py                              |       54 |       10 |     81% |60-65, 73-78, 95, 107 |
+| rctab/tasks.py                              |       44 |        2 |     95% |   89, 101 |
 | rctab/utils.py                              |        5 |        0 |    100% |           |
-| **TOTAL**                                   | **1662** |  **212** | **87%** |           |
+| **TOTAL**                                   | **1666** |  **194** | **88%** |           |
 
 
 ## Setup coverage badge
