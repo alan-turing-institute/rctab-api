@@ -21,6 +21,7 @@ from rctab.constants import ADMIN_OID
 from rctab.crud import accounting_models
 from rctab.crud.accounting_models import refresh_materialised_view, usage_view
 from rctab.crud.auth import token_admin_verified
+from rctab.crud.locks import LockNames, advisory_xact_lock
 from rctab.crud.utils import insert_subscriptions_if_not_exists
 from rctab.db import AsyncConnection, get_async_connection
 from rctab.routers.accounting.desired_states import refresh_desired_states
@@ -157,6 +158,9 @@ async def post_monthly_usage(
         len(all_usage.usage_list),
     )
 
+    # Serialise usage uploads until this request's transaction commits.
+    await advisory_xact_lock(conn, LockNames.USAGE_UPLOAD)
+
     async with conn.begin_nested():
 
         logger.info(
@@ -203,6 +207,9 @@ async def post_usage(
 ) -> TmpReturnStatus:
     """Write some usage data to the database."""
     post_start = datetime.datetime.now()
+
+    # Serialise usage uploads until this request's transaction commits.
+    await advisory_xact_lock(conn, LockNames.USAGE_UPLOAD)
 
     async with UsageEmailContextManager(conn):
 

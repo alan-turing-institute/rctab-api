@@ -21,6 +21,7 @@ from rctab.constants import ADJUSTMENT_DELTA, ADMIN_OID, EXPIRY_ADJUSTMENT_MSG
 from rctab.crud.accounting_models import allocations as allocations_table
 from rctab.crud.accounting_models import approvals as approvals_table
 from rctab.crud.accounting_models import status as status_table
+from rctab.crud.locks import LockNames, advisory_xact_lock
 from rctab.db import AsyncConnection, get_async_connection
 from rctab.routers.accounting import send_emails
 from rctab.routers.accounting.routes import get_subscriptions_summary, router
@@ -147,6 +148,11 @@ async def refresh_desired_states(
     # pylint: disable=singleton-comparison
     # pylint: disable=unexpected-keyword-arg
     # pylint: disable=too-many-locals
+
+    # Serialise refreshes until this request's transaction commits. Otherwise,
+    # concurrent refreshes could both insert the same expiry adjustments and
+    # status rows, and send the same emails.
+    await advisory_xact_lock(conn, LockNames.DESIRED_STATES_REFRESH)
 
     sub_query = get_subscriptions_summary().alias()
 

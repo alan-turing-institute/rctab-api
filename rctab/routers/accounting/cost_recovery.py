@@ -18,6 +18,7 @@ from rctab.crud.accounting_models import (
     usage,
 )
 from rctab.crud.auth import token_admin_verified
+from rctab.crud.locks import LockNames, try_advisory_xact_lock
 from rctab.db import get_async_connection
 from rctab.routers.accounting.routes import router
 from rctab.routers.accounting.usage import authenticate_usage_app
@@ -69,6 +70,12 @@ async def calc_cost_recovery(
     Cost recovery must have been calculated for all previous months
     but not for this month.
     """
+    if commit_transaction:
+        # Stop concurrent requests from recovering the same month twice. The
+        # lock is held until this request's transaction commits, by which time
+        # our cost_recovery_log row is visible to the next request.
+        await try_advisory_xact_lock(conn, LockNames.COST_RECOVERY)
+
     last_recovered_day = (
         (
             await conn.execute(
