@@ -1,5 +1,6 @@
 """Mark subscriptions as "abolished" if they have been inactive for >90 days."""
 
+import asyncio
 import logging
 from datetime import datetime, timedelta
 from typing import TypedDict
@@ -17,7 +18,7 @@ from rctab.crud.accounting_models import subscription_details
 from rctab.db import AsyncConnection
 from rctab.routers.accounting.routes import get_subscriptions_summary
 from rctab.routers.accounting.send_emails import (
-    MissingEmailParamsError,
+    EmailSendError,
     send_with_sendgrid,
 )
 from rctab.settings import get_settings
@@ -156,8 +157,8 @@ async def send_abolishment_email(
 
     if recipients:
         try:
-            status = send_with_sendgrid(
-                subject, template_name, template_data, recipients
+            status = await asyncio.to_thread(
+                send_with_sendgrid, subject, template_name, template_data, recipients
             )
             logger.warning("Abolishment emails sent with status %s", status)
             await conn.execute(
@@ -170,7 +171,7 @@ async def send_abolishment_email(
                 )
             )
             logger.warning("Sent an email to %s with subject=%s", recipients, subject)
-        except MissingEmailParamsError as error:
+        except EmailSendError as error:
             result = await conn.execute(
                 insert(failed_emails)
                 .values(
@@ -186,11 +187,11 @@ async def send_abolishment_email(
                 .returning(failed_emails.c.id)
             )
             logger.error(
-                "'%s' email failed to send due to missing "
-                "api_key or send email address.\n"
+                "'%s' email failed to send due to %s.\n"
                 "It has been logged in the 'failed_emails' table with id=%s.\n"
                 "Use 'get_failed_emails.py' to retrieve it to send manually.",
                 subject,
+                error.reason,
                 result.scalar_one_or_none(),
             )
     else:

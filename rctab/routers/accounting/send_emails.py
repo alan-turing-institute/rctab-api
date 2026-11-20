@@ -1,5 +1,6 @@
 """Tools for sending email notifications to users."""
 
+import asyncio
 import logging
 from contextlib import AbstractAsyncContextManager
 from datetime import date, datetime, timedelta, timezone
@@ -9,6 +10,7 @@ from typing import (
     Any,
     AsyncContextManager,
     Dict,
+    Final,
     List,
     Mapping,
     Optional,
@@ -19,6 +21,7 @@ from typing import (
 from uuid import UUID
 
 from jinja2 import Environment, PackageLoader, exceptions
+from python_http_client.exceptions import HTTPError
 from rctab_models.models import SubscriptionState, SubscriptionStatus
 from sendgrid import Mail, SendGridAPIClient
 from sqlalchemy import and_, asc, desc, func, insert, or_, select
@@ -99,8 +102,14 @@ async def get_sub_email_recipients(
     return []
 
 
-class MissingEmailParamsError(Exception):
-    """Exception for when email settings are missing."""
+# How long to wait for SendGrid before giving up on an email.
+SENDGRID_TIMEOUT_SECONDS: Final = 10
+
+
+class EmailSendError(Exception):
+    """Exception for when an email couldn't be sent."""
+
+    reason = "an error sending it"
 
     def __init__(
         self,
@@ -110,10 +119,23 @@ class MissingEmailParamsError(Exception):
         message: Optional[str] = None,
     ):
         """Capture the details of an email that couldn't be sent."""
+        super().__init__(subject)
         self.subject = subject
         self.recipients = recipients
         self.from_email = from_email
         self.message = message
+
+
+class MissingEmailParamsError(EmailSendError):
+    """Exception for when email settings are missing."""
+
+    reason = "missing api_key or send email address"
+
+
+class SendGridRequestError(EmailSendError):
+    """Exception for when the request to SendGrid fails or times out."""
+
+    reason = "an error response from, or no response from, SendGrid"
 
 
 def send_with_sendgrid(
@@ -134,6 +156,7 @@ def send_with_sendgrid(
 
     Raises:
         MissingEmailParamsError: raises an error if the api key or the "from" email address is missing.
+        SendGridRequestError: raises an error if SendGrid returns an error or times out.
     """
     # pylint: disable=invalid-name
     try:
@@ -167,7 +190,21 @@ def send_with_sendgrid(
     logger.info("Sending an email to %s with subject=%s", to_list, subject)
     client = SendGridAPIClient(api_key)
 
-    response = client.send(message)
+    try:
+        # SendGridAPIClient.send() has no timeout, so we make the request
+        # with the underlying client, which does.
+        response = client.client.mail.send.post(
+            request_body=message.get(), timeout=SENDGRID_TIMEOUT_SECONDS
+        )
+    except (HTTPError, OSError) as error:
+        # OSError covers timeouts and connection errors.
+        logger.exception("Failed to send an email with subject=%s", subject)
+        raise SendGridRequestError(
+            subject=subject,
+            recipients=to_list,
+            from_email=str(from_email),
+            message=rendered_template,
+        ) from error
 
     return response.status_code
 
@@ -223,7 +260,10 @@ async def send_generic_email(
         subject_prefix = "RCTab undeliverable: " + subject_prefix
     template_data["rctab_url"] = settings.website_hostname
     try:
-        status = send_with_sendgrid(
+        # SendGrid's client is synchronous, so run it in a thread so as not
+        # to block the event loop.
+        status = await asyncio.to_thread(
+            send_with_sendgrid,
             subject_prefix + " " + subscription_name,
             template_name,
             template_data,
@@ -239,7 +279,7 @@ async def send_generic_email(
             }
         )
         await _execute(database, insert_statement)
-    except MissingEmailParamsError as error:
+    except EmailSendError as error:
         insert_statement = (
             insert(failed_emails)
             .values(
@@ -256,12 +296,12 @@ async def send_generic_email(
         )
         row = await _execute(database, insert_statement)
         logger.error(
-            "'%s' email failed to send to subscription '%s' due to missing "
-            "api_key or send email address.\n"
+            "'%s' email failed to send to subscription '%s' due to %s.\n"
             "It has been logged in the 'failed_emails' table with id=%s.\n"
             "Use 'get_failed_emails.py' to retrieve it to send manually.",
             email_type,
             subscription_id,
+            error.reason,
             row,
         )
 

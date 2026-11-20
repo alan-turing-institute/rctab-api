@@ -1,5 +1,6 @@
 """Background tasks that run daily."""
 
+import asyncio
 import logging
 from datetime import datetime
 from typing import List, Optional
@@ -12,7 +13,7 @@ from sqlalchemy.sql.base import Executable
 from rctab.constants import EMAIL_TYPE_SUMMARY
 from rctab.crud.accounting_models import emails, failed_emails
 from rctab.routers.accounting.send_emails import (
-    MissingEmailParamsError,
+    EmailSendError,
     prepare_summary_email,
     send_with_sendgrid,
 )
@@ -54,7 +55,8 @@ async def send_summary_email(
     subject = "Daily summary"
     if recipients:
         try:
-            status = send_with_sendgrid(
+            status = await asyncio.to_thread(
+                send_with_sendgrid,
                 subject,
                 template_name,
                 template_data,
@@ -72,7 +74,7 @@ async def send_summary_email(
                 "Status code summary email: %s",
                 status,
             )
-        except MissingEmailParamsError as error:
+        except EmailSendError as error:
             insert_statement = (
                 insert(failed_emails)
                 .values(
@@ -88,11 +90,11 @@ async def send_summary_email(
             )
             row = await _execute(conn, insert_statement)
             logger.error(
-                "'%s' email failed to send due to missing "
-                "api_key or send email address.\n"
+                "'%s' email failed to send due to %s.\n"
                 "It has been logged in the 'failed_emails' table with id=%s.\n"
                 "Use 'get_failed_emails.py' to retrieve it to send manually.",
                 subject,
+                error.reason,
                 row,
             )
 

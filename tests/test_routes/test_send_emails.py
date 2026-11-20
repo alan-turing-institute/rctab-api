@@ -9,6 +9,7 @@ import pytest
 import pytest_mock
 from jinja2 import Environment, PackageLoader, StrictUndefined
 from pytest_mock import MockerFixture
+from python_http_client.exceptions import HTTPError
 from rctab_models.models import AllUsage, RoleAssignment, SubscriptionState, Usage
 from sqlalchemy import insert, select
 from sqlalchemy.ext.asyncio.engine import AsyncConnection
@@ -35,7 +36,9 @@ from rctab.crud.accounting_models import (
 )
 from rctab.routers.accounting import send_emails
 from rctab.routers.accounting.send_emails import (
+    EmailSendError,
     MissingEmailParamsError,
+    SendGridRequestError,
     UsageEmailContextManager,
     get_allocations_since,
     get_approvals_since,
@@ -225,7 +228,8 @@ def test_send_with_sendgrid(mocker: MockerFixture) -> None:
     get_settings.return_value.testing = False  # Bypass the safety feature
 
     mock_sg_client = mocker.Mock()
-    mock_sg_client.send.return_value = mocker.Mock(status_code=11)
+    mock_post = mock_sg_client.client.mail.send.post
+    mock_post.return_value = mocker.Mock(status_code=11)
     client_class.return_value = mock_sg_client
 
     status_code = send_emails.send_with_sendgrid(
@@ -240,8 +244,49 @@ def test_send_with_sendgrid(mocker: MockerFixture) -> None:
         html_content="<!-- This is used for unit tests -->",
         subject="my-subject",
     )
-    mock_sg_client.send.assert_called_once_with(mail.return_value)
+    mock_post.assert_called_once_with(
+        request_body=mail.return_value.get.return_value,
+        timeout=send_emails.SENDGRID_TIMEOUT_SECONDS,
+    )
     assert status_code == 11
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        HTTPError(500, "Internal Server Error", b"", {}),
+        TimeoutError("timed out"),
+        ConnectionRefusedError("refused"),
+    ],
+)
+def test_send_with_sendgrid_request_fails(
+    mocker: MockerFixture, error: Exception
+) -> None:
+    """SendGrid errors and timeouts become SendGridRequestErrors."""
+
+    mocker.patch("rctab.routers.accounting.send_emails.Mail")
+    client_class = mocker.patch(
+        "rctab.routers.accounting.send_emails.SendGridAPIClient"
+    )
+    get_settings = mocker.patch("rctab.routers.accounting.send_emails.get_settings")
+    get_settings.return_value.sendgrid_api_key = "sendgridkey123"
+    get_settings.return_value.sendgrid_sender_email = "myemail@myorg"
+    get_settings.return_value.testing = False  # Bypass the safety feature
+
+    client_class.return_value.client.mail.send.post.side_effect = error
+
+    with pytest.raises(SendGridRequestError) as exc_info:
+        send_emails.send_with_sendgrid(
+            "my-subject",
+            "blank.html",
+            {},
+            ["rse1@myorg", "rse2@myorg"],
+        )
+
+    assert exc_info.value.subject == "my-subject"
+    assert exc_info.value.recipients == ["rse1@myorg", "rse2@myorg"]
+    assert exc_info.value.from_email == "myemail@myorg"
+    assert exc_info.value.message == "<!-- This is used for unit tests -->"
 
 
 def test_no_sendgrid_api_key(mocker: MockerFixture) -> None:
@@ -1156,11 +1201,13 @@ async def test_usage_email_context_manager(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("error_class", [MissingEmailParamsError, SendGridRequestError])
 async def test_catches_params_missing(
     test_db: AsyncConnection,
     mocker: MockerFixture,  # pylint: disable=redefined-outer-name
+    error_class: type[EmailSendError],
 ) -> None:
-    """If the key email params are missing, we should log instead."""
+    """If an email can't be sent, we should log it instead."""
 
     mock_logger = mocker.patch("rctab.routers.accounting.send_emails.logger")
 
@@ -1173,7 +1220,7 @@ async def test_catches_params_missing(
     get_sub_email_recipients.return_value = ["user1@mail.com", "user2@mail.com"]
 
     mock_send = mocker.patch("rctab.routers.accounting.send_emails.send_with_sendgrid")
-    mock_send.side_effect = MissingEmailParamsError(
+    mock_send.side_effect = error_class(
         subject="TestMissingEmail",
         recipients=["user1@mail.com", "user2@mail.com"],
         from_email="",
@@ -1212,16 +1259,16 @@ async def test_catches_params_missing(
 
     # check log message for row added
     mock_logger.error.assert_called_with(
-        "'%s' email failed to send to subscription '%s' due to missing "
-        "api_key or send email address.\n"
+        "'%s' email failed to send to subscription '%s' due to %s.\n"
         "It has been logged in the 'failed_emails' table with id=%s.\n"
         "Use 'get_failed_emails.py' to retrieve it to send manually.",
         "test-email-type",
         test_subscription_id,
+        error_class.reason,
         last_row["id"],
     )
 
-    # check last row in database contains the MissingEmailParamsError params
+    # check last row in database contains the error's params
     assert len(last_row) == 9
     assert last_row["subscription_id"] == test_subscription_id
     assert last_row["type"] == "test-email-type"
