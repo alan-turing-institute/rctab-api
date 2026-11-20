@@ -17,11 +17,10 @@ from uuid import UUID
 from celery import Celery
 from celery.schedules import crontab
 from celery.signals import after_setup_logger, after_setup_task_logger
-from opencensus.ext.azure.log_exporter import AzureLogHandler
 
 from rctab.constants import ADMIN_OID
 from rctab.db import ENGINE
-from rctab.logutils import CustomDimensionsFilter
+from rctab.logutils import set_log_handler
 from rctab.routers.accounting.abolishment import abolish_subscriptions
 from rctab.routers.accounting.summary_emails import (
     get_timestamp_last_summary_email,
@@ -53,29 +52,24 @@ def setup_periodic_tasks(sender: Any, **_) -> None:  # type: ignore[no-untyped-d
 
 
 @after_setup_logger.connect
-def setup_logger(logger: Any, *_: Any, **__: Any) -> None:  # type: ignore[no-untyped-def]
-    """Set up celery logger."""
-    settings = get_settings()
-    if settings.central_logging_connection_string:
-        custom_dimensions = {"logger_name": "logger_celery"}
-        handler = AzureLogHandler(
-            connection_string=settings.central_logging_connection_string
-        )
-        handler.addFilter(CustomDimensionsFilter(custom_dimensions))
-        logger.addHandler(handler)
+def setup_logger(*_: Any, **__: Any) -> None:  # type: ignore[no-untyped-def]
+    """Set up celery logger.
+
+    Celery passes the root logger, but a handler there would export records
+    from the rctab logger a second time, as they propagate up to it. Instead,
+    export the celery and rctab loggers.
+    """
+    set_log_handler()
+    set_log_handler("celery")
 
 
 @after_setup_task_logger.connect
 def setup_task_logger(logger: Any, *_: Any, **__: Any) -> None:  # type: ignore[no-untyped-def]
-    """Set up celery task logger."""
-    settings = get_settings()
-    if settings.central_logging_connection_string:
-        custom_dimensions = {"logger_name": "logger_celery_worker"}
-        handler = AzureLogHandler(
-            connection_string=settings.central_logging_connection_string
-        )
-        handler.addFilter(CustomDimensionsFilter(custom_dimensions))
-        logger.addHandler(handler)
+    """Set up celery task logger.
+
+    Celery stops this logger propagating, so it needs a handler of its own.
+    """
+    set_log_handler(logger.name)
 
 
 async def send() -> None:

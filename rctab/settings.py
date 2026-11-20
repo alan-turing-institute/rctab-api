@@ -42,8 +42,8 @@ class Settings(BaseSettings):
     # See validate_log_level()
     log_level: str = "WARNING"
 
-    # To copy log messages to a central app insights
-    central_logging_connection_string: Optional[str] = None
+    # To send log messages to Application Insights (automatically set by Azure)
+    applicationinsights_connection_string: Optional[str] = None
 
     # Whether we are running unit tests
     testing: bool = False  # A True value rolls back all commits between tests

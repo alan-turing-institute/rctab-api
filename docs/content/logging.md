@@ -45,74 +45,74 @@ logger.exception("This logs an error message along with the traceback.")
 This creates a `Logger` on module level, where `__name__` is the module’s name in the Python package namespace.
 To log a message, choose the function that reflects the appropriate severity. When exceptions occur,`logger.exception()` can be very useful for debugging, since it logs the error message along the traceback.
 
-## Centralised Logging
+## Azure Application Insights
 
-### Azure Application Insights
+The RCTab API sends its logs to [Azure Application Insights](https://learn.microsoft.com/en-us/azure/azure-monitor/app/app-insights-overview), which can, amongst other things, collect and store trace logging data.
+Every Application Insights resource deployed by [rctab-infrastructure](https://github.com/alan-turing-institute/rctab-infrastructure) writes to the same Log Analytics workspace, so the logs of the RCTab API and the Azure function apps can be queried in one place.
 
-It can be useful to collect and view the Python logs produced by the RCTab API and the Azure function apps in one place.
-To do so, the logs can be sent to [Azure Application Insights](https://learn.microsoft.com/en-us/azure/azure-monitor/app/app-insights-overview?tabs=net), which can, amongst other things, collect and store trace logging data.
+### Configuration
 
-You need to provide a connection string to an Azure Application Insights resource to which the logs can be sent.
+Logs are only sent if a connection string is provided.
 
-- If you want to set up a new Azure Application Insights resource, follow these [instructions](https://learn.microsoft.com/en-us/azure/azure-monitor/app/create-new-resource?tabs=net#create-an-application-insights-resource-1).
-- To find the connection string, navigate to the Azure Application Insights resource on the Azure portal.
-- Add the connection string either
-  - to the `.env` file, if you run the RCTab API locally:
-  `CENTRAL_LOGGING_CONNECTION_STRING="my-connection-string"`
-  - or to the Azure portal Application Settings, if you deployed the RCTab API to Azure:
-    - On the left hand panel under `Settings` select `Configruation`
-    - Under the tab `Application settings`, click `+ New application setting`
-    - Provide the name `CENTRAL_LOGGING_CONNECTION_STRING` and as value the connection string to your Azure Application Insights resource.
-    - Save the new setting.
+- On Azure, the `APPLICATIONINSIGHTS_CONNECTION_STRING` application setting is set for you when the infrastructure is deployed.
+- When running the RCTab API locally, add the connection string of an Application Insights resource to the `.env` file:
+  `APPLICATIONINSIGHTS_CONNECTION_STRING="my-connection-string"`
+  To find the connection string, navigate to the Application Insights resource on the Azure portal.
+
+The `OTEL_SERVICE_NAME` environment variable sets the `AppRoleName` of each record.
+It defaults to `rctab-api`.
 
 ### Custom logging functionality
 
-Once you added a connection string to the `.env` file or to the Application Settings on the Azure portal, by default, all logging from `rctab/` and further down in the Python module hierarchy are sent to the Application Insights.
-You can change this by providing a name for the logger in `set_log_handler(name="my-logger-name")` during `startup()` in `main.py`.
-
-The custom functionality to centralise logging can be found in `rctab/logutils.py`.
-It uses the [OpenCensus Python SDK](https://learn.microsoft.com/en-us/azure/azure-monitor/app/opencensus-python) to send logs to the Application Insights.
+The custom functionality to send logs to Application Insights can be found in `rctab/logutils.py`.
+It uses the [Azure Monitor OpenTelemetry Distro](https://learn.microsoft.com/en-us/azure/azure-monitor/app/opentelemetry-enable?tabs=python).
+Only logs are exported: tracing, metrics and automatic instrumentation of libraries are disabled.
 
 The function `set_log_handler()` in `rctab/logutils.py`
 
-- Gets a logger of provided name (default: `rctab`)
-- Adds an `AzureLogHandler` to this logger if a connection string is provided.
-- Adds a filter that appends custom dimensions in form of a key-value pair (e.g. `{"logger_name": "logger_rctab"`) to each log record.
-  The custom dimensions are hard-coded in the function definition of `set_log_handler()` and can be changed there.
+- Configures Azure Monitor, once per process, with a handler on the `rctab` logger.
+  All logging from `rctab/` and further down in the Python module hierarchy is therefore sent to Application Insights.
+- Adds a handler to the logger of the provided name, if it is not the `rctab` logger.
+  The Celery worker uses this for the `celery` and `celery.task` loggers.
+
+Each record carries the following custom dimensions:
+
+- `logger_name`: the name of the logger that emitted the record, e.g. `rctab.routers.accounting.send_emails`.
+- `code.file.path`, `code.function.name` and `code.line.number`: where in the code the record was emitted.
 
 ### View logs on Azure portal
 
 To view the log messages,
 
-- Go to the Application Insights resource on the Azure portal.
+- Go to the Application Insights resource, or the Log Analytics workspace, on the Azure portal.
 - Navigate to `Logs`.
-- The logs are in the `traces` table under the `Tables` tab.
+- The logs are in the `AppTraces` table.
+  Records logged with `logger.exception()` are in the `AppExceptions` table.
 
 An example query to explore the table contents could be
 
 ```text
-traces
-| extend logger_name = tostring(customDimensions.logger_name)
-| extend module = tostring(customDimensions.module)
-| extend line_number = tostring(customDimensions.lineNumber)
+AppTraces
+| where AppRoleName == "rctab-api"
+| extend logger_name = tostring(Properties.logger_name)
+| extend function = tostring(Properties["code.function.name"])
+| extend line_number = toint(Properties["code.line.number"])
 ```
 
-Running the query will show you the logs (within the specified `Time range`) in a table layout including columns for the logger name, the module that logged the message and the corresponding line in the code.
+Running the query will show you the logs (within the specified `Time range`) in a table layout including columns for the logger name, the function that logged the message and the corresponding line in the code.
 
-You can further filter the log messages on the Azure portal.
+You can further filter the log messages.
 For example
 
 ```text
 AppTraces
 | extend logger_name = tostring(Properties.logger_name)
-| extend module = tostring(Properties.module)
-| extend line_number = tostring(Properties.lineNumber)
-| where module == "main"
+| where logger_name == "rctab.main"
 | where Message has "Starting server"
 ```
 
-The log levels used with the Python `Logger` correspond to `severityLevel` in `traces` on the Azure portal. `severityLevel` uses integer numbers. For convenience, these numbers can be easily substituted with the more familiar corresponding log levels by adding the following line to the `kusto` query:
+The log levels used with the Python `Logger` correspond to `SeverityLevel` in `AppTraces`. `SeverityLevel` uses integer numbers. For convenience, these numbers can be easily substituted with the more familiar corresponding log levels by adding the following line to the `kusto` query:
 
 ```text
-| extend log_level = case(severityLevel == 1, "INFO", severityLevel == 2, "WARNING", severityLevel == 3,"ERROR", "UNKNOWN")
+| extend log_level = case(SeverityLevel == 0, "DEBUG", SeverityLevel == 1, "INFO", SeverityLevel == 2, "WARNING", SeverityLevel == 3, "ERROR", SeverityLevel == 4, "CRITICAL", "UNKNOWN")
 ```
