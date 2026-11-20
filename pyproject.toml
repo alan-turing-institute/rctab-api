@@ -14,7 +14,6 @@ dependencies = [
     "fastapi>=0.139.0,<0.140.0",
     "fastapimsal @ git+https://git@github.com/alan-turing-institute/fastapimsal@0.12.0",
     "jinja2 (>=3.1.6,<4.0.0)",
-    "myst-parser[docs] (>=3.0.1,<4.0.0)",
     "numpy (>=1.26.4,<2.0.0)",
     "opencensus-ext-azure (>=1.1.15,<2.0.0)",
     "pandas (>=2.0.0,<3.0.0)",
@@ -29,9 +28,6 @@ dependencies = [
     "requests (>=2.32.4,<3.0.0)",
     "secure (>=0.3.0,<0.4.0)",
     "sendgrid (>=6.12.4,<7.0.0)",
-    "sphinx (>=7.3.7,<8.0.0)",
-    "sphinx-rtd-theme[docs] (>=1.3.0,<2.0.0)",
-    "sphinxcontrib-napoleon[docs] (>=0.7,<0.8)",
     "sqlalchemy[asyncio] (>=2.0.41,<3.0.0)",
     "uvicorn (>=0.34.3,<0.35.0)",
     "psycopg (>=3.3.8,<4.0.0)"
@@ -64,7 +60,11 @@ pyre-check = "^0.10.0"
 coverage = "^7.9.2"
 
 [project.optional-dependencies]
-docs = ["sphinx-rtd-theme", "sphinxcontrib-napoleon", "myst-parser"]
+docs = [
+    "sphinx (>=9.2.0,<10.0.0)",
+    "sphinx-rtd-theme (>=3.1.0,<4.0.0)",
+    "myst-parser (>=5.2.0,<6.0.0)",
+]
 
 [tool.isort]
 profile = "black"
