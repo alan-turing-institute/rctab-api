@@ -24,6 +24,7 @@ class LockNames(StrEnum):
 
     USAGE_UPLOAD = "usage_upload"
     COST_RECOVERY = "cost_recovery"
+    DESIRED_STATES_REFRESH = "desired_states_refresh"
 
 
 def _string_to_lock_id(lock_name: str) -> int:

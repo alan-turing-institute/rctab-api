@@ -23,6 +23,7 @@ from rctab.routers.accounting.cost_recovery import (
     CostRecoveryMonth,
     calc_cost_recovery,
 )
+from rctab.routers.accounting.desired_states import refresh_desired_states
 from rctab.routers.accounting.usage import post_usage
 from tests.test_routes.test_routes import test_db  # pylint: disable=unused-import
 
@@ -126,3 +127,19 @@ async def test_post_usage_holds_lock_until_commit(
 
     with pytest.raises(HTTPException):
         await try_advisory_xact_lock(other_db, LockNames.USAGE_UPLOAD)
+
+
+@pytest.mark.asyncio
+async def test_refresh_desired_states_waits_for_other_refresh(
+    test_db: AsyncConnection,  # pylint: disable=redefined-outer-name
+    other_db: AsyncConnection,  # pylint: disable=redefined-outer-name
+) -> None:
+    """A refresh waits until a concurrent refresh's transaction ends."""
+    await refresh_desired_states(other_db, UUID(ADMIN_OID), [])
+
+    waiter = asyncio.create_task(refresh_desired_states(test_db, UUID(ADMIN_OID), []))
+    await asyncio.sleep(0.5)
+    assert not waiter.done()
+
+    await other_db.rollback()
+    await asyncio.wait_for(waiter, timeout=5)
