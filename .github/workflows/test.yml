@@ -67,7 +67,7 @@ jobs:
 
       # Combined main + routes coverage is complete here.
       - name: Publish coverage comment and badge
-        uses: py-cov-action/python-coverage-comment-action@v4.6
+        uses: py-cov-action/python-coverage-comment-action@v4.7
         with:
           GITHUB_TOKEN: ${{ github.token }}
 
