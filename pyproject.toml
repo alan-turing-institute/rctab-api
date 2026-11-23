@@ -12,7 +12,7 @@ dependencies = [
     "azure-identity (>=1.23.0,<2.0.0)",
     "azure-monitor-opentelemetry (>=1.8.10,<2.0.0)",
     "celery (>=5.5.3,<6.0.0)",
-    "fastapi>=0.139.0,<0.140.0",
+    "fastapi>=0.165.0,<0.166.0",
     "fastapimsal @ git+https://git@github.com/alan-turing-institute/fastapimsal@0.12.0",
     "jinja2 (>=3.1.6,<4.0.0)",
     "numpy (>=1.26.4,<2.0.0)",
@@ -29,7 +29,7 @@ dependencies = [
     "secure (>=0.3.0,<0.4.0)",
     "sendgrid (>=6.12.4,<7.0.0)",
     "sqlalchemy[asyncio] (>=2.0.41,<3.0.0)",
-    "uvicorn (>=0.34.3,<0.35.0)",
+    "uvicorn (>=0.54.0,<0.55.0)",
     "psycopg (>=3.3.8,<4.0.0)"
 ]
 
