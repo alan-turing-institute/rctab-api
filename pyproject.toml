@@ -34,8 +34,8 @@ dependencies = [
 ]
 
 [tool.poetry]
-# Oldest Poetry that may work on this project. Not managed by Renovate:
-# bump it by hand when we need a newer Poetry feature.
+# Oldest Poetry that may work on this project.
+# Bump it by hand when we need a newer Poetry feature.
 requires-poetry = ">=2.4"
 
 [tool.poetry.group.dev.dependencies]
