@@ -14,6 +14,7 @@ RUN apt-get --yes install curl \
 RUN rm -rf /var/lib/apt/lists/*
 
 # Install Poetry
+ENV POETRY_VERSION=2.5.1
 RUN curl -sSL https://install.python-poetry.org | python3 -
 RUN ~/.local/share/pypoetry/venv/bin/poetry config virtualenvs.create false
 

@@ -50,6 +50,8 @@ jobs:
 
       - name: Install poetry
         uses: abatilo/actions-poetry@v4
+        with:
+          poetry-version: "2.5.1"
 
       - name: Install dependencies
         run: poetry install --all-extras
@@ -95,6 +97,8 @@ jobs:
 
       - name: Install poetry
         uses: abatilo/actions-poetry@v4
+        with:
+          poetry-version: "2.5.1"
 
       - name: Install dependencies
         run: poetry install --all-extras
