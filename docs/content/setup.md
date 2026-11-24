@@ -17,6 +17,8 @@ To run the API locally (e.g. for development):
 ### Set up Poetry
 
 Make sure you have [Poetry](https://python-poetry.org/docs/) installed.
+`pyproject.toml` sets a minimum Poetry version with `requires-poetry`, so upgrade Poetry if it refuses to run.
+Nothing updates that minimum automatically: bump it by hand when we need a newer Poetry feature.
 
 Start by setting up the environment:
 
